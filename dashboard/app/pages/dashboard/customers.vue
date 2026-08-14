@@ -1,0 +1,634 @@
+<script setup lang="ts">
+definePageMeta({ layout: "dashboard" });
+import { type Customer } from "@/stores/customer";
+
+const auth = useAuthStore();
+const { format } = useFormatCurrency();
+const toast = useToast();
+const { api } = useApi();
+
+// ── State ──────────────────────────────────────────────────────────────
+const isAddingCustomer = ref(false);
+const activeTab = ref("customers");
+const search = ref("");
+
+// Add customer modal
+const showAddModal = ref(false);
+
+// Edit customer
+const showEditModal = ref(false);
+const editingCustomer = ref<any>(null);
+
+// Delete customer
+const isDeletingCustomer = ref(false);
+const showDeleteModal = ref(false);
+const deletingCustomerId = ref<string | null>(null);
+
+// Customer detail slideover
+const showDetailSlideover = ref(false);
+const selectedCustomer = ref<any>(null);
+
+// Edit debt
+const showEditDebtModal = ref(false);
+const editingDebt = ref<any>(null);
+const isSavingDebt = ref(false);
+
+// Mark paid
+const isMarkingPaid = ref<string | null>(null);
+
+// ── Store ──────────────────────────────────────────────────────────────
+const customerStore = useCustomerStore();
+const {
+  customers,
+  debtors: debts,
+  loading,
+} = storeToRefs(customerStore);
+
+// ── New customer form ──────────────────────────────────────────────────
+const { formData: newCustomer, reset: resetNewCustomerForm, empties: emptiesCustomerValue } = useForm({
+  fullname: "",
+  email: "",
+  phone: "",
+  address: "",
+});
+
+// ── Edit customer form ─────────────────────────────────────────────────
+const editForm = ref({
+  fullname: "",
+  phone: "",
+  email: "",
+  address: "",
+  status: "active",
+});
+
+function openEditCustomer(customer: any) {
+  editingCustomer.value = customer;
+  editForm.value = {
+    fullname: customer.fullname,
+    phone: customer.phone,
+    email: customer.email,
+    address: customer.address,
+    status: customer.status,
+  };
+  showEditModal.value = true;
+}
+
+async function handleEditCustomer() {
+  if (!editingCustomer.value) return;
+  try {
+    loading.value = true;
+    await customerStore.updateCustomer(editingCustomer.value.customer_id, editForm.value);
+    toast.add({ title: "Customer updated", color: "success" });
+    showEditModal.value = false;
+  } catch (err: any) {
+    toast.add({
+      title: "Failed to update",
+      description: err?.data?.detail ?? "Unknown error",
+      color: "error",
+    });
+  } finally {
+    loading.value = false;
+  }
+}
+
+// ── Delete customer ────────────────────────────────────────────────────
+function openDeleteCustomer(id: string) {
+  deletingCustomerId.value = id;
+  showDeleteModal.value = true;
+}
+
+async function handleDeleteCustomer() {
+  if (!deletingCustomerId.value) return;
+  isDeletingCustomer.value = true;
+  try {
+    await customerStore.deleteCustomer(deletingCustomerId.value);
+    toast.add({ title: "Customer deactivated", color: "success" });
+    showDeleteModal.value = false;
+    showDetailSlideover.value = false;
+  } catch (err: any) {
+    toast.add({
+      title: "Failed to deactivate",
+      description: err?.data?.detail ?? "Unknown error",
+      color: "error",
+    });
+  } finally {
+    isDeletingCustomer.value = false;
+  }
+}
+
+// ── Add customer ───────────────────────────────────────────────────────
+async function handleAddCustomer() {
+  if (emptiesCustomerValue.value.includes("fullname")) return;
+  isAddingCustomer.value = true;
+  try {
+    const res = await api<Customer>(`/customer`, { method: "POST", body: newCustomer.value });
+    customerStore.addCustomer(res);
+    toast.add({
+      title: "Customer added",
+      description: newCustomer.value.fullname,
+      color: "success",
+    });
+    showAddModal.value = false;
+    resetNewCustomerForm();
+  } catch (error: any) {
+    toast.add({
+      title: "Failed to add customer",
+      description: error.data?.detail || "Unknown server error",
+      color: "error",
+    });
+  } finally {
+    isAddingCustomer.value = false;
+  }
+}
+
+// ── Edit debt ──────────────────────────────────────────────────────────
+function openEditDebt(debt: any) {
+  editingDebt.value = { ...debt };
+  showEditDebtModal.value = true;
+}
+
+async function handleEditDebt() {
+  if (!editingDebt.value) return;
+  isSavingDebt.value = true;
+  try {
+    await customerStore.updateDebtor(editingDebt.value.debtor_id, {
+      amount: editingDebt.value.amount,
+      status: editingDebt.value.status,
+      note: editingDebt.value.note,
+    });
+    toast.add({ title: "Debt updated", color: "success" });
+    showEditDebtModal.value = false;
+  } catch (err: any) {
+    toast.add({
+      title: "Failed to update debt",
+      description: err?.data?.detail ?? "Unknown error",
+      color: "error",
+    });
+  } finally {
+    isSavingDebt.value = false;
+  }
+}
+
+// ── Mark paid ──────────────────────────────────────────────────────────
+async function markAsPaid(debt: any) {
+  isMarkingPaid.value = debt.debtor_id;
+  try {
+    await customerStore.deleteDebtor(debt.debtor_id);
+    toast.add({
+      title: "Debt resolved",
+      description: `${debt.customer_name} — ${format(debt.amount)}`,
+      color: "success",
+    });
+  } catch (err: any) {
+    toast.add({
+      title: "Failed to mark as paid",
+      description: err?.data?.detail ?? "Unknown error",
+      color: "error",
+    });
+  } finally {
+    isMarkingPaid.value = null;
+  }
+}
+
+// ── Computed ───────────────────────────────────────────────────────────
+const filteredCustomers = computed(() => {
+  if (!search.value) return customers.value;
+  const q = search.value.toLowerCase();
+  return customers.value.filter(
+    (c) =>
+      c.fullname.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      c.phone.includes(q)
+  );
+});
+
+const filteredDebts = computed(() => {
+  if (!search.value) return debts.value;
+  const q = search.value.toLowerCase();
+  return debts.value.filter(
+    (d) =>
+      d.customer_name.toLowerCase().includes(q) ||
+      d.debtor_id.toLowerCase().includes(q)
+  );
+});
+
+const totalOutstanding = computed(() =>
+  debts.value
+    .filter((d) => d.status !== "paid")
+    .reduce((sum, d) => sum + d.amount, 0)
+);
+
+function openCustomerDetail(customer: any) {
+  selectedCustomer.value = customer;
+  showDetailSlideover.value = true;
+}
+
+// ── Constants ──────────────────────────────────────────────────────────
+const debtStatusColors: Record<string, string> = {
+  unpaid: "warning",
+  overdue: "error",
+  paid: "success",
+};
+
+const customerStatusColors: Record<string, string> = {
+  active: "success",
+  inactive: "neutral",
+};
+
+const tabs = [
+  { label: "Customers", value: "customers", icon: "i-lucide-users" },
+  { label: "Debts", value: "debts", icon: "i-lucide-banknote" },
+];
+
+const statusOptions = [
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+];
+
+const debtStatusOptions = [
+  { label: "Unpaid", value: "unpaid" },
+  { label: "Overdue", value: "overdue" },
+  { label: "Paid", value: "paid" },
+];
+</script>
+
+<template>
+  <div class="space-y-5">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-xl font-bold text-highlighted">Customers &amp; Debts</h2>
+        <p class="text-sm text-muted">
+          {{ customers.length }} customers • Outstanding:
+          <span class="text-amber-500 font-semibold">{{ format(totalOutstanding) }}</span>
+        </p>
+      </div>
+      <UButton v-if="customerStore && auth.hasPermission('manage:user')" icon="i-lucide-user-plus" @click="showAddModal = true">
+        Add Customer
+      </UButton>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2">
+      <button
+        v-for="tab in tabs"
+        :key="tab.value"
+        :class="[
+          'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+          activeTab === tab.value
+            ? 'bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/20'
+            : 'text-(--ui-text-muted) hover:bg-(--ui-bg-accented)',
+        ]"
+        @click="activeTab = tab.value"
+      >
+        <UIcon :name="tab.icon" class="w-4 h-4" />
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- Search -->
+    <UInput
+      v-model="search"
+      :placeholder="activeTab === 'customers' ? 'Search customers...' : 'Search debts...'"
+      icon="i-lucide-search"
+      class="max-w-sm"
+    />
+
+    <!-- ── Customers Tab ─────────────────────────────────────────────── -->
+    <div
+      v-if="activeTab === 'customers'"
+      class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden"
+    >
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-(--ui-border) bg-(--ui-bg-accented)/30">
+              <th class="text-left py-3 px-4 font-medium text-(--ui-text-dimmed) text-xs uppercase tracking-wider">Customer</th>
+              <th class="text-left py-3 px-4 font-medium text-(--ui-text-dimmed) text-xs uppercase tracking-wider">Contact</th>
+              <th class="text-center py-3 px-4 font-medium text-(--ui-text-dimmed) text-xs uppercase tracking-wider">Status</th>
+              <th class="text-right py-3 px-4 font-medium text-(--ui-text-dimmed) text-xs uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="customer in filteredCustomers"
+              :key="customer.customer_id"
+              class="border-b border-(--ui-border)/50 last:border-0 hover:bg-(--ui-bg-accented)/30 transition cursor-pointer"
+              @click="openCustomerDetail(customer)"
+            >
+              <td class="py-3 px-4">
+                <div class="flex items-center gap-3">
+                  <UAvatar
+                    :text="customer.fullname.split(' ').map((n: string) => n[0]).join('')"
+                    size="sm"
+                  />
+                  <div>
+                    <p class="font-medium text-(--ui-text-highlighted)">{{ customer.fullname }}</p>
+                    <p class="text-xs text-(--ui-text-dimmed)">Since {{ customer.created_at }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-4">
+                <p class="text-xs text-(--ui-text-muted)">{{ customer.email }}</p>
+                <p class="text-xs text-(--ui-text-dimmed)">{{ customer.phone }}</p>
+              </td>
+              <td class="py-3 px-4 text-center">
+                <UBadge :color="customerStatusColors[customer.status] as any" variant="subtle" size="xs">
+                  {{ customer.status }}
+                </UBadge>
+              </td>
+              <td class="py-3 px-4 text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    size="xs"
+                    icon="i-lucide-eye"
+                    @click.stop="openCustomerDetail(customer)"
+                  />
+                  <UButton
+                    variant="ghost"
+                    color="primary"
+                    size="xs"
+                    icon="i-lucide-pencil"
+                    @click.stop="openEditCustomer(customer)"
+                  />
+                  <UButton
+                    variant="ghost"
+                    color="error"
+                    size="xs"
+                    icon="i-lucide-user-x"
+                    @click.stop="openDeleteCustomer(customer.customer_id)"
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Debts Tab ─────────────────────────────────────────────────── -->
+    <div v-if="activeTab === 'debts'" class="space-y-4">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-4">
+          <p class="text-xs text-(--ui-text-dimmed)">Total Outstanding</p>
+          <p class="text-xl font-bold text-amber-500 mt-1">{{ format(totalOutstanding) }}</p>
+        </div>
+        <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-4">
+          <p class="text-xs text-(--ui-text-dimmed)">Unpaid Debts</p>
+          <p class="text-xl font-bold text-(--ui-text-highlighted) mt-1">
+            {{ debts.filter((d) => d.status === "unpaid").length }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Debts List -->
+      <div class="space-y-3">
+        <div
+          v-for="debt in filteredDebts"
+          :key="debt.debtor_id"
+          :class="[
+            'rounded-xl border p-4 transition-all',
+            debt.status === 'overdue'
+              ? 'border-rose-500/30 bg-rose-500/5'
+              : 'border-(--ui-border) bg-(--ui-bg-elevated)',
+          ]"
+        >
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-3">
+              <UAvatar
+                :text="debt.customer_name.split(' ').map((n: string) => n[0]).join('')"
+                size="sm"
+              />
+              <div>
+                <p class="font-medium text-(--ui-text-highlighted)">{{ debt.customer_name }}</p>
+                <p v-if="debt.note" class="text-xs text-(--ui-text-dimmed) mt-0.5">{{ debt.note }}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-lg font-bold text-(--ui-text-highlighted)">{{ format(debt.amount) }}</p>
+              <UBadge :color="debtStatusColors[debt.status] as any" variant="subtle" size="xs">
+                {{ debt.status }}
+              </UBadge>
+            </div>
+          </div>
+          <div class="flex items-center justify-between mt-3 pt-3 border-t border-(--ui-border)/50">
+            <span class="text-xs text-(--ui-text-dimmed)">Created: {{ debt.created_at }}</span>
+            <div class="flex items-center gap-2">
+              <!-- Edit debt -->
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="primary"
+                icon="i-lucide-pencil"
+                @click="openEditDebt(debt)"
+              />
+              <!-- Mark paid -->
+              <UButton
+                v-if="debt.status !== 'paid'"
+                size="xs"
+                variant="soft"
+                color="success"
+                icon="i-lucide-check"
+                :loading="isMarkingPaid === debt.debtor_id"
+                @click="markAsPaid(debt)"
+              >
+                Mark Paid
+              </UButton>
+              <UBadge v-else color="success" variant="subtle" size="xs">
+                <UIcon name="i-lucide-check-circle" class="w-3 h-3 mr-1" />
+                Resolved
+              </UBadge>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Add Customer Modal ────────────────────────────────────────── -->
+    <UModal v-model:open="showAddModal" title="Add Customer">
+      <template #body>
+        <form class="p-5 space-y-4" @submit.prevent="handleAddCustomer">
+          <UFormField label="Full Name" required>
+            <UInput v-model="newCustomer.fullname" placeholder="e.g. Adebayo Femi" />
+          </UFormField>
+          <div class="grid grid-cols-2 gap-4">
+            <UFormField label="Email">
+              <UInput v-model="newCustomer.email" type="email" placeholder="email@example.com" />
+            </UFormField>
+            <UFormField label="Phone" required>
+              <UInput v-model="newCustomer.phone" placeholder="08012345678" />
+            </UFormField>
+          </div>
+          <UFormField label="Address">
+            <UTextarea v-model="newCustomer.address" placeholder="Customer address..." :rows="2" />
+          </UFormField>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton variant="outline" color="neutral" @click="showAddModal = false">Cancel</UButton>
+            <UButton :loading="isAddingCustomer" type="submit">Add Customer</UButton>
+          </div>
+        </form>
+      </template>
+    </UModal>
+
+    <!-- ── Edit Customer Modal ───────────────────────────────────────── -->
+    <UModal v-model:open="showEditModal" title="Edit Customer">
+      <template #body>
+        <form class="p-5 space-y-4" @submit.prevent="handleEditCustomer">
+          <UFormField label="Full Name" required>
+            <UInput v-model="editForm.fullname" placeholder="Full name" />
+          </UFormField>
+          <div class="grid grid-cols-2 gap-4">
+            <UFormField label="Email">
+              <UInput v-model="editForm.email" type="email" placeholder="email@example.com" />
+            </UFormField>
+            <UFormField label="Phone">
+              <UInput v-model="editForm.phone" placeholder="08012345678" />
+            </UFormField>
+          </div>
+          <UFormField label="Address">
+            <UTextarea v-model="editForm.address" placeholder="Customer address..." :rows="2" />
+          </UFormField>
+          <UFormField label="Status">
+            <USelect v-model="editForm.status" :options="statusOptions" value-key="value" label-key="label" />
+          </UFormField>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton variant="outline" color="neutral" @click="showEditModal = false">Cancel</UButton>
+            <UButton :loading="loading" type="submit">Save Changes</UButton>
+          </div>
+        </form>
+      </template>
+    </UModal>
+
+    <!-- ── Delete Confirm Modal ──────────────────────────────────────── -->
+    <UModal v-model:open="showDeleteModal" title="Deactivate Customer">
+      <template #body>
+        <div class="p-5 space-y-4">
+          <p class="text-sm text-(--ui-text-muted)">
+            This will mark the customer as <strong>inactive</strong>. They will not be deleted from the database.
+          </p>
+          <div class="flex justify-end gap-2">
+            <UButton variant="outline" color="neutral" @click="showDeleteModal = false">Cancel</UButton>
+            <UButton color="error" :loading="isDeletingCustomer" @click="handleDeleteCustomer">
+              Deactivate
+            </UButton>
+          </div>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- ── Edit Debt Modal ───────────────────────────────────────────── -->
+    <UModal v-model:open="showEditDebtModal" title="Edit Debt">
+      <template #body>
+        <form class="p-5 space-y-4" @submit.prevent="handleEditDebt" v-if="editingDebt">
+          <UFormField label="Amount (Kobo)">
+            <UInput v-model.number="editingDebt.amount" type="number" min="0" />
+          </UFormField>
+          <UFormField label="Note">
+            <UInput v-model="editingDebt.note" placeholder="Optional staff note" />
+          </UFormField>
+          <UFormField label="Status">
+            <USelect v-model="editingDebt.status" :options="debtStatusOptions" value-key="value" label-key="label" />
+          </UFormField>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton variant="outline" color="neutral" @click="showEditDebtModal = false">Cancel</UButton>
+            <UButton :loading="isSavingDebt" type="submit">Save Changes</UButton>
+          </div>
+        </form>
+      </template>
+    </UModal>
+
+    <!-- ── Customer Detail Slideover ─────────────────────────────────── -->
+    <USlideover
+      v-model:open="showDetailSlideover"
+      :title="selectedCustomer?.fullname || 'Customer'"
+      side="right"
+    >
+      <template #body>
+        <div v-if="selectedCustomer" class="p-5 space-y-5">
+          <div class="flex items-center gap-4">
+            <UAvatar
+              :text="selectedCustomer.fullname.split(' ').map((n: string) => n[0]).join('')"
+              size="lg"
+            />
+            <div>
+              <h3 class="text-lg font-semibold text-(--ui-text-highlighted)">
+                {{ selectedCustomer.fullname }}
+              </h3>
+              <UBadge
+                :color="customerStatusColors[selectedCustomer.status] as any"
+                variant="subtle"
+                size="xs"
+              >{{ selectedCustomer.status }}</UBadge>
+            </div>
+          </div>
+
+          <div class="space-y-3 text-sm">
+            <div class="flex items-center gap-3 text-(--ui-text-muted)">
+              <UIcon name="i-lucide-mail" class="w-4 h-4 text-(--ui-text-dimmed)" />
+              {{ selectedCustomer.email }}
+            </div>
+            <div class="flex items-center gap-3 text-(--ui-text-muted)">
+              <UIcon name="i-lucide-phone" class="w-4 h-4 text-(--ui-text-dimmed)" />
+              {{ selectedCustomer.phone }}
+            </div>
+            <div class="flex items-center gap-3 text-(--ui-text-muted)">
+              <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-(--ui-text-dimmed)" />
+              {{ selectedCustomer.address || "Not Provided" }}
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <UButton
+              size="sm"
+              variant="soft"
+              color="primary"
+              icon="i-lucide-pencil"
+              @click="openEditCustomer(selectedCustomer); showDetailSlideover = false"
+            >
+              Edit
+            </UButton>
+            <UButton
+              size="sm"
+              variant="soft"
+              color="error"
+              icon="i-lucide-user-x"
+              @click="openDeleteCustomer(selectedCustomer.customer_id); showDetailSlideover = false"
+            >
+              Deactivate
+            </UButton>
+          </div>
+
+          <div>
+            <p class="text-xs font-medium text-(--ui-text-dimmed) uppercase mb-2">Active Debts</p>
+            <div class="space-y-2">
+              <div
+                v-for="debt in debts.filter(
+                  (d) => d.customer_id === selectedCustomer.customer_id && d.status !== 'paid'
+                )"
+                :key="debt.debtor_id"
+                class="flex items-center justify-between p-3 rounded-lg bg-(--ui-bg-accented)/50"
+              >
+                <div>
+                  <p class="text-sm font-medium text-(--ui-text-highlighted)">{{ format(debt.amount) }}</p>
+                  <p v-if="debt.note" class="text-xs text-(--ui-text-dimmed)">{{ debt.note }}</p>
+                </div>
+                <UBadge :color="debtStatusColors[debt.status] as any" variant="subtle" size="xs">
+                  {{ debt.status }}
+                </UBadge>
+              </div>
+              <p
+                v-if="!debts.filter((d) => d.customer_id === selectedCustomer.customer_id && d.status !== 'paid').length"
+                class="text-sm text-(--ui-text-dimmed) text-center py-4"
+              >
+                No active debts
+              </p>
+            </div>
+          </div>
+        </div>
+      </template>
+    </USlideover>
+  </div>
+</template>

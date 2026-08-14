@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+api/*.py[oc]
+api/build/
+api/dist/
+api/wheels/
+api/*.egg-info
+api/.pytest_cache/
+
+# Virtual environments
+api/.venv
+api/.env
+api/migrations/versions
+
+node_modules
+.nuxt
+.env
+
+.vscode/settings.json
