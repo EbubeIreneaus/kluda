@@ -10,7 +10,6 @@ api/.pytest_cache/
 # Virtual environments
 api/.venv
 api/.env
-api/migrations/versions
 
 node_modules
 .nuxt
