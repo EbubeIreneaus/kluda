@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "buildCommand": "alembic upgrade head",
+  "builds": [
+    {
+      "src": "main.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 30
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "main.py"
+    }
+  ],
+  "env": {
+    "PYTHON_VERSION": "3.12"
+  }
+}
