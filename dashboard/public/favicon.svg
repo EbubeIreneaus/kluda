@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="rp-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="#0f172a" />
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#rp-grad)" opacity="0.15" stroke="url(#rp-grad)" stroke-width="8" />
+  <!-- Cash Register / Barcode Graphic -->
+  <path d="M128 352h256v48H128z" fill="#10b981" />
+  <rect x="112" y="336" width="288" height="80" rx="16" stroke="#34d399" stroke-width="24" fill="#0f172a" />
+  <rect x="152" y="200" width="208" height="136" rx="12" stroke="#34d399" stroke-width="20" fill="#0f172a" />
+  <rect x="184" y="232" width="32" height="24" rx="4" fill="#10b981" />
+  <rect x="240" y="232" width="32" height="24" rx="4" fill="#10b981" />
+  <rect x="296" y="232" width="32" height="24" rx="4" fill="#10b981" />
+  <rect x="184" y="272" width="32" height="24" rx="4" fill="#10b981" />
+  <rect x="240" y="272" width="32" height="24" rx="4" fill="#10b981" />
+  <rect x="296" y="272" width="32" height="24" rx="4" fill="#10b981" />
+  <!-- Screen with RP text -->
+  <rect x="192" y="104" width="128" height="72" rx="8" stroke="#34d399" stroke-width="16" fill="#0f172a" />
+  <text x="256" y="152" fill="#34d399" font-family="system-ui, sans-serif" font-size="36" font-weight="900" text-anchor="middle">RP</text>
+  <path d="M256 176v24" stroke="#34d399" stroke-width="16" stroke-linecap="round" />
+</svg>

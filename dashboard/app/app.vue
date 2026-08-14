@@ -22,7 +22,6 @@ useSeoMeta({
 const isAppReady = ref(false)
 
 onMounted(() => {
-  // Graceful minimum splash duration so it renders smoothly without abrupt flashing
   setTimeout(() => {
     isAppReady.value = true
   }, 400)
@@ -31,10 +30,11 @@ onMounted(() => {
 
 <template>
   <UApp>
-    <!-- Top Route Loading Progress Bar -->
+    <VitePwaManifest />
+    <PwaUpdateBanner />
+    <PwaInstallModal />
     <NuxtLoadingIndicator color="#22c55e" :height="3" />
 
-    <!-- Splash Screen Overlay -->
     <Transition name="splash-fade">
       <div
         v-if="!isAppReady"
@@ -61,7 +61,6 @@ onMounted(() => {
       </div>
     </Transition>
 
-    <!-- Main Application -->
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
