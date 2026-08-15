@@ -12,6 +12,37 @@ export const useSalesStore = defineStore('sales', () => {
   const apiBase = config.public.apiBase
   const auth = useAuthStore()
 
+  function mapPendingToLocalSale(pendingSale: PendingSale): LocalSale {
+    const subtotalKobo = pendingSale.items.reduce((sum, item) => sum + (item.amount * item.quantities), 0)
+    const totalKobo = Math.max(0, subtotalKobo - pendingSale.discount)
+
+    const dateObj = new Date(pendingSale.created_at)
+    const yyyy = dateObj.getFullYear()
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const dd = String(dateObj.getDate()).padStart(2, '0')
+    const hh = String(dateObj.getHours()).padStart(2, '0')
+    const min = String(dateObj.getMinutes()).padStart(2, '0')
+    const dateFormatted = `${yyyy}-${mm}-${dd} ${hh}:${min}`
+
+    return {
+      sale_id: 'SYNCING',
+      full_sale_id: pendingSale.idempotency_key,
+      idempotency_key: pendingSale.idempotency_key,
+      date: dateFormatted,
+      customer: pendingSale.customer_id ? 'Linked Customer' : 'Walk-in',
+      items: pendingSale.items.map((item) => ({
+        name: item.stock_slug,
+        qty: item.quantities,
+        price: item.amount // in Kobo
+      })),
+      total: totalKobo, // in Kobo
+      method: pendingSale.payment_method,
+      status: pendingSale.status || 'pending',
+      staff: 'Admin Staff',
+      note: pendingSale.staff_note || ''
+    }
+  }
+
   async function fetchSales() {
     try {
       const headers: Record<string, string> = {}
@@ -21,8 +52,10 @@ export const useSalesStore = defineStore('sales', () => {
 
       const today = new Date().toISOString().split('T')[0]
       const response = await $fetch<any>(`${apiBase}/sales?sale_date=${today}`, { headers })
+      
+      let serverSales: LocalSale[] = []
       if (response && response.items) {
-        const mapped: LocalSale[] = response.items.map((sale: any) => {
+        serverSales = response.items.map((sale: any) => {
           const subtotalKobo = sale.items.reduce((sum: number, item: any) => sum + (item.amount * item.quantities), 0)
           const totalKobo = Math.max(0, subtotalKobo - sale.discount)
 
@@ -52,13 +85,24 @@ export const useSalesStore = defineStore('sales', () => {
             note: sale.staff_note || ''
           }
         })
+      }
 
-        sales.value = mapped
-        await db.salesCache.clear()
-        if (mapped.length > 0) {
-          await db.salesCache.bulkPut(mapped)
-        }
+      // Read local pending sales that have NOT yet synced to server
+      const pending = await db.pendingSales.toArray()
+      const serverKeySet = new Set(serverSales.map(s => s.idempotency_key))
+      
+      // Keep any pending sales not yet returned by the server
+      const pendingAsLocal = pending
+        .filter(p => !serverKeySet.has(p.idempotency_key))
+        .map(mapPendingToLocalSale)
 
+      // Merged list: pending sales at the top, followed by server sales
+      const mergedSales = [...pendingAsLocal, ...serverSales]
+
+      sales.value = mergedSales
+      await db.salesCache.clear()
+      if (mergedSales.length > 0) {
+        await db.salesCache.bulkPut(mergedSales)
       }
     } catch (err) {
       console.warn('Failed to fetch sales from API, using cached sales from IndexedDB:', err)
@@ -70,13 +114,24 @@ export const useSalesStore = defineStore('sales', () => {
   }
 
   async function init() {
+    // 1. Immediately load local cache and any unsynced pending sales
     const cached = await db.salesCache.toArray()
-    if (cached.length > 0) {
-      sales.value = cached
+    const pending = await db.pendingSales.toArray()
+
+    const cachedKeySet = new Set(cached.map(s => s.idempotency_key))
+    const pendingUncached = pending
+      .filter(p => !cachedKeySet.has(p.idempotency_key))
+      .map(mapPendingToLocalSale)
+
+    const initialMerged = [...pendingUncached, ...cached]
+    if (initialMerged.length > 0) {
+      sales.value = initialMerged
     }
 
+    // 2. If online, fetch and sync
     if (isOnline.value) {
       await fetchSales()
+      await syncPendingSales()
     }
   }
 
@@ -89,35 +144,7 @@ export const useSalesStore = defineStore('sales', () => {
     // Save to IndexedDB (Dexie)
     await db.pendingSales.add(newSale)
 
-    // Calculate subtotal in Kobo
-    const subtotalKobo = newSale.items.reduce((sum, item) => sum + (item.amount * item.quantities), 0)
-    const totalKobo = Math.max(0, subtotalKobo - newSale.discount)
-
-    const dateObj = new Date(newSale.created_at)
-    const yyyy = dateObj.getFullYear()
-    const mm = String(dateObj.getMonth() + 1).padStart(2, '0')
-    const dd = String(dateObj.getDate()).padStart(2, '0')
-    const hh = String(dateObj.getHours()).padStart(2, '0')
-    const min = String(dateObj.getMinutes()).padStart(2, '0')
-    const dateFormatted = `${yyyy}-${mm}-${dd} ${hh}:${min}`
-
-    const formattedLocalSale: LocalSale = {
-      sale_id: 'SYNCING',
-      full_sale_id: newSale.idempotency_key,
-      idempotency_key: newSale.idempotency_key,
-      date: dateFormatted,
-      customer: newSale.customer_id ? 'Linked Customer' : 'Walk-in',
-      items: newSale.items.map((item) => ({
-        name: item.stock_slug,
-        qty: item.quantities,
-        price: item.amount // in Kobo
-      })),
-      total: totalKobo, // in Kobo
-      method: newSale.payment_method,
-      status: newSale.status,
-      staff: 'Admin Staff',
-      note: newSale.staff_note || ''
-    }
+    const formattedLocalSale = mapPendingToLocalSale(newSale)
 
     sales.value.unshift(formattedLocalSale)
     await db.salesCache.put(formattedLocalSale)
@@ -166,8 +193,17 @@ export const useSalesStore = defineStore('sales', () => {
         body: pending
       })
 
-      if (res && res.success) {
-        await db.pendingSales.clear()
+      if (res) {
+        if (res.synced_keys && Array.isArray(res.synced_keys) && res.synced_keys.length > 0) {
+          await db.pendingSales.bulkDelete(res.synced_keys)
+        } else if (res.success) {
+          await db.pendingSales.clear()
+        }
+
+        if (res.failed && res.failed.length > 0) {
+          console.warn('Some pending sales failed to sync:', res.failed)
+        }
+
         await fetchSales()
         const productStore = useProductsStore()
         await productStore.fetchProducts()
