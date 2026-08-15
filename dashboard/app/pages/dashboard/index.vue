@@ -75,13 +75,11 @@ const kpis = computed(() => [
 
 <template>
   <div class="space-y-6">
-    <!-- Welcome Header -->
     <div>
       <h2 class="text-2xl font-bold text-(--ui-text-highlighted)">Good day 👋</h2>
       <p class="text-sm text-(--ui-text-muted) mt-1">Here's what's happening with your store today.</p>
     </div>
 
-    <!-- KPI Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       <DashboardKpiCard
         v-for="kpi in kpis"
@@ -90,7 +88,6 @@ const kpis = computed(() => [
       />
     </div>
 
-    <!-- Charts Row -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
       <div class="xl:col-span-2">
         <DashboardRevenueChart />
@@ -98,7 +95,6 @@ const kpis = computed(() => [
       <DashboardPaymentMethodChart />
     </div>
 
-    <!-- Bottom Row -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
       <div class="xl:col-span-2">
         <DashboardRecentSalesTable />

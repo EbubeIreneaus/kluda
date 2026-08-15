@@ -42,19 +42,15 @@ onMounted(() => {
         class="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-zinc-950 text-white select-none pointer-events-auto"
       >
         <div class="relative flex flex-col items-center">
-          <!-- Glowing backdrop circle -->
           <div class="absolute -inset-4 rounded-full bg-green-500/20 blur-2xl animate-pulse" />
 
-          <!-- Logo badge -->
           <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-green-600 to-emerald-400 text-white font-extrabold text-3xl shadow-xl shadow-green-500/20 ring-1 ring-white/20 mb-5">
             RP
           </div>
 
-          <!-- Brand titles -->
           <h1 class="text-2xl font-bold tracking-tight text-white">RetailPOS</h1>
           <p class="text-xs text-zinc-400 font-medium mt-1 tracking-wider uppercase">Next-Gen Point of Sale</p>
 
-          <!-- Animated Loading Bar -->
           <div class="w-40 h-1 bg-zinc-800 rounded-full overflow-hidden mt-8 relative">
             <div class="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full animate-splash-progress" />
           </div>

@@ -197,7 +197,6 @@ async def get_analytics(
 
     base_cond = and_(Sale.created_at >= start, Sale.created_at <= end, Sale.status != "cancelled")
 
-    # ── 1. Revenue & count ────────────────────────────────────────────────
     rev_res = await db.execute(
         select(
             func.count(Sale.sale_id).label("count"),
@@ -207,7 +206,6 @@ async def get_analytics(
     rev_row = rev_res.one()
     total_transactions = int(rev_row.count)
 
-    # Revenue = sum of (items total) - discount  per sale
     items_res = await db.execute(
         select(
             Sale.sale_id,
@@ -222,7 +220,6 @@ async def get_analytics(
     for row in items_res:
         total_revenue += max(0, int(row.subtotal) - int(row.discount))
 
-    # ── 2. Payment method breakdown ───────────────────────────────────────
     method_res = await db.execute(
         select(Sale.payment_method, func.count(Sale.sale_id).label("cnt"))
         .where(base_cond)
@@ -230,7 +227,6 @@ async def get_analytics(
     )
     payment_breakdown = {row.payment_method: int(row.cnt) for row in method_res}
 
-    # ── 3. Top products by qty sold ────────────────────────────────────────
     top_res = await db.execute(
         select(
             Stock.name,
@@ -249,7 +245,6 @@ async def get_analytics(
         for row in top_res
     ]
 
-    # ── 4. Time-series (daily buckets) ─────────────────────────────────────
     series_res = await db.execute(
         select(
             func.date(Sale.created_at).label("day"),
@@ -264,7 +259,6 @@ async def get_analytics(
         for row in series_res
     ]
 
-    # ── 5. Revenue series (daily) ──────────────────────────────────────────
     rev_series_res = await db.execute(
         select(
             func.date(Sale.created_at).label("day"),

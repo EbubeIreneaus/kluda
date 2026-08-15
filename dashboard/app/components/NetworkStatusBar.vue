@@ -44,7 +44,6 @@ onUnmounted(() => {
 
 <template>
   <ClientOnly>
-    <!-- Offline Bottom Bar (Grey) -->
     <Transition name="slide-up">
       <div
         v-if="!isOnline"
@@ -55,7 +54,6 @@ onUnmounted(() => {
       </div>
     </Transition>
 
-    <!-- Restored Online Bottom Bar (Green - auto fades after 3.5s) -->
     <Transition name="slide-up">
       <div
         v-if="showRestoredBanner && isOnline"

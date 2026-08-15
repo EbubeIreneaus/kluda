@@ -97,7 +97,7 @@ def require_permission(permission: StaffPermission | str):
             )
 
         if isinstance(staff_perm, str):
-            if staff_perm in ["manage:all", "*", "all", perm_value]:
+            if staff_perm in ["manage:all", "all", perm_value]:
                 return staff
             try:
                 import json

@@ -52,14 +52,12 @@ watch(() => route.path, () => {
 
 <template>
   <div class="flex h-screen overflow-hidden bg-(--ui-bg)">
-    <!-- Desktop Sidebar -->
     <aside
       :class="[
         'hidden lg:flex flex-col border-r border-(--ui-border) bg-(--ui-bg-elevated) transition-all duration-300 shrink-0',
         isCollapsed ? 'w-[72px]' : 'w-64'
       ]"
     >
-      <!-- Logo area -->
       <div class="flex items-center h-16 px-4 border-b border-(--ui-border) shrink-0">
         <div class="flex items-center gap-3 overflow-hidden">
           <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-green-500 text-white font-bold text-sm shrink-0">
@@ -73,7 +71,6 @@ watch(() => route.path, () => {
         </div>
       </div>
 
-      <!-- Nav links -->
       <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
         <NuxtLink
           v-for="item in navItems"
@@ -93,7 +90,6 @@ watch(() => route.path, () => {
         </NuxtLink>
       </nav>
 
-      <!-- Collapse toggle -->
       <div class="p-3 border-t border-(--ui-border)">
         <button
           class="flex items-center justify-center w-full py-2 rounded-lg text-(--ui-text-muted) hover:bg-(--ui-bg-accented) transition"
@@ -104,12 +100,9 @@ watch(() => route.path, () => {
       </div>
     </aside>
 
-    <!-- Main content -->
     <div class="flex flex-col flex-1 overflow-hidden">
-      <!-- Top bar -->
       <header class="flex items-center justify-between h-16 px-4 lg:px-6 border-b border-(--ui-border) bg-(--ui-bg-elevated) shrink-0">
         <div class="flex items-center gap-3">
-          <!-- Mobile menu button -->
           <button class="lg:hidden" @click="isMobileMenuOpen = true">
             <UIcon name="i-lucide-menu" class="w-6 h-6 text-(--ui-text-muted)" />
           </button>
@@ -137,13 +130,11 @@ watch(() => route.path, () => {
         </div>
       </header>
 
-      <!-- Page content -->
       <main class="flex-1 overflow-y-auto p-4 lg:p-6">
         <slot />
       </main>
     </div>
 
-    <!-- Mobile Sidebar Overlay -->
     <USlideover v-model:open="isMobileMenuOpen" side="left" title="Navigation">
       <template #body>
         <nav class="space-y-2">

@@ -56,13 +56,11 @@ const statusColors: Record<string, string> = {
 
 <template>
   <div class="space-y-5">
-    <!-- Header -->
     <div>
       <h2 class="text-xl font-bold text-(--ui-text-highlighted)">Sales History</h2>
       <p class="text-sm text-(--ui-text-muted)">{{ filteredSales.length }} transactions</p>
     </div>
 
-    <!-- Filters -->
     <div class="flex flex-col sm:flex-row gap-3">
       <UInput
         v-model="search"
@@ -84,7 +82,6 @@ const statusColors: Record<string, string> = {
       />
     </div>
 
-    <!-- Sales Table -->
     <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -127,7 +124,6 @@ const statusColors: Record<string, string> = {
       </div>
     </div>
 
-    <!-- Sale Detail Modal -->
     <UModal v-model:open="showDetailModal" title="Sale Details">
       <template #body>
         <div v-if="selectedSale" class="p-5 space-y-4">

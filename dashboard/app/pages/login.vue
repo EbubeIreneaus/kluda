@@ -33,7 +33,6 @@ async function handleLogin() {
 
 <template>
   <div class="gradient-bg min-h-screen flex items-center justify-center p-4">
-    <!-- Floating particles effect -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
       <div class="absolute w-72 h-72 bg-green-400/10 rounded-full -top-20 -left-20 blur-3xl" />
       <div class="absolute w-96 h-96 bg-emerald-400/8 rounded-full -bottom-32 -right-32 blur-3xl" />
@@ -41,7 +40,6 @@ async function handleLogin() {
     </div>
 
     <div class="w-full max-w-md relative z-10">
-      <!-- Logo -->
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-green-500 text-white font-bold text-2xl mb-4 shadow-lg shadow-green-500/30">
           RP
@@ -50,7 +48,6 @@ async function handleLogin() {
         <p class="text-green-200/70 mt-2">Next-generation point of sale</p>
       </div>
 
-      <!-- Login Card -->
       <div class="glass-card rounded-2xl p-8">
         <h2 class="text-xl font-semibold text-white mb-6">Sign in to your account</h2>
 

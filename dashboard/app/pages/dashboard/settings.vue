@@ -92,7 +92,6 @@ async function handleChangePassword() {
       <p class="text-sm text-(--ui-text-muted)">View your staff profile and update your security credentials.</p>
     </div>
 
-    <!-- Staff Profile Card (Read Only) -->
     <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-6 space-y-6">
       <div class="flex items-center gap-4">
         <UAvatar :text="auth.initials" size="xl" />
@@ -151,7 +150,6 @@ async function handleChangePassword() {
       </div>
     </div>
 
-    <!-- Change Password Form -->
     <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-6 space-y-4">
       <div>
         <h3 class="text-base font-semibold text-(--ui-text-highlighted)">Change Password</h3>

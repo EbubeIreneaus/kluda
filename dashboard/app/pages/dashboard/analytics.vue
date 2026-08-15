@@ -7,7 +7,6 @@ const { format, formatCompact } = useFormatCurrency()
 const analyticsStore = useAnalyticsStore()
 const { data, isLoading, error } = storeToRefs(analyticsStore)
 
-// ── Period selector ──────────────────────────────────────────────────────
 type PeriodOption = { label: string; value: AnalyticsPeriod }
 const periods: PeriodOption[] = [
   { label: 'Today', value: 'today' },
@@ -37,10 +36,8 @@ function loadData() {
   }
 }
 
-// initial load
 loadData()
 
-// ── Computed helpers ─────────────────────────────────────────────────────
 const totalRevenue = computed(() => data.value?.total_revenue ?? 0)
 const totalTx = computed(() => data.value?.total_transactions ?? 0)
 const avgRevPerTx = computed(() =>
@@ -134,7 +131,6 @@ const colorMap: Record<string, string> = {
 
 <template>
   <div class="space-y-6">
-    <!-- ── Header ──────────────────────────────────────────────────────── -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h2 class="text-xl font-bold text-(--ui-text-highlighted)">Analytics</h2>
@@ -156,7 +152,6 @@ const colorMap: Record<string, string> = {
       </UButton>
     </div>
 
-    <!-- ── Period tabs ─────────────────────────────────────────────────── -->
     <div class="flex flex-wrap gap-2">
       <button
         v-for="p in periods"
@@ -173,7 +168,6 @@ const colorMap: Record<string, string> = {
       </button>
     </div>
 
-    <!-- Custom date range -->
     <transition name="slide-down">
       <div v-if="showCustomPicker" class="flex flex-wrap items-end gap-3 p-4 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated)">
         <UFormField label="From">
@@ -188,13 +182,11 @@ const colorMap: Record<string, string> = {
       </div>
     </transition>
 
-    <!-- Error state -->
     <div v-if="error" class="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-500">
       <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 inline mr-2" />
       {{ error }}
     </div>
 
-    <!-- Loading skeleton -->
     <div v-if="isLoading && !data" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       <div
         v-for="i in 4"
@@ -203,9 +195,7 @@ const colorMap: Record<string, string> = {
       />
     </div>
 
-    <!-- ── Content ─────────────────────────────────────────────────────── -->
     <template v-if="data">
-      <!-- KPI Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div
           v-for="kpi in kpis"
@@ -223,7 +213,6 @@ const colorMap: Record<string, string> = {
         </div>
       </div>
 
-      <!-- ── Revenue chart (bar) ──────────────────────────────────────── -->
       <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-5">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -238,7 +227,6 @@ const colorMap: Record<string, string> = {
         </div>
 
         <div v-else class="space-y-3">
-          <!-- Bar chart -->
           <div class="flex items-end gap-1 h-40">
             <div
               v-for="pt in revenuePoints"
@@ -250,13 +238,11 @@ const colorMap: Record<string, string> = {
                 class="w-full rounded-t-sm bg-green-500/70 hover:bg-green-500 transition-all cursor-pointer min-h-[4px]"
                 :style="{ height: `${Math.max(4, Math.round((pt.revenue / maxRevenue) * 100))}%` }"
               />
-              <!-- tooltip -->
               <div class="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-(--ui-bg) border border-(--ui-border) text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition z-10 pointer-events-none shadow-md">
                 {{ pt.date }}<br />{{ format(pt.revenue) }}
               </div>
             </div>
           </div>
-          <!-- x-axis labels (every ~5th) -->
           <div class="flex items-center gap-1 text-xs text-(--ui-text-dimmed)">
             <div
               v-for="(pt, idx) in revenuePoints"
@@ -271,10 +257,7 @@ const colorMap: Record<string, string> = {
         </div>
       </div>
 
-      <!-- ── Two-column: payment breakdown + daily transaction count ─── -->
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-
-        <!-- Payment method breakdown -->
         <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-5">
           <p class="font-semibold text-(--ui-text-highlighted) mb-1">Payment Methods</p>
           <p class="text-xs text-(--ui-text-muted) mb-4">Transaction share by method</p>
@@ -297,7 +280,6 @@ const colorMap: Record<string, string> = {
           </div>
         </div>
 
-        <!-- Daily transactions line chart (step bars) -->
         <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-5">
           <p class="font-semibold text-(--ui-text-highlighted) mb-1">Daily Transactions</p>
           <p class="text-xs text-(--ui-text-muted) mb-4">Number of completed sales per day</p>
@@ -334,7 +316,6 @@ const colorMap: Record<string, string> = {
         </div>
       </div>
 
-      <!-- ── Top Products ─────────────────────────────────────────────── -->
       <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-5">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -351,7 +332,6 @@ const colorMap: Record<string, string> = {
             :key="prod.name"
             class="flex items-center gap-4 group"
           >
-            <!-- rank badge -->
             <div
               :class="[
                 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
@@ -363,7 +343,6 @@ const colorMap: Record<string, string> = {
             >
               {{ idx + 1 }}
             </div>
-            <!-- bar + info -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between mb-1">
                 <p class="text-sm font-medium text-(--ui-text-highlighted) truncate">{{ prod.name }}</p>
@@ -383,7 +362,6 @@ const colorMap: Record<string, string> = {
         </div>
       </div>
 
-      <!-- ── Revenue sparkline mini-metric ─────────────────────────────── -->
       <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-5">
         <div class="flex items-start justify-between mb-3">
           <div>

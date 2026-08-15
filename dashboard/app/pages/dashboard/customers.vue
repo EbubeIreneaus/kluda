@@ -254,7 +254,6 @@ const debtStatusOptions = [
 
 <template>
   <div class="space-y-5">
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
         <h2 class="text-xl font-bold text-highlighted">Customers &amp; Debts</h2>
@@ -268,7 +267,6 @@ const debtStatusOptions = [
       </UButton>
     </div>
 
-    <!-- Tabs -->
     <div class="flex gap-2">
       <button
         v-for="tab in tabs"
@@ -286,7 +284,6 @@ const debtStatusOptions = [
       </button>
     </div>
 
-    <!-- Search -->
     <UInput
       v-model="search"
       :placeholder="activeTab === 'customers' ? 'Search customers...' : 'Search debts...'"
@@ -294,7 +291,6 @@ const debtStatusOptions = [
       class="max-w-sm"
     />
 
-    <!-- ── Customers Tab ─────────────────────────────────────────────── -->
     <div
       v-if="activeTab === 'customers'"
       class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden"
@@ -368,9 +364,7 @@ const debtStatusOptions = [
       </div>
     </div>
 
-    <!-- ── Debts Tab ─────────────────────────────────────────────────── -->
     <div v-if="activeTab === 'debts'" class="space-y-4">
-      <!-- Summary Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-4">
           <p class="text-xs text-(--ui-text-dimmed)">Total Outstanding</p>
@@ -384,7 +378,6 @@ const debtStatusOptions = [
         </div>
       </div>
 
-      <!-- Debts List -->
       <div class="space-y-3">
         <div
           v-for="debt in filteredDebts"
@@ -417,7 +410,6 @@ const debtStatusOptions = [
           <div class="flex items-center justify-between mt-3 pt-3 border-t border-(--ui-border)/50">
             <span class="text-xs text-(--ui-text-dimmed)">Created: {{ debt.created_at }}</span>
             <div class="flex items-center gap-2">
-              <!-- Edit debt -->
               <UButton
                 size="xs"
                 variant="ghost"
@@ -425,7 +417,6 @@ const debtStatusOptions = [
                 icon="i-lucide-pencil"
                 @click="openEditDebt(debt)"
               />
-              <!-- Mark paid -->
               <UButton
                 v-if="debt.status !== 'paid'"
                 size="xs"
@@ -447,7 +438,6 @@ const debtStatusOptions = [
       </div>
     </div>
 
-    <!-- ── Add Customer Modal ────────────────────────────────────────── -->
     <UModal v-model:open="showAddModal" title="Add Customer">
       <template #body>
         <form class="p-5 space-y-4" @submit.prevent="handleAddCustomer">
@@ -473,7 +463,6 @@ const debtStatusOptions = [
       </template>
     </UModal>
 
-    <!-- ── Edit Customer Modal ───────────────────────────────────────── -->
     <UModal v-model:open="showEditModal" title="Edit Customer">
       <template #body>
         <form class="p-5 space-y-4" @submit.prevent="handleEditCustomer">
@@ -502,7 +491,6 @@ const debtStatusOptions = [
       </template>
     </UModal>
 
-    <!-- ── Delete Confirm Modal ──────────────────────────────────────── -->
     <UModal v-model:open="showDeleteModal" title="Deactivate Customer">
       <template #body>
         <div class="p-5 space-y-4">
@@ -519,7 +507,6 @@ const debtStatusOptions = [
       </template>
     </UModal>
 
-    <!-- ── Edit Debt Modal ───────────────────────────────────────────── -->
     <UModal v-model:open="showEditDebtModal" title="Edit Debt">
       <template #body>
         <form class="p-5 space-y-4" @submit.prevent="handleEditDebt" v-if="editingDebt">
@@ -540,7 +527,6 @@ const debtStatusOptions = [
       </template>
     </UModal>
 
-    <!-- ── Customer Detail Slideover ─────────────────────────────────── -->
     <USlideover
       v-model:open="showDetailSlideover"
       :title="selectedCustomer?.fullname || 'Customer'"

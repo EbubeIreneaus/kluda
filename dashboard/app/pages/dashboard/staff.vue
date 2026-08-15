@@ -24,7 +24,6 @@ const staffList = ref<StaffMember[]>([])
 const isLoading = ref(false)
 const search = ref('')
 
-// Add Staff Modal State
 const showAddModal = ref(false)
 const isAddingStaff = ref(false)
 const newStaff = ref({
@@ -39,7 +38,6 @@ const newStaff = ref({
   status: 'active'
 })
 
-// Edit Staff Modal State
 const showEditModal = ref(false)
 const isEditingStaff = ref(false)
 const selectedStaffId = ref('')
@@ -273,7 +271,6 @@ onMounted(() => {
 
 <template>
   <div class="space-y-5">
-    <!-- Permission guard fallback -->
     <template v-if="!auth.hasPermission('manage:staff')">
       <div class="flex flex-col items-center justify-center py-20 text-center">
         <div class="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mb-4">
@@ -285,7 +282,6 @@ onMounted(() => {
     </template>
 
     <template v-else>
-      <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 class="text-xl font-bold text-(--ui-text-highlighted)">Staff Management</h2>
@@ -309,7 +305,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Search -->
       <UInput
         v-model="search"
         placeholder="Search staff by ID, name, email, or role..."
@@ -317,7 +312,6 @@ onMounted(() => {
         class="max-w-sm"
       />
 
-      <!-- Staff Table -->
       <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -420,7 +414,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Add Staff Modal -->
       <UModal v-model:open="showAddModal" title="Add Staff Member">
         <template #body>
           <form class="p-5 space-y-4" @submit.prevent="handleAddStaff">
@@ -481,7 +474,6 @@ onMounted(() => {
         </template>
       </UModal>
 
-      <!-- Edit Staff Modal -->
       <UModal v-model:open="showEditModal" title="Edit Staff Member">
         <template #body>
           <form class="p-5 space-y-4" @submit.prevent="handleUpdateStaff">

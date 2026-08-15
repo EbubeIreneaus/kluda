@@ -304,11 +304,8 @@ function handleSearchBlur() {
 
 <template>
   <div class="flex flex-col xl:flex-row gap-4 h-[calc(100vh-7rem)]">
-    <!-- Left: Product Selection -->
     <div class="flex-1 flex flex-col min-h-0 space-y-4">
-      <!-- Scanner + Search -->
       <div class="space-y-3">
-        <!-- Barcode Scanner -->
         <div class="relative">
           <div class="flex items-center gap-2 mb-1.5">
             <div class="flex items-center gap-1.5">
@@ -320,7 +317,6 @@ function handleSearchBlur() {
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <!-- Camera Scanner Toggle Button -->
             <UButton
               :color="isCameraActive ? 'error' : 'primary'"
               variant="solid"
@@ -329,7 +325,6 @@ function handleSearchBlur() {
               class="shrink-0"
               @click="toggleCameraScanner"
             />
-            <!-- Barcode & Name Search Input -->
             <div class="flex-1 scanner-active rounded-xl">
               <UInput
                 ref="barcodeRef"
@@ -345,13 +340,11 @@ function handleSearchBlur() {
             </div>
           </div>
 
-          <!-- Camera Viewfinder -->
           <div
             v-show="isCameraActive"
             class="overflow-hidden bg-black flex items-center justify-center mt-2.5
                    fixed inset-0 z-[60] p-4 flex flex-col xl:relative xl:inset-auto xl:z-10 xl:aspect-video xl:max-h-64 xl:rounded-xl xl:border xl:border-(--ui-border) xl:p-0 xl:mt-2.5"
           >
-            <!-- Close button for mobile full-screen mode -->
             <div class="absolute top-4 right-4 z-[70] xl:hidden">
               <UButton
                 color="neutral"
@@ -370,16 +363,13 @@ function handleSearchBlur() {
               playsinline
               muted
             />
-            <!-- Target overlay frame -->
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div class="w-2/3 h-1/3 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative">
-                <!-- Red scanning line animation -->
                 <div class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" style="top: 50%" />
               </div>
             </div>
           </div>
 
-          <!-- Search results dropdown -->
           <Transition name="fade">
             <div
               v-if="showSearchResults && searchResults.length"
@@ -402,7 +392,6 @@ function handleSearchBlur() {
         </div>
       </div>
 
-      <!-- Product Quick Grid -->
       <div class="hidden xl:block flex-1 overflow-y-auto min-h-0">
         <p class="text-xs font-medium text-(--ui-text-dimmed) uppercase tracking-wider mb-3">Quick Add</p>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -423,9 +412,7 @@ function handleSearchBlur() {
       </div>
     </div>
 
-    <!-- Right: Cart + Checkout -->
     <div class="xl:w-[420px] flex flex-col min-h-0 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated)">
-      <!-- Cart header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-(--ui-border)">
         <div class="flex items-center gap-2">
           <UIcon name="i-lucide-shopping-cart" class="w-5 h-5 text-(--ui-text-muted)" />
@@ -444,7 +431,6 @@ function handleSearchBlur() {
         </UButton>
       </div>
 
-      <!-- Cart items -->
       <div class="flex-1 overflow-y-auto xl:max-h-none max-h-[300px] min-h-0 p-4 space-y-2">
         <template v-if="cart.isEmpty">
           <div class="flex flex-col items-center justify-center h-full text-center py-8">
@@ -462,7 +448,7 @@ function handleSearchBlur() {
           class="flex items-center gap-3 p-3 rounded-lg bg-(--ui-bg-accented)/50 group"
         >
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-(--ui-text-highlighted) truncate">{{ item.name }}</p>
+            <p class="text-sm font-medium text-(--ui-text-highlighted)">{{ item.name }}</p>
             <p class="text-xs text-(--ui-text-dimmed) mt-0.5">{{ format(item.unit_price) }} each</p>
           </div>
           <div class="flex items-center gap-1.5">
@@ -497,9 +483,7 @@ function handleSearchBlur() {
         </div>
       </div>
 
-      <!-- Checkout area -->
       <div class="border-t border-(--ui-border) p-4 space-y-3">
-        <!-- Customer link -->
         <div class="flex items-center justify-between">
           <span class="text-xs text-(--ui-text-dimmed)">Customer</span>
           <UButton
@@ -513,7 +497,6 @@ function handleSearchBlur() {
           </UButton>
         </div>
 
-        <!-- Discount -->
         <div class="flex items-center gap-3">
           <span class="text-xs text-(--ui-text-dimmed) whitespace-nowrap">Discount (₦)</span>
           <UInput
@@ -526,7 +509,6 @@ function handleSearchBlur() {
           />
         </div>
 
-        <!-- Payment method -->
         <div>
           <p class="text-xs text-(--ui-text-dimmed) mb-2">Payment Method</p>
           <div class="grid grid-cols-5 gap-1.5">
@@ -547,9 +529,6 @@ function handleSearchBlur() {
           </div>
         </div>
 
-
-
-        <!-- Totals -->
         <div class="space-y-1.5 pt-2 border-t border-(--ui-border)">
           <div class="flex justify-between text-sm">
             <span class="text-(--ui-text-muted)">Subtotal</span>
@@ -569,7 +548,6 @@ function handleSearchBlur() {
           </div>
         </div>
 
-        <!-- Complete sale button -->
         <UButton
           block
           size="lg"
@@ -582,7 +560,6 @@ function handleSearchBlur() {
       </div>
     </div>
 
-    <!-- Customer Search Modal -->
     <UModal v-model:open="showCustomerSearch" title="Link Customer">
       <template #body>
         <div class="space-y-4 p-4">
@@ -609,7 +586,6 @@ function handleSearchBlur() {
       </template>
     </UModal>
 
-    <!-- Receipt Modal -->
     <UModal v-model:open="showReceipt" title="Receipt">
       <template #body>
         <div class="p-6 space-y-4">
@@ -643,7 +619,6 @@ function handleSearchBlur() {
             </div>
           </div>
 
-          <!-- QR code area -->
           <div class="flex justify-center pt-2">
             <div class="p-3 bg-white rounded-lg">
               <div class="w-24 h-24 bg-gray-200 rounded flex items-center justify-center">
@@ -667,7 +642,6 @@ function handleSearchBlur() {
       </template>
     </UModal>
 
-    <!-- Syncing overlay -->
     <div
       v-if="salesStore.isSyncing"
       class="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm flex flex-col items-center justify-center text-white"

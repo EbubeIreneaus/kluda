@@ -199,7 +199,6 @@ watch([showAddModal, showEditSlideover], () => {
 
 <template>
   <div class="space-y-5">
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
         <h2 class="text-xl font-bold text-(--ui-text-highlighted)">Products & Inventory</h2>
@@ -210,7 +209,6 @@ watch([showAddModal, showEditSlideover], () => {
       </UButton>
     </div>
 
-    <!-- Search -->
     <UInput
       v-model="search"
       placeholder="Search by name, barcode, or SKU..."
@@ -219,7 +217,6 @@ watch([showAddModal, showEditSlideover], () => {
       class="max-w-md"
     />
 
-    <!-- Products Table -->
     <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -268,7 +265,6 @@ watch([showAddModal, showEditSlideover], () => {
       </div>
     </div>
 
-    <!-- Add Product Modal -->
     <UModal v-model:open="showAddModal" title="Add New Product">
       <template #body>
         <form class="p-5 space-y-4" @submit.prevent="handleAddProduct">
@@ -288,7 +284,6 @@ watch([showAddModal, showEditSlideover], () => {
             </UFormField>
           </div>
 
-          <!-- Camera Viewfinder for Add Form -->
           <div
             v-if="isCameraActive && activeScanningField === 'add'"
             class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
@@ -329,7 +324,6 @@ watch([showAddModal, showEditSlideover], () => {
       </template>
     </UModal>
 
-    <!-- Edit Product Slideover -->
     <USlideover v-model:open="showEditSlideover" title="Edit Product" side="right">
       <template #body>
         <form v-if="editingProduct" class="p-5 space-y-4" @submit.prevent="saveEdit">
@@ -352,7 +346,6 @@ watch([showAddModal, showEditSlideover], () => {
             </div>
           </UFormField>
 
-          <!-- Camera Viewfinder for Edit Form -->
           <div
             v-if="isCameraActive && activeScanningField === 'edit'"
             class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"

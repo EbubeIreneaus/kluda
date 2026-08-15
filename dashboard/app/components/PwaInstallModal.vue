@@ -85,7 +85,6 @@ function handleDismiss() {
     >
       <template #body>
         <div class="p-6 flex flex-col items-center text-center space-y-5">
-          <!-- Glowing App Icon -->
           <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-green-600 to-emerald-400 text-white font-extrabold text-3xl shadow-xl shadow-green-500/25 ring-1 ring-white/20">
             RP
             <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-700">
@@ -100,7 +99,6 @@ function handleDismiss() {
             </p>
           </div>
 
-          <!-- iOS Instructions -->
           <div
             v-if="isIOS"
             class="w-full text-left bg-accented/40 border border-default rounded-xl p-4 space-y-3"
@@ -121,7 +119,6 @@ function handleDismiss() {
             </div>
           </div>
 
-          <!-- Android / Desktop Direct 1-Click Install -->
           <div v-else class="w-full space-y-2">
             <UButton
               block
@@ -144,7 +141,6 @@ function handleDismiss() {
             </UButton>
           </div>
 
-          <!-- Offline guarantee pill -->
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[11px] font-medium border border-emerald-500/20">
             <UIcon name="i-lucide-wifi-off" class="w-3 h-3" />
             Works 100% offline once installed
