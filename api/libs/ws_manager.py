@@ -1,4 +1,5 @@
 from fastapi import WebSocket
+from fastapi.encoders import jsonable_encoder
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,12 +27,13 @@ class ConnectionManager:
 
     async def broadcast(self, payload: dict, exclude_staff_id: str | None = None):
         """Send *payload* as JSON to every connected client except *exclude_staff_id*."""
+        encoded_payload = jsonable_encoder(payload)
         dead: list[WebSocket] = []
         for conn in self.connections:
             if exclude_staff_id and conn["staff_id"] == exclude_staff_id:
                 continue
             try:
-                await conn["websocket"].send_json(payload)
+                await conn["websocket"].send_json(encoded_payload)
             except Exception as exc:
                 logger.warning(f"WS send failed for {conn['staff_id']}: {exc}")
                 dead.append(conn["websocket"])

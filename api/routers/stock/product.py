@@ -64,7 +64,7 @@ async def create_stock(
     await db.commit()
     await db.refresh(new_stock)
     await ws_manager.broadcast(
-        {"event": "add_product", "data": StockResponse.model_validate(new_stock).model_dump()},
+        {"event": "add_product", "data": StockResponse.model_validate(new_stock).model_dump(mode="json")},
         exclude_staff_id=staff_id,
     )
     return new_stock
@@ -168,7 +168,7 @@ async def update_stock(
     await db.commit()
     await db.refresh(stock)
     await ws_manager.broadcast(
-        {"event": "update_product", "data": StockResponse.model_validate(stock).model_dump()},
+        {"event": "update_product", "data": StockResponse.model_validate(stock).model_dump(mode="json")},
         exclude_staff_id=staff_id,
     )
     return {"success": True}
