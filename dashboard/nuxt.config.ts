@@ -62,7 +62,7 @@ export default defineNuxtConfig({
       name: "Retail POS System",
       short_name: "Retail POS",
       display: "standalone",
-      start_url: "/",
+      start_url: "/dashboard",
       description: "Point of Sale system for Retail Businesses",
       theme_color: "#1e293b",
       background_color: "#0f172a",
@@ -86,7 +86,7 @@ export default defineNuxtConfig({
       ],
     },
     workbox: {
-      navigateFallback: "/",
+      navigateFallback: "/200.html",
       navigateFallbackDenylist: [/^\/api/],
       globPatterns: ["**/*.{js,css,html,png,svg,ico,woff,woff2}"],
       cleanupOutdatedCaches: true,
@@ -94,20 +94,42 @@ export default defineNuxtConfig({
       clientsClaim: false,
       runtimeCaching: [
         {
+          urlPattern: /\/_nuxt\/.*/i,
+          handler: "CacheFirst",
+          options: {
+            cacheName: "nuxt-assets-cache",
+            expiration: {
+              maxEntries: 100,
+              maxAgeSeconds: 60 * 60 * 24 * 30,
+            },
+            cacheableResponse: {
+              statuses: [0, 200],
+            },
+          },
+        },
+        {
+          urlPattern: ({ request }) => request.mode === "navigate",
+          handler: "NetworkFirst",
+          options: {
+            cacheName: "pages-cache",
+            networkTimeoutSeconds: 3,
+            cacheableResponse: {
+              statuses: [0, 200],
+            },
+          },
+        },
+        {
           urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/,
           handler: "CacheFirst",
           options: {
             cacheName: "fonts-cache",
             expiration: {
-              maxEntries: 5,
+              maxEntries: 10,
               maxAgeSeconds: 60 * 60 * 24 * 365,
             },
           },
-        }
+        },
       ],
-    },
-    devOptions: {
-      enabled: true,
     },
   },
 });
