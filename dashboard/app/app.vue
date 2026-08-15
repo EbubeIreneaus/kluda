@@ -33,6 +33,7 @@ onMounted(() => {
     <VitePwaManifest />
     <PwaUpdateBanner />
     <PwaInstallModal />
+    <NetworkStatusBar />
     <NuxtLoadingIndicator color="#22c55e" :height="3" />
 
     <Transition name="splash-fade">
