@@ -70,6 +70,7 @@ const permissionOptions = [
   { label: 'Manage All (Super Admin)', value: 'manage:all' },
   { label: 'Manage Staff', value: 'manage:staff' },
   { label: 'Manage Products & Stock', value: 'manage:product' },
+  { label: 'View Products (Read Only)', value: 'view:product' },
   { label: 'POS & Record Sales', value: 'record:sales' },
   { label: 'Manage Customers & Debts', value: 'manage:user' },
   { label: 'View Analytics & Reports', value: 'view:analytics' }

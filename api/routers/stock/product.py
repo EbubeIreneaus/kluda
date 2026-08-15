@@ -30,6 +30,20 @@ async def create_stock(
     staff_id: str = Query(default="unknown", description="Staff ID for WS broadcast exclusion"),
     _: Staff = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
 ):
+    # Check if a product with the same barcode already exists
+    if stock_data.barcode_id and stock_data.barcode_id.strip():
+        existing_barcode = await db.execute(
+            select(Stock).where(
+                Stock.barcode_id == stock_data.barcode_id.strip(),
+                Stock.deleted == False,
+            )
+        )
+        if existing_barcode.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"A product with barcode '{stock_data.barcode_id}' already exists",
+            )
+
     slug = slugify(stock_data.name)
 
     existing = await db.execute(select(Stock).where(Stock.slug == slug))
@@ -62,7 +76,7 @@ async def get_stocks(
         None, description="Search products by name, description, SKU or barcode"
     ),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(get_staff),
+    _: Staff = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
 ):
     stmt = select(Stock).where(Stock.deleted == False)
 
@@ -100,7 +114,7 @@ async def get_stocks(
 async def get_stock(
     slug: str,
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(get_staff),
+    _: Staff = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
 ):
     res = await db.execute(
         select(Stock).where(Stock.slug == slug, Stock.deleted == False)
@@ -131,6 +145,21 @@ async def update_stock(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with slug '{slug}' not found",
         )
+
+    # Check barcode uniqueness if updating barcode
+    if update_data.barcode_id and update_data.barcode_id.strip():
+        existing_barcode = await db.execute(
+            select(Stock).where(
+                Stock.barcode_id == update_data.barcode_id.strip(),
+                Stock.slug != slug,
+                Stock.deleted == False,
+            )
+        )
+        if existing_barcode.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"A product with barcode '{update_data.barcode_id}' already exists",
+            )
 
     values = update_data.model_dump(exclude_unset=True, exclude_none=True)
     if values:

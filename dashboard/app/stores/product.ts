@@ -38,9 +38,6 @@ export const useProductsStore = defineStore('products', () => {
         if (mapped.length > 0) {
           await db.products.bulkPut(mapped)
         }
-
-        const today = new Date().toISOString().split('T')[0] || ''
-        localStorage.setItem('products_last_fetched', today)
       }
     } catch (err) {
       console.warn('Failed to fetch products from backend, using local IndexedDB:', err)
@@ -55,19 +52,29 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   async function init() {
-    if (isInitialized.value) return
-    isInitialized.value = true
-
+    // 1. Immediately load local cache for 0ms initial render
     const cached = await db.products.toArray()
     if (cached.length > 0) {
       products.value = cached
     }
 
-    const lastFetched = localStorage.getItem('products_last_fetched')
-    const today = new Date().toISOString().split('T')[0]
-
-    if (cached.length === 0 || lastFetched !== today) {
+    // 2. If online, revalidate from API in background
+    if (import.meta.client && window.navigator.onLine) {
       await fetchProducts()
+    }
+  }
+
+  async function deductStock(items: { stock_slug?: string; slug?: string; quantities?: number; qty?: number }[]) {
+    for (const item of items) {
+      const slug = item.stock_slug || item.slug
+      const qty = item.quantities ?? item.qty ?? 0
+      if (!slug || qty <= 0) continue
+
+      const prod = products.value.find(p => p.slug === slug)
+      if (prod) {
+        prod.quantities = Math.max(0, prod.quantities - qty)
+        await db.products.put(JSON.parse(JSON.stringify(prod)))
+      }
     }
   }
 
@@ -235,6 +242,7 @@ export const useProductsStore = defineStore('products', () => {
     updateProduct,
     deleteProduct,
     getByBarcode,
+    deductStock,
     appendFromWs,
     updateFromWs,
     removeFromWs,

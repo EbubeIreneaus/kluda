@@ -122,6 +122,10 @@ export const useSalesStore = defineStore('sales', () => {
     sales.value.unshift(formattedLocalSale)
     await db.salesCache.put(formattedLocalSale)
 
+    // Optimistically deduct local stock immediately (0ms) in memory and IndexedDB
+    const productStore = useProductsStore()
+    await productStore.deductStock(newSale.items)
+
     syncPendingSales()
   }
 
@@ -165,6 +169,8 @@ export const useSalesStore = defineStore('sales', () => {
       if (res && res.success) {
         await db.pendingSales.clear()
         await fetchSales()
+        const productStore = useProductsStore()
+        await productStore.fetchProducts()
       }
     } catch (err) {
       console.error('Failed to batch sync pending sales:', err)

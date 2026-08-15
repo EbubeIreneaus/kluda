@@ -14,7 +14,7 @@ const navItems = computed(() => {
   if (auth.hasPermission('record:sales')) {
     items.push({ label: 'POS Terminal', icon: 'i-lucide-scan-barcode', to: '/dashboard/pos' })
   }
-  if (auth.hasPermission('manage:product')) {
+  if (auth.hasPermission('view:product') || auth.hasPermission('manage:product')) {
     items.push({ label: 'Products', icon: 'i-lucide-package', to: '/dashboard/products' })
   }
   if (auth.hasPermission('record:sales')) {

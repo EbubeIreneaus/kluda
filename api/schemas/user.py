@@ -20,6 +20,7 @@ class StaffPermission(str, Enum):
     MANAGE_USER = "manage:user"
     MANAGE_STAFF = "manage:staff"
     VIEW_ANALYTICS = "view:analytics"
+    VIEW_PRODUCT="view:product"
     MANAGE_PRODUCT = "manage:product"
     RECORD_SALES = "record:sales"
     MANAGE_ALL = "manage:all"
