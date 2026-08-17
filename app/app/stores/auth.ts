@@ -105,14 +105,13 @@ export const useAuthStore = defineStore('auth', {
       } catch (err: any) {
         const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
         if (statusCode === 401) {
-          // Attempt silent refresh
           try {
-            const refreshRes = await $fetch<{ success: boolean; staff?: Staff; access_token?: string }>(
+            const refreshRes = await $fetch<{ success: boolean; staff?: Staff; access_token?: string; store_id?: string }>(
               `${apiBase}/staff/auth/refresh-token`,
               { method: 'POST', credentials: 'include' }
             )
             if (refreshRes && refreshRes.success && refreshRes.staff) {
-              this.setAuth(refreshRes.access_token || '', refreshRes.staff)
+              this.setAuth(refreshRes.access_token || '', refreshRes.staff, refreshRes.store_id)
               return
             }
           } catch {
@@ -120,8 +119,7 @@ export const useAuthStore = defineStore('auth', {
             return
           }
         }
-        const detail = String(err?.data?.detail || '')
-        if (statusCode === 401 || (statusCode === 403 && (detail.includes('suspended') || detail.includes('terminated')))) {
+        if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
           await this.logout(true)
         }
       }
@@ -135,9 +133,7 @@ export const useAuthStore = defineStore('auth', {
           method: 'POST',
           credentials: 'include'
         })
-      } catch {
-        // Continue with local wipe even if server fails
-      }
+      } catch {}
 
       this.token = null
       this.staff = null
@@ -149,7 +145,7 @@ export const useAuthStore = defineStore('auth', {
         if (redirectToLogin) {
           try {
             await navigateTo('/login', { replace: true })
-          } catch (e) {
+          } catch {
             window.location.href = '/login'
           }
         }
@@ -157,4 +153,3 @@ export const useAuthStore = defineStore('auth', {
     }
   }
 })
-

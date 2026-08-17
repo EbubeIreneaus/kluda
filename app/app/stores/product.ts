@@ -7,16 +7,10 @@ export const useProductsStore = defineStore('products', () => {
   const isInitialized = ref(false)
   const isLoading = ref(false)
 
-  const config = useRuntimeConfig()
-  const apiBase = config.public.apiBase
   const auth = useAuthStore()
+  const { api } = useApi()
 
-  function getUrl(path = '') {
-    const storeId = auth.store_id || auth.staff?.store_id || ''
-    return `${apiBase}/${storeId}/product${path}`
-  }
-
-  async function fetchProducts() {
+  async function fetchProducts(search?: string) {
     const storeId = auth.store_id || auth.staff?.store_id
     if (!storeId) {
       const localItems = await db.products.toArray()
@@ -26,18 +20,14 @@ export const useProductsStore = defineStore('products', () => {
 
     isLoading.value = true
     try {
-      const headers: Record<string, string> = {}
-      if (auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`
-      }
-
-      const res = await $fetch<any[]>(getUrl(''), { headers })
+      const url = search ? `/${storeId}/product?search=${encodeURIComponent(search)}` : `/${storeId}/product`
+      const res = await api<any[]>(url)
       if (res && Array.isArray(res)) {
         const mapped: LocalProduct[] = res.map((p: any) => ({
           slug: p.slug,
           name: p.name,
-          unit_price: p.unit_price, // in kobo
-          max_discount: p.max_discount || 0, // in kobo
+          unit_price: p.unit_price,
+          max_discount: p.max_discount || 0,
           barcode_id: p.barcode_id || '',
           quantities: p.quantities ?? 0,
           unit_in: p.unit_in || 'pcs',
@@ -51,9 +41,11 @@ export const useProductsStore = defineStore('products', () => {
           await db.products.bulkPut(mapped)
         }
       }
-    } catch (err) {
-      console.warn('Failed to fetch products from backend, using local IndexedDB:', err)
-      // Fallback to IndexedDB
+    } catch (err: any) {
+      const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
+      if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
+        return
+      }
       const localItems = await db.products.toArray()
       if (localItems.length > 0) {
         products.value = localItems
@@ -64,16 +56,15 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   async function init() {
-    // 1. Immediately load local cache for 0ms initial render
     const cached = await db.products.toArray()
     if (cached.length > 0) {
       products.value = cached
     }
 
-    // 2. If online, revalidate from API in background
     if (import.meta.client && window.navigator.onLine) {
       await fetchProducts()
     }
+    isInitialized.value = true
   }
 
   async function deductStock(items: { stock_slug?: string; slug?: string; quantities?: number; qty?: number }[]) {
@@ -91,15 +82,12 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   async function addProduct(productData: Partial<LocalProduct>) {
-    try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`
-      }
+    const storeId = auth.store_id || auth.staff?.store_id
+    if (!storeId) throw new Error('No store ID')
 
-      const res = await $fetch<any>(getUrl('/'), {
+    try {
+      const res = await api<any>(`/${storeId}/product`, {
         method: 'POST',
-        headers,
         body: productData
       })
 
@@ -121,21 +109,17 @@ export const useProductsStore = defineStore('products', () => {
         return newProduct
       }
     } catch (err) {
-      console.error('Failed to add product:', err)
       throw err
     }
   }
 
   async function updateProduct(slug: string, updateData: Partial<LocalProduct>) {
-    try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`
-      }
+    const storeId = auth.store_id || auth.staff?.store_id
+    if (!storeId) throw new Error('No store ID')
 
-      const res = await $fetch<any>(getUrl(`/${slug}`), {
+    try {
+      const res = await api<any>(`/${storeId}/product/${slug}`, {
         method: 'PUT',
-        headers,
         body: updateData
       })
 
@@ -160,27 +144,22 @@ export const useProductsStore = defineStore('products', () => {
         return updatedProduct
       }
     } catch (err) {
-      console.error('Failed to update product:', err)
       throw err
     }
   }
 
   async function deleteProduct(slug: string) {
-    try {
-      const headers: Record<string, string> = {}
-      if (auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`
-      }
+    const storeId = auth.store_id || auth.staff?.store_id
+    if (!storeId) throw new Error('No store ID')
 
-      await $fetch(getUrl(`/${slug}`), {
-        method: 'DELETE',
-        headers
+    try {
+      await api(`/${storeId}/product/${slug}`, {
+        method: 'DELETE'
       })
 
       products.value = products.value.filter(p => p.slug !== slug)
       await db.products.delete(slug)
     } catch (err) {
-      console.error('Failed to delete product:', err)
       throw err
     }
   }
@@ -193,8 +172,6 @@ export const useProductsStore = defineStore('products', () => {
 
   const productCount = computed(() => products.value.filter(p => !p.deleted).length)
   const lowStockProducts = computed(() => products.value.filter(p => !p.deleted && p.quantities <= 10))
-
-  // ── WebSocket helpers ─────────────────────────────────────────────────
 
   async function appendFromWs(raw: any) {
     const product: LocalProduct = {
@@ -262,5 +239,4 @@ export const useProductsStore = defineStore('products', () => {
   }
 })
 
-// Alias export
 export const useProductStore = useProductsStore

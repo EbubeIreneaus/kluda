@@ -15,6 +15,7 @@ from schemas.user import (
 )
 from libs.security import hash_password
 from libs.deps import require_permission, get_staff_store
+from libs.ws_manager import manager as ws_manager
 import uuid
 
 router = APIRouter(prefix="/{store_id}/staff", tags=["Staff"])
@@ -175,6 +176,18 @@ async def update_staff(
         await db.execute(stmt)
         await db.commit()
         await db.refresh(staff)
+        await ws_manager.broadcast(
+            store.store_id,
+            {
+                "event": "staff_status_changed",
+                "data": {
+                    "staff_id": staff_id,
+                    "status": staff.status.value if hasattr(staff.status, "value") else str(staff.status),
+                    "role": staff.role,
+                    "permission": staff.permission
+                }
+            }
+        )
 
     return staff
 
@@ -203,6 +216,18 @@ async def delete_staff(
     staff.status = StaffStatus.TERMINATED
     staff.sessions.clear()
     staff.access_token = None
+    await db.commit()
+
+    await ws_manager.broadcast(
+        store.store_id,
+        {
+            "event": "staff_status_changed",
+            "data": {
+                "staff_id": staff_id,
+                "status": "terminated"
+            }
+        }
+    )
 
     return {"message": f"Staff with ID '{staff_id}' has been terminated and deleted"}
 
@@ -229,5 +254,18 @@ async def reset_access_token(
         )
 
     staff.access_token = None
+    staff.sessions.clear()
+    await db.commit()
+
+    await ws_manager.broadcast(
+        store.store_id,
+        {
+            "event": "staff_status_changed",
+            "data": {
+                "staff_id": target_staff_id,
+                "status": "revoked"
+            }
+        }
+    )
 
     return {"message": f"Access token revoked for staff '{target_staff_id}'"}

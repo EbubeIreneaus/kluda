@@ -42,7 +42,7 @@ export const usePosSocket = () => {
       backoffMs = 1_000
     }
 
-    ws.onmessage = (event: MessageEvent) => {
+    ws.onmessage = async (event: MessageEvent) => {
       let payload: { event: string; data: any }
       try {
         payload = JSON.parse(event.data)
@@ -91,6 +91,24 @@ export const usePosSocket = () => {
           break
         case 'delete_debt':
           customerStore.removeDebtFromWs(data.debtor_id)
+          break
+
+        case 'staff_status_changed':
+          if (data && data.staff_id === auth.staff?.staff_id) {
+            if (['terminated', 'suspended', 'inactive', 'revoked'].includes(data.status)) {
+              const toast = useToast()
+              toast.add({
+                title: 'Access Revoked',
+                description: 'Your staff access has been suspended or terminated.',
+                color: 'error'
+              })
+              disconnect()
+              await auth.logout(true)
+            } else if (data.status === 'active' && auth.staff) {
+              auth.staff.role = data.role ?? auth.staff.role
+              auth.staff.permission = data.permission ?? auth.staff.permission
+            }
+          }
           break
 
         default:

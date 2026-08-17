@@ -8,9 +8,8 @@ export const useSalesStore = defineStore('sales', () => {
   const isSyncing = ref(false)
   const isOnline = useOnline()
 
-  const config = useRuntimeConfig()
-  const apiBase = config.public.apiBase
   const auth = useAuthStore()
+  const { api } = useApi()
 
   function mapPendingToLocalSale(pendingSale: PendingSale): LocalSale {
     const subtotalKobo = pendingSale.items.reduce((sum, item) => sum + (item.amount * item.quantities), 0)
@@ -33,19 +32,14 @@ export const useSalesStore = defineStore('sales', () => {
       items: pendingSale.items.map((item) => ({
         name: item.stock_slug,
         qty: item.quantities,
-        price: item.amount // in Kobo
+        price: item.amount
       })),
-      total: totalKobo, // in Kobo
+      total: totalKobo,
       method: pendingSale.payment_method,
       status: pendingSale.status || 'pending',
       staff: 'Admin Staff',
       note: pendingSale.staff_note || ''
     }
-  }
-
-  function getUrl(path = '') {
-    const storeId = auth.store_id || auth.staff?.store_id || ''
-    return `${apiBase}/${storeId}/sales${path}`
   }
 
   async function fetchSales() {
@@ -57,13 +51,8 @@ export const useSalesStore = defineStore('sales', () => {
     }
 
     try {
-      const headers: Record<string, string> = {}
-      if (auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`
-      }
-
       const today = new Date().toISOString().split('T')[0]
-      const response = await $fetch<any>(`${getUrl('')}?sale_date=${today}`, { headers })
+      const response = await api<any>(`/${storeId}/sales?sale_date=${today}`)
       
       let serverSales: LocalSale[] = []
       if (response && response.items) {
@@ -88,9 +77,9 @@ export const useSalesStore = defineStore('sales', () => {
             items: sale.items.map((item: any) => ({
               name: item.stock?.name || item.stock_slug,
               qty: item.quantities,
-              price: item.amount // already in Kobo
+              price: item.amount
             })),
-            total: totalKobo, // in Kobo
+            total: totalKobo,
             method: sale.payment_method,
             status: sale.status,
             staff: 'Admin Staff',
@@ -99,16 +88,13 @@ export const useSalesStore = defineStore('sales', () => {
         })
       }
 
-      // Read local pending sales that have NOT yet synced to server
       const pending = await db.pendingSales.toArray()
       const serverKeySet = new Set(serverSales.map(s => s.idempotency_key))
       
-      // Keep any pending sales not yet returned by the server
       const pendingAsLocal = pending
         .filter(p => !serverKeySet.has(p.idempotency_key))
         .map(mapPendingToLocalSale)
 
-      // Merged list: pending sales at the top, followed by server sales
       const mergedSales = [...pendingAsLocal, ...serverSales]
 
       sales.value = mergedSales
@@ -116,8 +102,11 @@ export const useSalesStore = defineStore('sales', () => {
       if (mergedSales.length > 0) {
         await db.salesCache.bulkPut(mergedSales)
       }
-    } catch (err) {
-      console.warn('Failed to fetch sales from API, using cached sales from IndexedDB:', err)
+    } catch (err: any) {
+      const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
+      if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
+        return
+      }
       const cached = await db.salesCache.toArray()
       if (cached.length > 0) {
         sales.value = cached
@@ -126,7 +115,6 @@ export const useSalesStore = defineStore('sales', () => {
   }
 
   async function init() {
-    // 1. Immediately load local cache and any unsynced pending sales
     const cached = await db.salesCache.toArray()
     const pending = await db.pendingSales.toArray()
 
@@ -140,28 +128,34 @@ export const useSalesStore = defineStore('sales', () => {
       sales.value = initialMerged
     }
 
-    // 2. If online, fetch and sync
-    if (isOnline.value) {
+    if (import.meta.client && window.navigator.onLine) {
       await fetchSales()
-      await syncPendingSales()
+      syncPendingSales()
     }
+    isInitialized.value = true
   }
 
-  async function addSale(saleData: Omit<PendingSale, 'created_at'>) {
+  async function recordSale(payload: {
+    items: { stock_slug: string; quantities: number; amount: number }[]
+    discount: number
+    payment_method: 'cash' | 'pos' | 'debt' | 'transfer' | 'online'
+    amount_recived: number
+    customer_id?: string
+    staff_note?: string
+  }) {
     const newSale: PendingSale = {
-      ...saleData,
-      created_at: new Date().toISOString()
+      idempotency_key: crypto.randomUUID(),
+      ...payload,
+      created_at: new Date().toISOString(),
+      status: 'completed'
     }
 
-    // Save to IndexedDB (Dexie)
     await db.pendingSales.add(newSale)
 
     const formattedLocalSale = mapPendingToLocalSale(newSale)
-
-    sales.value.unshift(formattedLocalSale)
+    sales.value = [formattedLocalSale, ...sales.value]
     await db.salesCache.put(formattedLocalSale)
 
-    // Optimistically deduct local stock immediately (0ms) in memory and IndexedDB
     const productStore = useProductsStore()
     await productStore.deductStock(newSale.items)
 
@@ -175,36 +169,26 @@ export const useSalesStore = defineStore('sales', () => {
     if (!storeId) return
 
     try {
-      const headers: Record<string, string> = {}
-      if (auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`
-      }
-      const pingRes = await $fetch<any>(getUrl('/ping'), { headers })
+      const pingRes = await api<any>(`/${storeId}/sales/ping`)
       if (!pingRes || !pingRes.db_connected) {
         return
       }
-    } catch (err) {
-      console.warn('Backend database is currently offline:', err)
+    } catch (err: any) {
+      const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
+      if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
+        return
+      }
       return
     }
 
-    // 2. Fetch pending local sales
     const pending = await db.pendingSales.toArray()
     if (pending.length === 0) return
 
     isSyncing.value = true
 
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      if (auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`
-      }
-
-      const res = await $fetch<any>(getUrl('/'), {
+      const res = await api<any>(`/${storeId}/sales`, {
         method: 'POST',
-        headers,
         body: pending
       })
 
@@ -215,68 +199,62 @@ export const useSalesStore = defineStore('sales', () => {
           await db.pendingSales.clear()
         }
 
-        if (res.failed && res.failed.length > 0) {
-          console.warn('Some pending sales failed to sync:', res.failed)
-        }
-
         await fetchSales()
         const productStore = useProductsStore()
         await productStore.fetchProducts()
       }
-    } catch (err) {
-      console.error('Failed to batch sync pending sales:', err)
+    } catch (err: any) {
+      const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
+      if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
+        return
+      }
     } finally {
       isSyncing.value = false
     }
   }
 
-  // Watch online status: trigger sync when we come back online
   watch(isOnline, (online) => {
     if (online) {
       syncPendingSales()
     }
   })
 
-  // Auto-initialize when store is instantiated
-  init()
-
-  // ── WebSocket helpers ────────────────────────────────────────────────────
-
   async function appendSaleFromWs(sale: LocalSale) {
-    // Avoid duplicates
-    const exists = sales.value.some(s => s.idempotency_key === sale.idempotency_key)
-    if (!exists) {
-      sales.value.unshift(sale)
+    const existingIdx = sales.value.findIndex(s => s.idempotency_key === sale.idempotency_key || s.full_sale_id === sale.full_sale_id)
+    if (existingIdx === -1) {
+      sales.value = [sale, ...sales.value]
       await db.salesCache.put(sale)
     }
   }
 
   async function updateFromWs(sale: LocalSale) {
-    const idx = sales.value.findIndex(s => s.full_sale_id === sale.full_sale_id)
-    if (idx !== -1) {
-      sales.value[idx] = sale
-    } else {
-      sales.value.unshift(sale)
+    const existingIdx = sales.value.findIndex(s => s.idempotency_key === sale.idempotency_key || s.full_sale_id === sale.full_sale_id)
+    if (existingIdx !== -1) {
+      sales.value[existingIdx] = { ...sales.value[existingIdx], ...sale }
+      await db.salesCache.put(sales.value[existingIdx]!)
     }
-    await db.salesCache.put(sale)
   }
 
   async function removeFromWs(saleId: string) {
-    sales.value = sales.value.filter(s => s.full_sale_id !== saleId)
-    await db.salesCache.delete(saleId)
+    const existingIdx = sales.value.findIndex(s => s.sale_id === saleId || s.full_sale_id === saleId)
+    if (existingIdx !== -1) {
+      const removed = sales.value.splice(existingIdx, 1)[0]
+      if (removed) {
+        await db.salesCache.delete(removed.idempotency_key)
+      }
+    }
   }
 
   return {
     sales,
     isInitialized,
     isSyncing,
-    isOnline,
+    init,
     fetchSales,
-    addSale,
+    recordSale,
     syncPendingSales,
     appendSaleFromWs,
     updateFromWs,
-    removeFromWs,
-    init
+    removeFromWs
   }
 })

@@ -27,8 +27,8 @@ export const useApi = () => {
       const statusCode =
         error?.response?.status ?? error?.statusCode ?? error?.status;
       const isRefreshOrAuthUrl =
-        fetchUrl.includes("/auth/refresh-token") ||
-        fetchUrl.includes("/auth/login");
+        fetchUrl.includes("/staff/auth/refresh-token") ||
+        fetchUrl.includes("/staff/auth/login");
 
       if (statusCode === 401 && !isRefreshOrAuthUrl) {
         if (!isRefreshing) {
@@ -39,14 +39,17 @@ export const useApi = () => {
                 success: boolean;
                 staff?: any;
                 access_token?: string;
-              }>(`${config.public.apiBase}/auth/refresh-token`, {
+                store_id?: string;
+              }>(`${config.public.apiBase}/staff/auth/refresh-token`, {
                 method: "POST",
                 credentials: "include",
               });
-              if (res && res.success) {
-                if (res.staff) {
-                  auth.setAuth(res.access_token || auth.token || "", res.staff);
-                }
+              if (res && res.success && res.staff) {
+                auth.setAuth(
+                  res.access_token || auth.token || "",
+                  res.staff,
+                  (res.store_id || auth.store_id) as string
+                );
                 return true;
               }
               return false;
@@ -71,10 +74,7 @@ export const useApi = () => {
         } else {
           await auth.logout(true);
         }
-      } else if (
-        statusCode === 403 &&
-        String(error?.data?.detail || "").includes("suspended")
-      ) {
+      } else if (statusCode === 403) {
         await auth.logout(true);
       }
       throw error;
