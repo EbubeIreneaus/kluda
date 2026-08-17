@@ -13,53 +13,100 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .user import Customer
+    from .business import Store
+
 
 class Stock(Base):
     __tablename__ = "stocks"
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
     name: MappedColumn[str] = mapped_column(String)
     slug: MappedColumn[str] = mapped_column(String, unique=True)
-    barcode_id: MappedColumn[str | None] = mapped_column(String, nullable=True, unique=True)
-    unit_price: MappedColumn[int] = mapped_column(Integer, default=1000) #100kobo * 10 = 10naira
+    store_id: MappedColumn[uuid.UUID] = mapped_column(
+        ForeignKey("stores.store_id", ondelete="CASCADE"),
+        index=True
+    )
+    store: MappedColumn["Store"] = relationship(back_populates="stocks")
+    barcode_id: MappedColumn[str | None] = mapped_column(
+        String, nullable=True, unique=True
+    )
+    unit_price: MappedColumn[int] = mapped_column(
+        Integer, default=1000
+    )  # 100kobo * 10 = 10naira
     sku: MappedColumn[str | None] = mapped_column(String, nullable=True)
-    quantities: MappedColumn[float] = mapped_column(Numeric(precision=8, scale=2), default=1)
-    unit_in: MappedColumn[Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag']] = mapped_column(String(10), default="piece")
+    quantities: MappedColumn[float] = mapped_column(
+        Numeric(precision=8, scale=2), default=1
+    )
+    unit_in: MappedColumn[
+        Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag"]
+    ] = mapped_column(String(10), default="piece")
     max_discount: MappedColumn[int] = mapped_column(Integer, default=0)
-    images: MappedColumn[list['Images']] = relationship(cascade="all, delete-orphan")
+    images: MappedColumn[list["Images"]] = relationship(cascade="all, delete-orphan")
     description: MappedColumn[str | None] = mapped_column(String, nullable=True)
     staff_note: MappedColumn[str | None] = mapped_column(String, nullable=True)
     deleted: MappedColumn[bool] = mapped_column(Boolean, default=False)
-    deleted_at:MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())  
-    updated_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_onupdate=func.now(), server_default=func.now())
+    deleted_at: MappedColumn[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: MappedColumn[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: MappedColumn[datetime] = mapped_column(
+        DateTime(timezone=True), server_onupdate=func.now(), server_default=func.now()
+    )
+
 
 class SaleItem(Base):
     __tablename__ = "sale_items"
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
-    stock_slug: MappedColumn[str] = mapped_column(ForeignKey("stocks.slug"), nullable=False)
-    stock: MappedColumn['Stock'] = relationship()
+    stock_slug: MappedColumn[str] = mapped_column(
+        ForeignKey("stocks.slug"), nullable=False
+    )
+    stock: MappedColumn["Stock"] = relationship()
     amount: MappedColumn[int] = mapped_column(Integer)
-    quantities: MappedColumn[float] = mapped_column(Numeric(precision=8, scale=2), default=1)
-    sale_id: MappedColumn[uuid.UUID] = mapped_column(ForeignKey("sales.sale_id"), nullable=False)
-    sale: MappedColumn['Sale'] = relationship(back_populates="items")
-    
+    quantities: MappedColumn[float] = mapped_column(
+        Numeric(precision=8, scale=2), default=1
+    )
+    sale_id: MappedColumn[uuid.UUID] = mapped_column(
+        ForeignKey("sales.sale_id"), nullable=False
+    )
+    sale: MappedColumn["Sale"] = relationship(back_populates="items")
+
 
 class Sale(Base):
     __tablename__ = "sales"
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
-    sale_id: MappedColumn[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, unique=True)
+    sale_id: MappedColumn[uuid.UUID] = mapped_column(
+        UUID, default=uuid.uuid4, unique=True
+    )
     items: MappedColumn[list[SaleItem]] = relationship(back_populates="sale")
+    store_id: MappedColumn[uuid.UUID] = mapped_column(
+        ForeignKey("stores.store_id", ondelete="CASCADE"),
+        index=True
+    )
+    store: MappedColumn["Store"] = relationship(back_populates="sales")
     discount: MappedColumn[int] = mapped_column(Integer, default=0)
-    customer_id: MappedColumn[str | None] = mapped_column(ForeignKey("customers.customer_id"), nullable=True)
-    customer: MappedColumn['Customer'] = relationship()
-    payment_method: MappedColumn[Literal['cash', 'pos', "debt", "transfer", 'online']] = mapped_column(String(10))
+    customer_id: MappedColumn[str | None] = mapped_column(
+        ForeignKey("customers.customer_id"), nullable=True
+    )
+    customer: MappedColumn["Customer"] = relationship()
+    payment_method: MappedColumn[
+        Literal["cash", "pos", "debt", "transfer", "online"]
+    ] = mapped_column(String(10))
     amount_recived: MappedColumn[int] = mapped_column(Integer)
-    idempotency_key: MappedColumn[uuid.UUID] = mapped_column(UUID, unique=True, index=True)
+    idempotency_key: MappedColumn[uuid.UUID] = mapped_column(
+        UUID, unique=True, index=True
+    )
     staff_note: MappedColumn[str | None] = mapped_column(String, nullable=True)
-    status: MappedColumn[Literal['pending', 'completed', 'cancelled']] = mapped_column(String(10))
-    created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())  
-    updated_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_onupdate=func.now(), server_default=func.now())
-    
+    status: MappedColumn[Literal["pending", "completed", "cancelled"]] = mapped_column(
+        String(10)
+    )
+    created_at: MappedColumn[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: MappedColumn[datetime] = mapped_column(
+        DateTime(timezone=True), server_onupdate=func.now(), server_default=func.now()
+    )
+
 
 class Images(Base):
     __tablename__ = "product_images"
@@ -68,7 +115,9 @@ class Images(Base):
     src: MappedColumn[str] = mapped_column(String)
     alt: MappedColumn[str | None] = mapped_column(String, nullable=True)
     public_id: MappedColumn[str | None] = mapped_column(String, nullable=True)
-    created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())  
+    created_at: MappedColumn[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class Barcode(Base):
@@ -77,4 +126,6 @@ class Barcode(Base):
     barcode_id: MappedColumn[str] = mapped_column(String, nullable=False, unique=True)
     title: MappedColumn[str] = mapped_column(String)
     image: MappedColumn[str] = mapped_column(String)
-    created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())  
+    created_at: MappedColumn[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

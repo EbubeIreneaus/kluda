@@ -1,3 +1,4 @@
+from pydantic import Field
 from enum import Enum
 from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
@@ -15,6 +16,12 @@ class StaffStatus(str, Enum):
     SUSPENDED = 'suspended'
     TERMINATED = 'terminated'
 
+class UserStatus(str, Enum):
+    ACTIVE = 'active'
+    SUSPENDED = 'suspended'
+    TERMINATED = 'terminated'
+    DELETED = "deleted"
+
 
 class StaffPermission(str, Enum):
     MANAGE_USER = "manage:user"
@@ -29,9 +36,7 @@ class StaffPermission(str, Enum):
 class CustomerStatus(str, Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
-
-
-# --- Staff Schemas ---
+    DELETED = "deleted"
 
 class StaffCreate(BaseModel):
     first_name: str
@@ -44,7 +49,6 @@ class StaffCreate(BaseModel):
     permission: list[StaffPermission] = [StaffPermission.MANAGE_USER]
     status: StaffStatus = StaffStatus.ACTIVE
 
-
 class StaffUpdate(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
@@ -55,10 +59,10 @@ class StaffUpdate(BaseModel):
     permission: list[StaffPermission] | None = None
     status: StaffStatus | None = None
 
-
 class StaffResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     staff_id: str
+    store_id: uuid.UUID
     first_name: str
     last_name: str
     other_name: str | None = None
@@ -70,16 +74,27 @@ class StaffResponse(BaseModel):
     last_login: datetime | None = None
     created_at: datetime
 
-
-
-
-
-# --- Auth Schemas ---
-
 class StaffLogin(BaseModel):
-    email: EmailStr
+    staff_id: str
     password: str
 
+class BaseUser(BaseModel):
+    fullname: str
+    email: EmailStr
+    phone: str | None = Field(min_length=11, max_length=15)
+    
+
+class UserCreate(BaseUser):
+    password: str = Field(min_length=6)
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=6)
+
+class UserResponseMini(BaseUser):
+    user_id: uuid.UUID
+    created_at: datetime
+    status: UserStatus = UserStatus.ACTIVE
 
 class ChangePasswordRequest(BaseModel):
     old_password: str
@@ -101,7 +116,6 @@ class PasswordResetSubmitRequest(BaseModel):
     new_password: str
 
 
-# --- Customer & Debtor Schemas ---
 
 class CustomerCreate(BaseModel):
     fullname: str | None = None
@@ -131,23 +145,23 @@ class CustomerResponse(BaseModel):
     created_at: datetime
 
 
-class DebtorCreate(BaseModel):
+class DebtCreate(BaseModel):
     customer_id: uuid.UUID | None = None
     amount: int
     status: str = "unpaid"
     staff_note: str | None = None
 
 
-class DebtorUpdate(BaseModel):
+class DebtUpdate(BaseModel):
     amount: int | None = None
     status: str | None = None
     staff_note: str | None = None
 
 
-class DebtorResponse(BaseModel):
+class DebtResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    debtor_id: uuid.UUID
+    debt_id: uuid.UUID
     customer: CustomerResponse
     amount: int
     status: str

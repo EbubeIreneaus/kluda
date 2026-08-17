@@ -5,8 +5,6 @@ import uuid
 from schemas.user import CustomerResponse
 
 
-# --- Product Image Schemas ---
-
 class ProductImageCreate(BaseModel):
     src: str
     alt: str | None = None
@@ -21,8 +19,6 @@ class ProductImageResponse(BaseModel):
     public_id: str | None = None
     created_at: datetime
 
-
-# --- Stock (Product) Schemas ---
 
 class StockCreate(BaseModel):
     name: str
