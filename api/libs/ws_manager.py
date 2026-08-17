@@ -1,47 +1,58 @@
 from fastapi import WebSocket
 from fastapi.encoders import jsonable_encoder
+import uuid
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
-    """Singleton WebSocket connection manager.
-
-    Tracks all connected staff clients and broadcasts mutation events to
-    every client except the originator of the mutation.
-    """
-
     def __init__(self):
-        # List of {"staff_id": str, "websocket": WebSocket}
-        self.connections: list[dict] = []
+        self.connections: dict[str, list[dict]] = {}
 
-    async def connect(self, staff_id: str, websocket: WebSocket):
+    async def connect(self, store_id: str | uuid.UUID, staff_id: str, websocket: WebSocket):
         await websocket.accept()
-        self.connections.append({"staff_id": staff_id, "websocket": websocket})
-        logger.info(f"WS connected: {staff_id}  (total={len(self.connections)})")
+        key = str(store_id)
+        if key not in self.connections:
+            self.connections[key] = []
+        self.connections[key].append({"staff_id": staff_id, "websocket": websocket})
+        logger.info(f"WS connected: store={key} staff={staff_id} (store_total={len(self.connections[key])})")
 
-    def disconnect(self, websocket: WebSocket):
-        self.connections = [c for c in self.connections if c["websocket"] is not websocket]
-        logger.info(f"WS disconnected  (total={len(self.connections)})")
+    def disconnect(self, websocket: WebSocket, store_id: str | uuid.UUID | None = None):
+        if store_id is not None:
+            key = str(store_id)
+            if key in self.connections:
+                self.connections[key] = [c for c in self.connections[key] if c["websocket"] is not websocket]
+                if not self.connections[key]:
+                    del self.connections[key]
+        else:
+            empty_keys = []
+            for key, conns in self.connections.items():
+                self.connections[key] = [c for c in conns if c["websocket"] is not websocket]
+                if not self.connections[key]:
+                    empty_keys.append(key)
+            for k in empty_keys:
+                del self.connections[k]
+        logger.info("WS disconnected")
 
-    async def broadcast(self, payload: dict, exclude_staff_id: str | None = None):
-        """Send *payload* as JSON to every connected client except *exclude_staff_id*."""
+    async def broadcast(self, store_id: str | uuid.UUID, payload: dict, exclude_staff_id: str | None = None):
+        key = str(store_id)
+        if key not in self.connections:
+            return
+
         encoded_payload = jsonable_encoder(payload)
         dead: list[WebSocket] = []
-        for conn in self.connections:
+        for conn in self.connections[key]:
             if exclude_staff_id and conn["staff_id"] == exclude_staff_id:
                 continue
             try:
                 await conn["websocket"].send_json(encoded_payload)
             except Exception as exc:
-                logger.warning(f"WS send failed for {conn['staff_id']}: {exc}")
+                logger.warning(f"WS send failed for store={key} staff={conn['staff_id']}: {exc}")
                 dead.append(conn["websocket"])
 
-        # Prune dead connections discovered during broadcast
         for ws in dead:
-            self.disconnect(ws)
+            self.disconnect(ws, store_id=key)
 
 
-# Module-level singleton — import this everywhere
 manager = ConnectionManager()

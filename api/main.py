@@ -44,16 +44,14 @@ async def root():
     return {"message": "Retail POS API is running"}
 
 
-@app.websocket("/ws/{staff_id}")
-async def websocket_endpoint(staff_id: str, websocket: WebSocket):
-    """Per-staff WebSocket connection. Keeps alive until the client disconnects."""
-    await ws_manager.connect(staff_id, websocket)
+@app.websocket("/ws/{store_id}/{staff_id}")
+async def websocket_endpoint(store_id: str, staff_id: str, websocket: WebSocket):
+    await ws_manager.connect(store_id, staff_id, websocket)
     try:
         while True:
-            # Receive pings / any client-sent messages (we just discard them)
             await websocket.receive_text()
     except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)
+        ws_manager.disconnect(websocket, store_id=store_id)
 
 
 def main():

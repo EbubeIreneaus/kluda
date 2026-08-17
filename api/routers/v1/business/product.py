@@ -71,6 +71,7 @@ async def create_stock(
     await db.commit()
     await db.refresh(new_stock)
     await ws_manager.broadcast(
+        store.store_id,
         {"event": "add_product", "data": StockResponse.model_validate(new_stock).model_dump(mode="json")},
         exclude_staff_id=staff_id,
     )
@@ -182,6 +183,7 @@ async def update_stock(
     await db.commit()
     await db.refresh(stock)
     await ws_manager.broadcast(
+        store.store_id,
         {"event": "update_product", "data": StockResponse.model_validate(stock).model_dump(mode="json")},
         exclude_staff_id=staff_id,
     )
@@ -210,6 +212,7 @@ async def delete_stock(
     stock.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     await ws_manager.broadcast(
+        store.store_id,
         {"event": "delete_product", "data": {"slug": slug}},
         exclude_staff_id=staff_id,
     )

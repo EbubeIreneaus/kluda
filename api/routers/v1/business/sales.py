@@ -192,9 +192,9 @@ async def create_sales_batch(
 
     await db.commit()
 
-    # Broadcast each created sale to other connected clients
     for sid in created_ids:
         await ws_manager.broadcast(
+            store.store_id,
             {"event": "add_sale", "data": {"sale_id": str(sid)}},
             exclude_staff_id=staff_id,
         )

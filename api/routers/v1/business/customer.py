@@ -63,6 +63,7 @@ async def create_customer(
     await db.commit()
     await db.refresh(new_customer)
     await ws_manager.broadcast(
+        store.store_id,
         {
             "event": "add_customer",
             "data": CustomerResponse.model_validate(new_customer).model_dump(),
@@ -171,6 +172,7 @@ async def update_customer(
     await db.commit()
     await db.refresh(customer)
     await ws_manager.broadcast(
+        store.store_id,
         {
             "event": "update_customer",
             "data": CustomerResponse.model_validate(customer).model_dump(),
@@ -207,6 +209,7 @@ async def delete_customer(
     customer.status = CustomerStatus.DELETED
     await db.commit()
     await ws_manager.broadcast(
+        store.store_id,
         {"event": "delete_customer", "data": {"customer_id": str(customer_id)}},
         exclude_staff_id=staff_id,
     )
@@ -260,6 +263,7 @@ async def create_debt(
     await db.commit()
     await db.refresh(new_debt)
     await ws_manager.broadcast(
+        store.store_id,
         {
             "event": "add_debt",
             "data": DebtResponse.model_validate(new_debt).model_dump(),
@@ -366,6 +370,7 @@ async def update_debt(
     await db.commit()
     await db.refresh(debt)
     await ws_manager.broadcast(
+        store.store_id,
         {
             "event": "update_debt",
             "data": DebtResponse.model_validate(debt).model_dump(),
@@ -402,6 +407,7 @@ async def delete_debt(
     debt.status = "paid"
     await db.commit()
     await ws_manager.broadcast(
+        store.store_id,
         {"event": "delete_debt", "data": {"debt_id": str(debt_id)}},
         exclude_staff_id=staff_id,
     )

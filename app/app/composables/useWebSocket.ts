@@ -1,4 +1,3 @@
-
 export const usePosSocket = () => {
   const config = useRuntimeConfig()
   const auth = useAuthStore()
@@ -16,12 +15,20 @@ export const usePosSocket = () => {
     const rawBase: string = config.public.apiBase as string
     const hostBase = rawBase.replace(/\/api\/v1\/?$/, '').replace(/\/v1\/?$/, '')
     const wsBase = hostBase.replace(/^http/, 'ws')
+    const storeId = auth.store_id || auth.staff?.store_id || 'unknown'
     const staffId = auth.staff?.staff_id ?? 'unknown'
-    return `${wsBase}/ws/${staffId}`
+    return `${wsBase}/ws/${storeId}/${staffId}`
   }
 
   function connect() {
     if (!import.meta.client) return
+    const storeId = auth.store_id || auth.staff?.store_id
+    const staffId = auth.staff?.staff_id
+    if (!storeId || !staffId) {
+      scheduleReconnect()
+      return
+    }
+
     const url = getWsUrl()
 
     try {
@@ -32,8 +39,7 @@ export const usePosSocket = () => {
     }
 
     ws.onopen = () => {
-      console.log('[WS] connected:', url)
-      backoffMs = 1_000 // reset back-off on successful connection
+      backoffMs = 1_000
     }
 
     ws.onmessage = (event: MessageEvent) => {
@@ -47,9 +53,7 @@ export const usePosSocket = () => {
       const { event: evtName, data } = payload
 
       switch (evtName) {
-        // ── Sales ──────────────────────────────────────────────
         case 'add_sale':
-          // Server only sends the sale_id; re-fetch full list to stay in sync
           salesStore.fetchSales()
           break
         case 'update_sale':
@@ -59,7 +63,6 @@ export const usePosSocket = () => {
           salesStore.removeFromWs(data.sale_id)
           break
 
-        // ── Products ───────────────────────────────────────────
         case 'add_product':
           productStore.appendFromWs(data)
           break
@@ -70,7 +73,6 @@ export const usePosSocket = () => {
           productStore.removeFromWs(data.slug)
           break
 
-        // ── Customers ──────────────────────────────────────────
         case 'add_customer':
           customerStore.appendCustomerFromWs(data)
           break
@@ -81,7 +83,6 @@ export const usePosSocket = () => {
           customerStore.removeCustomerFromWs(data.customer_id)
           break
 
-        // ── Debts ──────────────────────────────────────────────
         case 'add_debt':
           customerStore.appendDebtFromWs(data)
           break
@@ -93,17 +94,15 @@ export const usePosSocket = () => {
           break
 
         default:
-          console.debug('[WS] unknown event:', evtName)
+          break
       }
     }
 
     ws.onclose = () => {
-      console.warn('[WS] disconnected, reconnecting in', backoffMs, 'ms')
       scheduleReconnect()
     }
 
-    ws.onerror = (err) => {
-      console.error('[WS] error:', err)
+    ws.onerror = () => {
       ws?.close()
     }
   }
