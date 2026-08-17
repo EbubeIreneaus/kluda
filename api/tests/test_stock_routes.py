@@ -1,6 +1,5 @@
 import pytest
 import uuid
-from datetime import datetime, timezone
 from schemas.stock import (
     StockCreate,
     StockResponse,
@@ -9,16 +8,15 @@ from schemas.stock import (
     SaleResponse,
     BarcodeResponse,
 )
-from schemas.user import CustomerResponse, DebtorResponse
+from schemas.user import CustomerResponse, DebtResponse
 
 
 def test_no_id_in_response_schemas():
-    # Ensure none of the response schemas contain internal 'id' field
     for schema_cls in [
         StockResponse,
         SaleResponse,
         CustomerResponse,
-        DebtorResponse,
+        DebtResponse,
         BarcodeResponse,
     ]:
         fields = schema_cls.model_fields
@@ -28,7 +26,7 @@ def test_no_id_in_response_schemas():
 def test_stock_create_schema():
     stock = StockCreate(
         name="Basmati Rice 5kg",
-        unit_price=1500000,  # 15,000 NGN in kobo
+        unit_price=1500000,
         sku="RIC-001",
         quantities=10.0,
         unit_in="pack",
@@ -41,6 +39,7 @@ def test_stock_create_schema():
 def test_sale_create_schema():
     customer_id = uuid.uuid4()
     sale = SaleCreate(
+        idempotency_key=uuid.uuid4(),
         items=[
             SaleItemCreate(stock_slug="basmati-rice-5kg", amount=1500000, quantities=2.0)
         ],

@@ -1,11 +1,11 @@
 from schemas.business import StoreResponseMini
-from sqlalchemy import update
+from sqlalchemy import update, delete
 import secrets
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from models.config import get_db
-from models.user import Staff
+from models.user import Staff, StaffSession
 from schemas.user import (
     StaffCreate,
     StaffUpdate,
@@ -214,8 +214,8 @@ async def delete_staff(
         )
 
     staff.status = StaffStatus.TERMINATED
-    staff.sessions.clear()
     staff.access_token = None
+    await db.execute(delete(StaffSession).where(StaffSession.staff_id == staff_id))
     await db.commit()
 
     await ws_manager.broadcast(
@@ -254,7 +254,7 @@ async def reset_access_token(
         )
 
     staff.access_token = None
-    staff.sessions.clear()
+    await db.execute(delete(StaffSession).where(StaffSession.staff_id == target_staff_id))
     await db.commit()
 
     await ws_manager.broadcast(

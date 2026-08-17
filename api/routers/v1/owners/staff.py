@@ -1,12 +1,12 @@
 from sys import prefix
 from fastapi import APIRouter, status, HTTPException, Depends, Request, Query
 from libs.security import hash_password
-from models.user import Staff
+from models.user import Staff, StaffSession
 from routers.v1.business.staff import generate_staff_id
 from schemas.user import StaffCreate, StaffResponse, StaffStatus, StaffUpdate
 from schemas.business import  StoreResponseMini
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import update, select
+from sqlalchemy import update, select, delete
 from datetime import datetime, timezone
 from libs.deps import get_store
 from models.config import get_db
@@ -32,7 +32,7 @@ async def reset_access_token(
         )
 
     staff.access_token = None
-    staff.sessions.clear()
+    await db.execute(delete(StaffSession).where(StaffSession.staff_id == target_staff_id))
     await db.commit()
 
     await ws_manager.broadcast(
@@ -167,8 +167,8 @@ async def delete_staff(
         )
 
     staff.status = StaffStatus.TERMINATED
-    staff.sessions.clear()
     staff.access_token = None
+    await db.execute(delete(StaffSession).where(StaffSession.staff_id == staff_id))
     await db.commit()
 
     await ws_manager.broadcast(

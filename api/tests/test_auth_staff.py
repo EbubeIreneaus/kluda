@@ -1,4 +1,5 @@
 import pytest
+import uuid
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, Request
@@ -8,9 +9,10 @@ from libs.security import (
     create_access_token,
     decode_access_token,
     parse_device_info,
+    hash_token,
 )
-from schemas.user import StaffPermission, StaffStatus
-from models.user import Staff
+from schemas.user import StaffPermission, StaffStatus, UserStatus
+from models.user import Staff, User, UserSession
 from libs.deps import get_user, require_permission
 
 
@@ -55,109 +57,87 @@ def test_permission_enum():
 
 
 @pytest.mark.anyio
-async def test_get_user_ip_mismatch():
-    now = datetime.now(timezone.utc)
-    payload = {
-        "staff_id": "STF1001",
-        "last_login": now.isoformat(),
-        "ipaddress": "10.0.0.1",
-        "device": "Unknown Device",
-    }
-    token = create_access_token(payload)
-
-    # Mock staff object
-    staff = Staff(
-        staff_id="STF1001",
-        first_name="John",
-        last_name="Doe",
-        role="admin",
-        email="john@example.com",
-        password=hash_password("secret"),
-        permission=StaffPermission.MANAGE_STAFF,
-        status=StaffStatus.ACTIVE,
-        last_login=now,
-    )
+async def test_get_user_expired_or_missing_session():
+    session_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    token = create_access_token({"sub": str(user_id), "session_id": str(session_id)})
 
     db = AsyncMock()
     mock_res = MagicMock()
-    mock_res.scalar_one_or_none.return_value = staff
+    mock_res.scalar_one_or_none.return_value = None
     db.execute.return_value = mock_res
 
-    # Mock Request with different IP (10.0.0.2)
     request = MagicMock(spec=Request)
     request.headers = {}
-    request.client.host = "10.0.0.2"
+    request.cookies = {}
 
     with pytest.raises(HTTPException) as exc_info:
         await get_user(request=request, token=token, db=db)
     
     assert exc_info.value.status_code == 401
-    assert "IP address mismatch" in exc_info.value.detail
+    assert "invalid or expired session" in exc_info.value.detail.lower()
 
 
 @pytest.mark.anyio
-async def test_get_user_device_mismatch():
-    now = datetime.now(timezone.utc)
-    ua_str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-    device_str = parse_device_info(ua_str)
+async def test_get_user_suspended_account():
+    session_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    token = create_access_token({"sub": str(user_id), "session_id": str(session_id)})
 
-    payload = {
-        "staff_id": "STF1001",
-        "last_login": now.isoformat(),
-        "ipaddress": "10.0.0.1",
-        "device": device_str,
-    }
-    token = create_access_token(payload)
-
-    staff = Staff(
-        staff_id="STF1001",
-        first_name="John",
-        last_name="Doe",
-        role="admin",
-        email="john@example.com",
+    user = User(
+        user_id=user_id,
+        fullname="Suspended User",
+        email="suspended@example.com",
         password=hash_password("secret"),
-        permission=StaffPermission.MANAGE_STAFF,
-        status=StaffStatus.ACTIVE,
-        last_login=now,
+        status=UserStatus.SUSPENDED
+    )
+    user_session = UserSession(
+        session_id=session_id,
+        user_id=user_id,
+        refresh_token_hash=hash_token("ref1"),
+        expired_at=datetime.now(timezone.utc) + timedelta(days=1),
+        ip_address="10.0.0.1",
+        user_agent="Chrome",
+        active=True,
+        user=user
     )
 
     db = AsyncMock()
     mock_res = MagicMock()
-    mock_res.scalar_one_or_none.return_value = staff
+    mock_res.scalar_one_or_none.return_value = user_session
     db.execute.return_value = mock_res
 
-    # Request with different user-agent (iPhone Safari)
     request = MagicMock(spec=Request)
-    request.headers = {"user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1"}
-    request.client.host = "10.0.0.1"
+    request.headers = {}
+    request.cookies = {}
 
     with pytest.raises(HTTPException) as exc_info:
         await get_user(request=request, token=token, db=db)
 
-    assert exc_info.value.status_code == 401
-    assert "Device/browser mismatch" in exc_info.value.detail
+    assert exc_info.value.status_code == 403
+    assert "inactive" in exc_info.value.detail.lower() or "support" in exc_info.value.detail.lower()
 
 
 @pytest.mark.anyio
 async def test_require_permission():
     staff_admin = Staff(
         staff_id="STF1001",
-        permission=StaffPermission.MANAGE_STAFF,
+        role="admin",
+        permission=[StaffPermission.MANAGE_STAFF.value],
         status=StaffStatus.ACTIVE,
     )
     staff_regular = Staff(
         staff_id="STF1002",
-        permission=StaffPermission.MANAGE_USER,
+        role="cashier",
+        permission=[StaffPermission.RECORD_SALES.value],
         status=StaffStatus.ACTIVE,
     )
 
     checker = require_permission(StaffPermission.MANAGE_STAFF)
 
-    # Admin should succeed
     res = await checker(staff=staff_admin)
     assert res == staff_admin
 
-    # Regular staff without MANAGE_STAFF should raise 403
     with pytest.raises(HTTPException) as exc_info:
         await checker(staff=staff_regular)
     assert exc_info.value.status_code == 403

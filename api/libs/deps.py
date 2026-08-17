@@ -57,12 +57,21 @@ async def get_staff(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    try:
+        session_uuid = uuid.UUID(str(session_id))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload structure",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     now = datetime.now(timezone.utc)
 
     result = await db.execute(
         select(StaffSession)
         .options(selectinload(StaffSession.staff))
-        .where(StaffSession.session_id == session_id, StaffSession.expired_at > now)
+        .where(StaffSession.session_id == session_uuid, StaffSession.expired_at > now)
     )
 
     session = result.scalar_one_or_none()
@@ -100,8 +109,7 @@ def require_permission(permission: StaffPermission | str):
             else str(permission)
         )
 
-        # Admin role has full access to all endpoints
-        if getattr(staff, "role", "").lower() == "admin":
+        if (getattr(staff, "role", None) or "").lower() == "admin":
             return staff
 
         staff_perm = staff.permission
@@ -174,8 +182,6 @@ async def get_user(
         )
 
     session_id = payload.get("session_id")
-    now = datetime.now(timezone.utc)
-
     if not session_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -183,11 +189,22 @@ async def get_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    try:
+        session_uuid = uuid.UUID(str(session_id))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload structure",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    now = datetime.now(timezone.utc)
+
     result = await db.execute(
         select(UserSession)
         .options(selectinload(UserSession.user))
         .where(
-            UserSession.session_id == session_id,
+            UserSession.session_id == session_uuid,
             UserSession.expired_at > now,
             UserSession.active == True,
         )
@@ -239,11 +256,20 @@ async def get_store(
 async def get_staff_store(
     store_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    staff: StaffResponse = Depends(get_staff)
+    staff: Staff = Depends(get_staff)
 ) -> StoreResponseMini:
+    staff_store_id = uuid.UUID(str(staff.store_id)) if not isinstance(staff.store_id, uuid.UUID) else staff.store_id
+    req_store_id = uuid.UUID(str(store_id)) if not isinstance(store_id, uuid.UUID) else store_id
+
+    if staff_store_id != req_store_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: staff does not belong to this store"
+        )
+
     store = await db.scalar(
         select(Store).where(
-           Store.store_id == staff.store_id
+           Store.store_id == staff_store_id
         )
     )
 
