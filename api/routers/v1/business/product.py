@@ -73,7 +73,6 @@ async def create_stock(
     await ws_manager.broadcast(
         store.store_id,
         {"event": "add_product", "data": StockResponse.model_validate(new_stock).model_dump(mode="json")},
-        exclude_staff_id=staff_id,
     )
     return new_stock
 
@@ -134,7 +133,6 @@ async def create_stock_history(
             "event": "update_product",
             "data": StockResponse.model_validate(product).model_dump(mode="json")
         },
-        exclude_staff_id=staff_id_val,
     )
 
     return history_record
@@ -262,7 +260,6 @@ async def update_stock(
     await ws_manager.broadcast(
         store.store_id,
         {"event": "update_product", "data": StockResponse.model_validate(stock).model_dump(mode="json")},
-        exclude_staff_id=staff_id,
     )
     return {"success": True}
 
@@ -291,6 +288,5 @@ async def delete_stock(
     await ws_manager.broadcast(
         store.store_id,
         {"event": "delete_product", "data": {"slug": slug}},
-        exclude_staff_id=staff_id,
     )
     return {"message": f"Product '{slug}' deleted successfully"}

@@ -35,16 +35,24 @@ class ConnectionManager:
                 del self.connections[k]
         logger.info("WS disconnected")
 
-    async def broadcast(self, store_id: str | uuid.UUID, payload: dict, exclude_staff_id: str | None = None):
+    async def broadcast(
+        self,
+        store_id: str | uuid.UUID,
+        payload: dict,
+        origin_client_id: str | None = None
+    ):
         key = str(store_id)
         if key not in self.connections:
             return
 
+        if "event_id" not in payload:
+            payload["event_id"] = str(uuid.uuid4())
+        if origin_client_id and "origin_client_id" not in payload:
+            payload["origin_client_id"] = str(origin_client_id)
+
         encoded_payload = jsonable_encoder(payload)
         dead: list[WebSocket] = []
         for conn in self.connections[key]:
-            if exclude_staff_id and conn["staff_id"] == exclude_staff_id:
-                continue
             try:
                 await conn["websocket"].send_json(encoded_payload)
             except Exception as exc:

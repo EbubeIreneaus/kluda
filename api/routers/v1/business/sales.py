@@ -15,6 +15,7 @@ from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from libs.ws_manager import manager as ws_manager
 from libs.deps import require_permission, get_staff, get_staff_store
+from libs.notification_manager import notification_manager
 import uuid
 
 router = APIRouter(prefix="/{store_id}/sales", tags=["Sales"])
@@ -56,6 +57,8 @@ async def create_sales_batch(
     created_ids = []
     synced_keys = []
     failed = []
+    low_stock_alerts = []
+    debt_alerts = []
 
     for sale_data in sales_data:
         try:
@@ -137,12 +140,14 @@ async def create_sales_batch(
 
                     grand_total += int(item_in.amount * item_in.quantities)
 
-                    # Deduct quantity if sale completed and item is active
                     if sale_data.status == "completed" and not stock_item.deleted:
                         stock_item.quantities = max(
                             0.0,
                             float(stock_item.quantities) - float(item_in.quantities),
                         )
+                        min_alert = float(stock_item.min_stock_alert if hasattr(stock_item, "min_stock_alert") and stock_item.min_stock_alert is not None else 5)
+                        if float(stock_item.quantities) <= min_alert:
+                            low_stock_alerts.append((stock_item.name, int(stock_item.quantities), int(min_alert)))
 
                     sale_item = SaleItem(
                         sale_id=sale_id,
@@ -157,7 +162,6 @@ async def create_sales_batch(
 
                 grand_total = max(0, grand_total - sale_data.discount)
 
-                # 5. Handle Debt creation
                 if sale_data.payment_method == "debt":
                     if not customer:
                         raise HTTPException(
@@ -175,6 +179,8 @@ async def create_sales_batch(
                     )
                     db.add(new_debt)
                     await db.flush()
+
+                    debt_alerts.append((customer.name or "Customer", float(debt_amount), float((customer.total_debt or 0) + debt_amount)))
 
                 created_ids.append(sale_id)
                 synced_keys.append(str(sale_data.idempotency_key))
@@ -196,8 +202,13 @@ async def create_sales_batch(
         await ws_manager.broadcast(
             store.store_id,
             {"event": "add_sale", "data": {"sale_id": str(sid)}},
-            exclude_staff_id=staff_id,
         )
+
+    for item_name, current_qty, min_qty in low_stock_alerts:
+        await notification_manager.enqueue_low_stock(store.store_id, item_name, current_qty, min_qty)
+
+    for cust_name, d_amt, tot_d in debt_alerts:
+        await notification_manager.enqueue_credit_sale(store.store_id, cust_name, d_amt, tot_d)
 
     return {
         "success": True,

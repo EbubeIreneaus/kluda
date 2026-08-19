@@ -42,11 +42,15 @@ async def test_connection_manager_store_partitioning():
     assert len(cm.connections[store_b]) == 1
 
     payload = {"event": "add_product", "data": {"name": "Test"}}
-    await cm.broadcast(store_a, payload, exclude_staff_id="STAFF_A1")
+    await cm.broadcast(store_a, payload)
 
-    ws_a1.send_json.assert_not_called()
-    ws_a2.send_json.assert_called_once_with(payload)
+    assert ws_a1.send_json.call_count == 1
+    assert ws_a2.send_json.call_count == 1
     ws_b1.send_json.assert_not_called()
+
+    call_args = ws_a1.send_json.call_args[0][0]
+    assert "event_id" in call_args
+    assert call_args["event"] == "add_product"
 
     cm.disconnect(ws_a1, store_id=store_a)
     assert len(cm.connections[store_a]) == 1

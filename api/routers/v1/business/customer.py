@@ -66,9 +66,8 @@ async def create_customer(
         store.store_id,
         {
             "event": "add_customer",
-            "data": CustomerResponse.model_validate(new_customer).model_dump(),
+            "data": CustomerResponse.model_validate(new_customer).model_dump(mode="json"),
         },
-        exclude_staff_id=staff_id,
     )
     return new_customer
 
@@ -175,9 +174,8 @@ async def update_customer(
         store.store_id,
         {
             "event": "update_customer",
-            "data": CustomerResponse.model_validate(customer).model_dump(),
+            "data": CustomerResponse.model_validate(customer).model_dump(mode="json"),
         },
-        exclude_staff_id=staff_id,
     )
     return {"success": True}
 
@@ -211,7 +209,6 @@ async def delete_customer(
     await ws_manager.broadcast(
         store.store_id,
         {"event": "delete_customer", "data": {"customer_id": str(customer_id)}},
-        exclude_staff_id=staff_id,
     )
     return {"message": f"Customer '{customer_id}' deactivated successfully"}
 
@@ -266,9 +263,8 @@ async def create_debt(
         store.store_id,
         {
             "event": "add_debt",
-            "data": DebtResponse.model_validate(new_debt).model_dump(),
+            "data": DebtResponse.model_validate(new_debt).model_dump(mode="json"),
         },
-        exclude_staff_id=staff_id,
     )
     return new_debt
 
@@ -373,9 +369,8 @@ async def update_debt(
         store.store_id,
         {
             "event": "update_debt",
-            "data": DebtResponse.model_validate(debt).model_dump(),
+            "data": DebtResponse.model_validate(debt).model_dump(mode="json"),
         },
-        exclude_staff_id=staff_id,
     )
     return {"success": True}
 
@@ -409,6 +404,5 @@ async def delete_debt(
     await ws_manager.broadcast(
         store.store_id,
         {"event": "delete_debt", "data": {"debt_id": str(debt_id)}},
-        exclude_staff_id=staff_id,
     )
     return {"message": f"Debt record '{debt_id}' marked as paid"}

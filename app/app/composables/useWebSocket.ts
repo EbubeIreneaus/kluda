@@ -1,3 +1,18 @@
+const processedEventIds = new Set<string>()
+
+function isDuplicateEvent(eventId?: string): boolean {
+  if (!eventId) return false
+  if (processedEventIds.has(eventId)) {
+    return true
+  }
+  processedEventIds.add(eventId)
+  if (processedEventIds.size > 1000) {
+    const first = processedEventIds.values().next().value
+    if (first) processedEventIds.delete(first)
+  }
+  return false
+}
+
 export const usePosSocket = () => {
   const config = useRuntimeConfig()
   const auth = useAuthStore()
@@ -43,14 +58,18 @@ export const usePosSocket = () => {
     }
 
     ws.onmessage = async (event: MessageEvent) => {
-      let payload: { event: string; data: any }
+      let payload: { event: string; data: any; event_id?: string }
       try {
         payload = JSON.parse(event.data)
       } catch {
         return
       }
 
-      const { event: evtName, data } = payload
+      const { event: evtName, data, event_id } = payload
+
+      if (event_id && isDuplicateEvent(event_id)) {
+        return
+      }
 
       switch (evtName) {
         case 'add_sale':

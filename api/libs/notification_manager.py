@@ -1,32 +1,27 @@
+import asyncio
 import json
-import os
 import uuid
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from setting import settings
 from models.user import StaffNotificationSubscription, UserNotificationSubscription, Staff
 from models.business import Store
 from models.config import LocalSession
 from pywebpush import webpush, WebPushException
-
-
-VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "BNxP3XJgKx_9fUqNl1Z3z1wLqI4zE3bZ0P9L8M7K6J5H4G3F2E1D0C9B8A7Z6Y5X4W3V2U1T0S9R8Q7P6O5N4M3L2K1J0")
-VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "M4n4g3m3ntPr1v4t3K3yF0rR3t41lP0sSyst3m0000000000000000=")
-VAPID_CLAIMS = {
-    "sub": os.getenv("VAPID_CLAIM_EMAIL", "mailto:admin@kluda.co")
-}
+from worker.config import get_arq_pool
 
 
 class NotificationManager:
     def __init__(self):
-        self.public_key = VAPID_PUBLIC_KEY
-        self.private_key = VAPID_PRIVATE_KEY
-        self.claims = VAPID_CLAIMS
+        self.public_key = settings.VAPID_PUBLIC_KEY
+        self.private_key = settings.VAPID_PRIVATE_KEY
+        self.claims = {"sub": settings.VAPID_CLAIM_EMAIL}
 
     def get_public_key(self) -> str:
         return self.public_key
 
-    def _send_push(self, sub_info: dict, payload: dict) -> bool:
+    def _send_push_sync(self, sub_info: dict, payload: dict) -> bool:
         if not webpush:
             return False
         try:
@@ -45,6 +40,53 @@ class NotificationManager:
             return False
         except Exception:
             return False
+
+    async def _send_push(self, sub_info: dict, payload: dict) -> bool:
+        return await asyncio.to_thread(self._send_push_sync, sub_info, payload)
+
+    async def enqueue_low_stock(
+        self,
+        store_id: uuid.UUID | str,
+        product_name: str,
+        current_stock: int,
+        min_stock: int
+    ):
+        try:
+            pool = await get_arq_pool()
+            await pool.enqueue_job("notify_low_stock", str(store_id), product_name, current_stock, min_stock)
+        except Exception:
+            title = "Low Stock Alert"
+            body = f"{product_name} is running low ({current_stock} remaining, minimum: {min_stock})."
+            await self.send_to_store(store_id, title, body, {"type": "low_stock", "store_id": str(store_id)})
+
+    async def enqueue_credit_sale(
+        self,
+        store_id: uuid.UUID | str,
+        customer_name: str,
+        debt_amount: float,
+        total_debt: float
+    ):
+        try:
+            pool = await get_arq_pool()
+            await pool.enqueue_job("notify_credit_sale", str(store_id), customer_name, debt_amount, total_debt)
+        except Exception:
+            title = "Credit Sale Recorded"
+            body = f"New debt of ₦{debt_amount:,.2f} recorded for {customer_name}. Total balance: ₦{total_debt:,.2f}."
+            await self.send_to_store(store_id, title, body, {"type": "credit_sale", "store_id": str(store_id)})
+
+    async def enqueue_staff_login(
+        self,
+        store_id: uuid.UUID | str,
+        staff_name: str,
+        device_info: str = "Register Terminal"
+    ):
+        try:
+            pool = await get_arq_pool()
+            await pool.enqueue_job("notify_staff_login", str(store_id), staff_name, device_info)
+        except Exception:
+            title = "Staff Terminal Login"
+            body = f"{staff_name} signed into {device_info}."
+            await self.send_to_store(store_id, title, body, {"type": "staff_login", "store_id": str(store_id)})
 
     async def send_to_staff(
         self,
@@ -73,7 +115,7 @@ class NotificationManager:
 
             dead_subs = []
             for sub_rec, _ in subs:
-                success = self._send_push(sub_rec.sub_info, payload)
+                success = await self._send_push(sub_rec.sub_info, payload)
                 if not success:
                     dead_subs.append(sub_rec.id)
 
@@ -113,7 +155,7 @@ class NotificationManager:
 
             dead_subs = []
             for sub_rec in subs:
-                success = self._send_push(sub_rec.sub_info, payload)
+                success = await self._send_push(sub_rec.sub_info, payload)
                 if not success:
                     dead_subs.append(sub_rec.id)
 
@@ -174,12 +216,12 @@ class NotificationManager:
 
             dead_staff = []
             for sub in staff_subs:
-                if not self._send_push(sub.sub_info, payload):
+                if not await self._send_push(sub.sub_info, payload):
                     dead_staff.append(sub.id)
 
             dead_owner = []
             for sub in owner_subs:
-                if not self._send_push(sub.sub_info, payload):
+                if not await self._send_push(sub.sub_info, payload):
                     dead_owner.append(sub.id)
 
             if dead_staff:

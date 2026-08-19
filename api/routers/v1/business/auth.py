@@ -29,6 +29,7 @@ from libs.security import (
     get_client_ip,
 )
 from libs.deps import get_staff
+from libs.notification_manager import notification_manager
 
 router = APIRouter(prefix="/staff/auth", tags=["Auth"])
 
@@ -187,6 +188,10 @@ async def login(
     staff_store_id = staff.store_id
     staff_payload = StaffResponse.model_validate(staff).model_dump(mode="json")
     await db.commit()
+
+    if staff_store_id:
+        staff_display_name = f"{staff_payload.get('first_name', '')} {staff_payload.get('last_name', '')}".strip() or str(staff.staff_id)
+        await notification_manager.enqueue_staff_login(staff_store_id, staff_display_name, user_agent or "POS Terminal")
 
     cookie_cfg = get_cookie_settings()
     response.set_cookie(

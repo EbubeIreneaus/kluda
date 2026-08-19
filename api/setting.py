@@ -7,14 +7,16 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_HOURS: int = 13
 
-    SUPER_STAFF_NAME: str 
-    SUPER_STAFF_EMAIL: str
-    SUPER_STAFF_PASSWORD: str
-
     DOMAIN_NAME: str = "localhost"
     APP_ENV: str = "development"
 
-    REDIS_URL: str
+    REDIS_URL: str = "redis://localhost:6379"
+
+    VAPID_PUBLIC_KEY: str
+    VAPID_PRIVATE_KEY: str
+
+    DEFAULT_RATE_LIMIT: str = "120/minute"
+    AUTH_RATE_LIMIT: str = "10/minute"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
