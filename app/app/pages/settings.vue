@@ -134,12 +134,12 @@ async function handleChangePassword() {
             <div class="flex flex-wrap gap-1.5 mt-1">
               <UBadge
                 v-for="perm in (auth.staff?.permission || [])"
-                :key="typeof perm === 'string' ? perm : perm.value"
-                :color="(typeof perm === 'string' ? perm : perm.value) === 'manage:all' ? 'error' : 'info'"
+                :key="typeof perm === 'string' ? perm : ((perm as any)?.value || String(perm))"
+                :color="(typeof perm === 'string' ? perm : ((perm as any)?.value || String(perm))) === 'manage:all' ? 'error' : 'info'"
                 variant="subtle"
                 size="xs"
               >
-                {{ typeof perm === 'string' ? perm : perm.value }}
+                {{ typeof perm === 'string' ? perm : ((perm as any)?.value || String(perm)) }}
               </UBadge>
               <span v-if="!auth.staff?.permission?.length" class="text-xs text-(--ui-text-dimmed)">No permissions assigned</span>
             </div>

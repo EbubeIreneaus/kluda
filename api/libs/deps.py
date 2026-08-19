@@ -77,6 +77,32 @@ async def get_staff(
     session = result.scalar_one_or_none()
 
     if not session:
+        user_sess_res = await db.execute(
+            select(UserSession)
+            .options(selectinload(UserSession.user))
+            .where(
+                UserSession.session_id == session_uuid,
+                UserSession.expired_at > now,
+                UserSession.active == True,
+            )
+        )
+        user_sess = user_sess_res.scalar_one_or_none()
+        if user_sess and user_sess.user and user_sess.user.status == UserStatus.ACTIVE:
+            owner_user = user_sess.user
+            parts = (owner_user.fullname or "Owner").split()
+            owner_staff = Staff(
+                staff_id="OWNER",
+                first_name=parts[0],
+                last_name=parts[-1] if len(parts) > 1 else "",
+                role="owner",
+                email=owner_user.email,
+                permission=[StaffPermission.RECORD_SALES.value, StaffPermission.VIEW_PRODUCT.value, StaffPermission.MANAGE_PRODUCT.value, StaffPermission.MANAGE_STAFF.value, StaffPermission.MANAGE_USER.value, StaffPermission.VIEW_ANALYTICS.value, "manage:all"],
+                status=StaffStatus.ACTIVE,
+                store_id=None
+            )
+            setattr(owner_staff, "user_id", owner_user.user_id)
+            return owner_staff
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Staff session not found",
@@ -109,7 +135,7 @@ def require_permission(permission: StaffPermission | str):
             else str(permission)
         )
 
-        if (getattr(staff, "role", None) or "").lower() == "admin":
+        if (getattr(staff, "role", None) or "").lower() in ["admin", "manager", "owner"]:
             return staff
 
         staff_perm = staff.permission
@@ -139,10 +165,11 @@ def require_permission(permission: StaffPermission | str):
                 staff_perm = [staff_perm]
 
         if isinstance(staff_perm, list):
-            for p in staff_perm:
-                val = p.value if hasattr(p, "value") else str(p)
-                if val in ["manage:all", "*", "all", perm_value]:
-                    return staff
+            perms_str = [p.value if hasattr(p, "value") else str(p) for p in staff_perm]
+            if "manage:all" in perms_str or "*" in perms_str or "all" in perms_str or perm_value in perms_str:
+                return staff
+            if perm_value == StaffPermission.VIEW_PRODUCT.value and StaffPermission.MANAGE_PRODUCT.value in perms_str:
+                return staff
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -258,26 +285,55 @@ async def get_staff_store(
     db: AsyncSession = Depends(get_db),
     staff: Staff = Depends(get_staff)
 ) -> StoreResponseMini:
-    staff_store_id = uuid.UUID(str(staff.store_id)) if not isinstance(staff.store_id, uuid.UUID) else staff.store_id
-    req_store_id = uuid.UUID(str(store_id)) if not isinstance(store_id, uuid.UUID) else store_id
-
-    if staff_store_id != req_store_id:
+    try:
+        req_store_id = uuid.UUID(str(store_id)) if not isinstance(store_id, uuid.UUID) else store_id
+    except (ValueError, TypeError):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access forbidden: staff does not belong to this store"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid store ID format"
         )
 
-    store = await db.scalar(
-        select(Store).where(
-           Store.store_id == staff_store_id
-        )
-    )
+    if staff.role == "owner" or getattr(staff, "user_id", None):
+        owner_user_id = getattr(staff, "user_id", None)
+        stmt = select(Store).where(Store.store_id == req_store_id)
+        if owner_user_id:
+            stmt = stmt.where(Store.user_id == owner_user_id)
+        store = await db.scalar(stmt)
+        if not store:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Store not found under owner account"
+            )
+    else:
+        if not staff.store_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: staff is not assigned to any store"
+            )
+        try:
+            staff_store_id = uuid.UUID(str(staff.store_id)) if not isinstance(staff.store_id, uuid.UUID) else staff.store_id
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid store ID assigned to staff"
+            )
 
-    if not store:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Store not found under staff account"
+        if staff_store_id != req_store_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: staff does not belong to this store"
+            )
+
+        store = await db.scalar(
+            select(Store).where(
+               Store.store_id == req_store_id
+            )
         )
+        if not store:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Store not found under staff account"
+            )
 
     if store.status != StoreStatus.ACTIVE:
         raise HTTPException(

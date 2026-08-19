@@ -15,7 +15,7 @@ import uuid
 
 if TYPE_CHECKING:
     from .user import Staff, User, Customer
-    from .stock import Stock, Sale
+    from .stock import Stock, Sale, StockHistory
 
 
 class Store(Base):
@@ -30,6 +30,7 @@ class Store(Base):
     sales: MappedColumn[list['Sale']]=relationship(back_populates="store", cascade="all, delete-orphan")
     category: MappedColumn[str] = mapped_column(String)
     address: MappedColumn[str] = mapped_column(String)
+    stock_histories: MappedColumn[list['StockHistory']] = relationship(back_populates="store", cascade="all, delete-orphan")
     status: MappedColumn[StoreStatus] = mapped_column(Enum(StoreStatus), default=StoreStatus.ACTIVE)
     delete_reason: MappedColumn[str | None] = mapped_column(String, nullable=True)
     website: MappedColumn[HttpUrl | None] = mapped_column(String, nullable=True)

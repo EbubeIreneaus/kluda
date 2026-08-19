@@ -266,9 +266,8 @@ async function handleLogin() {
       </div>
     </main>
 
-    <!-- Bottom Simple Footer -->
     <footer class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-(--ui-text-dimmed) relative z-20">
-      © {{ new Date().getFullYear() }} RetailPOS Platform. 100% Offline-Ready POS.
+      © {{ new Date().getFullYear() }} Kluda Platform. Sell Faster, Track Everything.
     </footer>
   </div>
 </template>

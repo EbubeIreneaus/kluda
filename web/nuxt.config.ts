@@ -22,11 +22,12 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'RetailPOS — The Offline-First Multi-Store POS Platform',
+      title: 'Kluda — Sell Faster, Track Everything | Modern Retail Management',
       meta: [
         { name: 'description', content: 'Turn any smartphone, tablet, or laptop into a fast, offline-ready retail POS with instant camera barcode scanning, customer ledgers, and real-time multi-register mesh.' }
       ],
       link: [
+        { rel: 'icon', type: 'image/jpeg', href: '/kluda_icon.jpg' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap' }

@@ -34,13 +34,13 @@ const productStore = useProductsStore()
 const {customers:fetchedCustomers} = storeToRefs(useCustomerStore())
 
 const activeProducts = computed(() => {
-  return productStore.products.filter(p => !p.deleted)
+  return productStore.products.filter((p: any) => !p.deleted)
 })
 
 const searchResults = computed(() => {
   if (!searchQuery.value || searchQuery.value.length < 2) return []
   const q = searchQuery.value.toLowerCase()
-  return activeProducts.value.filter(p =>
+  return activeProducts.value.filter((p: any) =>
     p.name.toLowerCase().includes(q) || p.barcode_id.includes(q)
   ).slice(0, 6)
 })
@@ -67,7 +67,7 @@ function focusBarcode() {
 }
 
 function handleScannedBarcode(code: string) {
-  const product = activeProducts.value.find(p => p.barcode_id === code)
+  const product = activeProducts.value.find((p: any) => p.barcode_id === code)
   if (product) {
     const existing = cart.items.find(item => item.slug === product.slug)
     cart.addItem(product)
@@ -116,10 +116,10 @@ function handleBarcodeScan() {
   const query = searchQuery.value.trim()
   if (!query) return
 
-  let product = activeProducts.value.find(p => p.barcode_id === query)
+  let product = activeProducts.value.find((p: any) => p.barcode_id === query)
   
   if (!product) {
-    product = activeProducts.value.find(p => p.name.toLowerCase() === query.toLowerCase())
+    product = activeProducts.value.find((p: any) => p.name.toLowerCase() === query.toLowerCase())
   }
   
   if (!product && searchResults.value.length === 1 && searchResults.value[0]) {
@@ -591,10 +591,10 @@ function handleSearchBlur() {
       <template #body>
         <div class="p-6 space-y-4">
           <div class="text-center border-b border-dashed border-(--ui-border) pb-4">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-green-500 text-white font-bold text-lg mb-2">
-              RP
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#090d16] border border-emerald-500/40 overflow-hidden mb-2">
+              <img src="/kluda_icon.jpg" alt="Kluda" class="w-full h-full object-cover" />
             </div>
-            <h3 class="font-bold text-(--ui-text-highlighted)">RetailPOS</h3>
+            <h3 class="font-black text-lg tracking-wider text-(--ui-text-highlighted)">KLUDA</h3>
             <p class="text-xs text-(--ui-text-dimmed)">{{ new Date().toLocaleString() }}</p>
           </div>
 

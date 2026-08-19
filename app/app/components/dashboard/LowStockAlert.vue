@@ -4,7 +4,7 @@ import { computed } from 'vue'
 const productStore = useProductsStore()
 
 const alerts = computed(() => {
-  return productStore.lowStockProducts.map(p => ({
+  return productStore.lowStockProducts.map((p: any) => ({
     name: p.name,
     quantity: p.quantities,
     barcode: p.barcode_id || 'N/A'

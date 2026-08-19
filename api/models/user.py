@@ -26,6 +26,9 @@ class User(Base):
     otp_token: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True)
     otp_expires_at: MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password: MappedColumn[str] = mapped_column(String(255), nullable=False)
+    notification_subscription: MappedColumn[list['UserNotificationSubscription']] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     stores: MappedColumn[list['Store']] = relationship(back_populates="user")
     status: MappedColumn[UserStatus] = mapped_column(Enum(UserStatus), default=UserStatus.ACTIVE)
     sessions: MappedColumn[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -54,6 +57,9 @@ class Staff(Base):
     last_name: MappedColumn[str] = mapped_column(String(100), nullable=False)
     other_name: MappedColumn[str | None] = mapped_column(String(100), nullable=True)
     role: MappedColumn[str] = mapped_column(String(100))
+    notification_subscription: MappedColumn[list['StaffNotificationSubscription']] = relationship(
+        back_populates="staff", cascade="all, delete-orphan"
+    )
     access_token: MappedColumn[str | None] = mapped_column(String(500), nullable=True, unique=True, index=True)
     last_login: MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     otp_token: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True)
@@ -108,4 +114,22 @@ class Debt(Base):
     staff_note: MappedColumn[str | None] = mapped_column(String, nullable=True)
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_onupdate=func.now(), server_default=func.now())
+
+class StaffNotificationSubscription(Base):
+    __tablename__ = "staff_notification_subscriptions"
+    id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
+    staff_id: MappedColumn[str] = mapped_column(String(10), ForeignKey("staffs.staff_id", ondelete="CASCADE"), nullable=False, index=True)
+    staff: MappedColumn['Staff'] = relationship(back_populates="notification_subscription")
+    sub_info: MappedColumn[dict] = mapped_column(JSON)
+    created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+class UserNotificationSubscription(Base):
+    __tablename__ = "owner_notification_subscriptions"
+    id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
+    user_id: MappedColumn[uuid.UUID] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    user: MappedColumn['User'] = relationship(back_populates="notification_subscription")
+    sub_info: MappedColumn[dict] = mapped_column(JSON)
+    created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    
     

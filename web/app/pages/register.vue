@@ -83,7 +83,7 @@ async function handleRegister() {
 
     toast.add({
       title: 'Account Created!',
-      description: `Welcome to RetailPOS, ${regRes.user?.fullname || 'Merchant'}!`,
+      description: `Welcome to Kluda, ${regRes.user?.fullname || 'Merchant'}!`,
       color: 'success'
     })
 
@@ -300,7 +300,7 @@ async function handleRegister() {
                   class="mt-0.5 rounded border-(--ui-border) text-emerald-500 focus:ring-emerald-500 h-4 w-4 shrink-0"
                 />
                 <label for="agree-terms" class="cursor-pointer select-none">
-                  I agree to the Free Public Beta testing terms and acknowledge that RetailPOS stores data locally with cloud synchronization.
+                  I agree to the Free Public Beta testing terms and acknowledge that Kluda stores data locally with cloud synchronization.
                 </label>
               </div>
 
@@ -337,7 +337,7 @@ async function handleRegister() {
     </main>
 
     <footer class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-(--ui-text-dimmed) relative z-20">
-      © {{ new Date().getFullYear() }} RetailPOS Platform. Free Public Beta.
+      © {{ new Date().getFullYear() }} Kluda Platform. Free Public Beta.
     </footer>
   </div>
 </template>

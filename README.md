@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="dashboard/public/favicon.svg" alt="RetailPOS Logo" width="80" />
+  <img src="web/public/favicon.svg" alt="Kluda Logo" width="80" />
 </p>
 
-<h1 align="center">RetailPOS</h1>
+<h1 align="center">Kluda</h1>
 
 <p align="center">
-  <strong>A modern, offline-first Point of Sale system built for small to mid-sized retail businesses.</strong>
+  <strong>Sell Faster, Track Everything — Modern, offline-first Retail & Point of Sale Platform.</strong>
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 
 ## Overview
 
-RetailPOS is a complete, turnkey Point of Sale solution designed for individual retail stores — supermarkets, boutiques, pharmacies, and similar businesses. It pairs a **FastAPI** backend with a **Nuxt 4** dashboard that works as an installable **Progressive Web App (PWA)**, allowing cashiers to continue recording sales even when the network goes down.
+Kluda is a complete, turnkey Point of Sale and retail operations platform designed for retail stores — supermarkets, boutiques, pharmacies, and multi-branch businesses. It pairs a **FastAPI** backend with **Nuxt** frontend applications that work as installable **Progressive Web Apps (PWA)**, allowing cashiers to continue recording sales even when the network goes down.
 
 Sales recorded offline are persisted in the browser via **IndexedDB** (powered by Dexie.js) and automatically synced to the server when connectivity is restored. Multiple staff terminals stay in real-time sync through **WebSocket** broadcasts — when one cashier adds a product or records a sale, every other open terminal updates instantly.
 

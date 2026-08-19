@@ -17,8 +17,8 @@ useHead({
 })
 
 useSeoMeta({
-  title: 'RetailPOS — Next-Gen Point of Sale',
-  description: 'Mobile-first retail POS system. Scan products, process sales, and manage your store from any device.'
+  title: 'Kluda — Sell Faster, Track Everything',
+  description: 'Mobile-first retail POS & inventory management. Scan barcodes, record sales, and manage your store from any device.'
 })
 
 const isAppReady = ref(true)
@@ -30,7 +30,7 @@ const isAppReady = ref(true)
     <PwaUpdateBanner />
     <PwaInstallModal />
     <NetworkStatusBar />
-    <NuxtLoadingIndicator color="#22c55e" :height="3" />
+    <NuxtLoadingIndicator color="#10b981" :height="3" />
 
     <Transition name="splash-fade">
       <div
@@ -38,14 +38,14 @@ const isAppReady = ref(true)
         class="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-zinc-950 text-white select-none pointer-events-auto"
       >
         <div class="relative flex flex-col items-center">
-          <div class="absolute -inset-4 rounded-full bg-green-500/20 blur-2xl animate-pulse" />
+          <div class="absolute -inset-4 rounded-full bg-emerald-500/20 blur-2xl animate-pulse" />
 
-          <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-green-600 to-emerald-400 text-white font-extrabold text-3xl shadow-xl shadow-green-500/20 ring-1 ring-white/20 mb-5">
-            RP
+          <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-[#090d16] border border-emerald-500/40 text-white font-extrabold text-3xl shadow-xl shadow-emerald-500/30 ring-1 ring-white/20 mb-5 overflow-hidden">
+            <img src="/kluda_icon.jpg" alt="Kluda" class="w-full h-full object-cover" />
           </div>
 
-          <h1 class="text-2xl font-bold tracking-tight text-white">RetailPOS</h1>
-          <p class="text-xs text-zinc-400 font-medium mt-1 tracking-wider uppercase">Next-Gen Point of Sale</p>
+          <h1 class="text-2xl font-bold tracking-tight text-white">Kluda</h1>
+          <p class="text-xs text-zinc-400 font-medium mt-1 tracking-wider uppercase">Sell Faster, Track Everything</p>
 
           <div class="w-40 h-1 bg-zinc-800 rounded-full overflow-hidden mt-8 relative">
             <div class="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full animate-splash-progress" />

@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .user import Customer
+    from .user import Customer, Staff
     from .business import Store
 
 
@@ -52,6 +52,31 @@ class Stock(Base):
     )
     updated_at: MappedColumn[datetime] = mapped_column(
         DateTime(timezone=True), server_onupdate=func.now(), server_default=func.now()
+    )
+
+class StockHistory(Base):
+    __tablename__="stock_histories"
+    id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
+    sid: MappedColumn[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, unique=True, index=True)
+    stock_slug: MappedColumn[str] = mapped_column(
+        ForeignKey("stocks.slug"), nullable=False, index=True
+    )
+    stock: MappedColumn["Stock"] = relationship()
+    quantity: MappedColumn[float] = mapped_column(Numeric(precision=8, scale=2), default=1) 
+    staff_id: MappedColumn[str] = mapped_column(ForeignKey("staffs.staff_id"), nullable=True)
+    store_id: MappedColumn[uuid.UUID] = mapped_column(
+        ForeignKey("stores.store_id", ondelete="CASCADE"),
+        index=True
+    )
+    store: MappedColumn["Store"] = relationship(back_populates="stock_histories")
+    staff: MappedColumn['Staff'] = relationship()
+    reason: MappedColumn[
+        Literal['restock', "damage", "adjustment", "return"]
+    ] = mapped_column(String(20), default="restock")
+    action_type: MappedColumn[Literal['addition', 'subtract']] = mapped_column(String(20), default="addition")
+    note: MappedColumn[str | None] = mapped_column(String, nullable=True)
+    created_at: MappedColumn[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
 
 

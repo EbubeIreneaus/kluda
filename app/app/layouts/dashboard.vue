@@ -1,9 +1,10 @@
 <script setup lang="ts">
 const auth = useAuthStore()
 const route = useRoute()
+const toast = useToast()
 const isMobileMenuOpen = ref(false)
+const isGeneratingSSO = ref(false)
 
-// Mount POS WebSocket once — shared across all dashboard pages
 usePosSocket()
 const isCollapsed = ref(false)
 
@@ -37,6 +38,26 @@ onMounted(() => {
   auth.fetchMe()
 })
 
+async function openManagementDashboard() {
+  isGeneratingSSO.value = true
+  try {
+    const { api } = useApi()
+    const res = await api<{ ticket: string }>('/auth/sso/ticket', { method: 'POST' })
+    if (res?.ticket) {
+      const webUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin
+      window.open(`${webUrl}/auth/sso?ticket=${encodeURIComponent(res.ticket)}`, '_blank')
+    }
+  } catch (err: any) {
+    toast.add({
+      title: 'Management Access',
+      description: err?.data?.detail || 'Could not initiate single sign-on ticket',
+      color: 'error'
+    })
+  } finally {
+    isGeneratingSSO.value = false
+  }
+}
+
 async function handleLogout() {
   await auth.logout(true)
 }
@@ -61,13 +82,16 @@ watch(() => route.path, () => {
     >
       <div class="flex items-center h-16 px-4 border-b border-(--ui-border) shrink-0">
         <div class="flex items-center gap-3 overflow-hidden">
-          <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-green-500 text-white font-bold text-sm shrink-0">
-            RP
+          <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-[#090d16] border border-emerald-500/30 overflow-hidden shrink-0 shadow-md shadow-emerald-500/20">
+            <img src="/kluda_icon.jpg" alt="Kluda" class="w-full h-full object-cover" />
           </div>
           <Transition name="fade">
-            <span v-if="!isCollapsed" class="font-semibold text-(--ui-text-highlighted) whitespace-nowrap">
-              RetailPOS
-            </span>
+            <div v-if="!isCollapsed" class="flex flex-col leading-none">
+              <span class="font-black text-lg tracking-wider text-(--ui-text-highlighted) whitespace-nowrap">
+                KLUDA
+              </span>
+              <span class="text-[9px] font-medium text-emerald-500 tracking-wider uppercase">POS Terminal</span>
+            </div>
           </Transition>
         </div>
       </div>
@@ -89,6 +113,22 @@ watch(() => route.path, () => {
             <span v-if="!isCollapsed" class="whitespace-nowrap">{{ item.label }}</span>
           </Transition>
         </NuxtLink>
+
+        <button
+          v-if="auth.hasPermission('manage:all') || auth.hasPermission('manage:store') || auth.staff?.role === 'manager' || auth.staff?.role === 'owner' || auth.staff?.role === 'admin'"
+          type="button"
+          :disabled="isGeneratingSSO"
+          :class="[
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-all duration-150',
+            'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
+          ]"
+          @click="openManagementDashboard"
+        >
+          <UIcon :name="isGeneratingSSO ? 'i-lucide-loader' : 'i-lucide-external-link'" :class="['w-5 h-5 shrink-0', isGeneratingSSO ? 'animate-spin' : '']" />
+          <Transition name="fade">
+            <span v-if="!isCollapsed" class="whitespace-nowrap">Store Management</span>
+          </Transition>
+        </button>
       </nav>
 
       <div class="p-3 border-t border-(--ui-border)">
@@ -113,12 +153,26 @@ watch(() => route.path, () => {
         </div>
 
         <div class="flex items-center gap-2">
+          <UButton
+            v-if="auth.hasPermission('manage:all') || auth.hasPermission('manage:store') || auth.staff?.role === 'manager' || auth.staff?.role === 'owner' || auth.staff?.role === 'admin'"
+            size="sm"
+            color="primary"
+            variant="subtle"
+            icon="i-lucide-external-link"
+            :loading="isGeneratingSSO"
+            class="hidden sm:inline-flex"
+            @click="openManagementDashboard"
+          >
+            Management
+          </UButton>
+
           <UColorModeButton />
 
           <UDropdownMenu
             :items="[
               [{ label: auth.fullName || 'Staff Member', type: 'label' as const }],
               [
+                { label: 'Store Management', icon: 'i-lucide-external-link', onSelect: () => openManagementDashboard() },
                 { label: 'Settings', icon: 'i-lucide-settings', to: '/settings', onSelect: () => navigateTo('/settings') },
                 { label: 'Logout', icon: 'i-lucide-log-out', onSelect: () => handleLogout(), click: () => handleLogout() }
               ]
@@ -153,6 +207,15 @@ watch(() => route.path, () => {
             <UIcon :name="item.icon" class="w-6 h-6 shrink-0" />
             <span>{{ item.label }}</span>
           </NuxtLink>
+
+          <button
+            type="button"
+            class="flex items-center gap-4 px-4 py-3.5 rounded-xl text-base font-medium w-full text-left text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+            @click="openManagementDashboard"
+          >
+            <UIcon name="i-lucide-external-link" class="w-6 h-6 shrink-0" />
+            <span>Store Management</span>
+          </button>
         </nav>
       </template>
     </USlideover>

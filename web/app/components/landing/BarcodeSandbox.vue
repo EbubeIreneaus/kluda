@@ -45,7 +45,7 @@ function simulateTestScan() {
         Test Instant Barcode Decoding
       </h3>
       <p class="text-sm text-(--ui-text-muted) mt-2">
-        See how RetailPOS decodes standard retail barcodes (EAN-13, UPC-A, Code-128, QR) at 60 FPS without scanner guns.
+        See how Kluda decodes standard retail barcodes (EAN-13, UPC-A, Code-128, QR) at 60 FPS without scanner guns.
       </p>
     </div>
 

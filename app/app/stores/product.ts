@@ -148,6 +148,38 @@ export const useProductsStore = defineStore('products', () => {
     }
   }
 
+  async function adjustStock(payload: {
+    stock_slug: string
+    quantity: number
+    action_type: 'addition' | 'subtract'
+    reason: string
+    note?: string
+  }) {
+    const storeId = auth.store_id || auth.staff?.store_id
+    if (!storeId) throw new Error('No store ID')
+
+    try {
+      const res = await api<any>(`/${storeId}/product/stock-history`, {
+        method: 'POST',
+        body: payload
+      })
+      if (res) {
+        const prod = products.value.find(p => p.slug === payload.stock_slug)
+        if (prod) {
+          if (payload.action_type === 'addition') {
+            prod.quantities = Number(prod.quantities) + Number(payload.quantity)
+          } else {
+            prod.quantities = Math.max(0, Number(prod.quantities) - Number(payload.quantity))
+          }
+          await db.products.put(JSON.parse(JSON.stringify(prod)))
+        }
+      }
+      return res
+    } catch (err) {
+      throw err
+    }
+  }
+
   async function deleteProduct(slug: string) {
     const storeId = auth.store_id || auth.staff?.store_id
     if (!storeId) throw new Error('No store ID')
@@ -156,11 +188,22 @@ export const useProductsStore = defineStore('products', () => {
       await api(`/${storeId}/product/${slug}`, {
         method: 'DELETE'
       })
-
       products.value = products.value.filter(p => p.slug !== slug)
       await db.products.delete(slug)
     } catch (err) {
       throw err
+    }
+  }
+
+  async function fetchStockHistory(slug?: string) {
+    const storeId = auth.store_id || auth.staff?.store_id
+    if (!storeId) return []
+
+    try {
+      const url = slug ? `/${storeId}/product/stock-history?slug=${encodeURIComponent(slug)}` : `/${storeId}/product/stock-history`
+      return await api<any[]>(url)
+    } catch (err) {
+      return []
     }
   }
 
@@ -230,6 +273,8 @@ export const useProductsStore = defineStore('products', () => {
     addProduct,
     updateProduct,
     deleteProduct,
+    adjustStock,
+    fetchStockHistory,
     getByBarcode,
     deductStock,
     appendFromWs,

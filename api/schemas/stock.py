@@ -56,12 +56,33 @@ class StockResponse(BaseModel):
     quantities: float
     unit_in: str
     max_discount: int
-    # images: list[ProductImageResponse] = []
     description: str | None = None
     staff_note: str | None = None
     deleted: bool
     created_at: datetime
     updated_at: datetime
+
+
+class StockHistoryCreate(BaseModel):
+    stock_slug: str
+    quantity: float
+    action_type: Literal['addition', 'subtract'] = "addition"
+    reason: Literal['restock', 'damage', 'adjustment', 'return'] = "restock"
+    note: str | None = None
+
+
+class StockHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    sid: uuid.UUID
+    stock_slug: str
+    quantity: float
+    action_type: str
+    reason: str
+    note: str | None = None
+    staff_id: str | None = None
+    store_id: uuid.UUID
+    created_at: datetime
 
 
 # --- Sale & Sale Item Schemas ---

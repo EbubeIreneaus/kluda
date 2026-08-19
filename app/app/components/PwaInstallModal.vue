@@ -82,21 +82,21 @@ function handleDismiss() {
       v-model:open="isModalOpen"
       :dismissible="false"
       :close="{ color: 'neutral', variant: 'ghost' }"
-      title="Install RetailPOS"
+      title="Install Kluda"
     >
       <template #body>
         <div class="p-6 flex flex-col items-center text-center space-y-5">
-          <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-green-600 to-emerald-400 text-white font-extrabold text-3xl shadow-xl shadow-green-500/25 ring-1 ring-white/20">
-            RP
+          <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-[#090d16] border border-emerald-500/40 overflow-hidden shadow-xl shadow-emerald-500/25">
+            <img src="/kluda_icon.jpg" alt="Kluda" class="w-full h-full object-cover" />
             <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-700">
-              <UIcon name="i-lucide-download" class="w-3.5 h-3.5 text-green-400" />
+              <UIcon name="i-lucide-download" class="w-3.5 h-3.5 text-emerald-400" />
             </div>
           </div>
 
           <div>
-            <h3 class="text-xl font-bold text-highlighted">Install RetailPOS App</h3>
+            <h3 class="text-xl font-black tracking-wide text-highlighted">Install Kluda App</h3>
             <p class="text-xs text-muted mt-1 max-w-xs">
-              Install our dedicated POS application for lightning-fast offline sales, barcode scanning, and receipt printing.
+              Install Kluda for lightning-fast offline sales, instant barcode scanning, and thermal receipt printing.
             </p>
           </div>
 

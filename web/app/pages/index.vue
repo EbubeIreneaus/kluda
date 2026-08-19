@@ -20,7 +20,7 @@ const navLinks = [
   { label: 'Store Savings Calculator', href: '#calculator', icon: 'i-lucide-calculator' },
   { label: 'Tailored Store Solutions', href: '#use-cases', icon: 'i-lucide-layout-grid' },
   { label: 'Barcode Sandbox Tool', href: '#sandbox', icon: 'i-lucide-scan-line' },
-  { label: 'Why RetailPOS', href: '#comparison', icon: 'i-lucide-check-circle' },
+  { label: 'Why Kluda', href: '#comparison', icon: 'i-lucide-check-circle' },
   { label: 'Free Beta Testing Access', href: '#pricing', icon: 'i-lucide-gift' },
   { label: 'Merchant FAQ', href: '#faq', icon: 'i-lucide-help-circle' }
 ]
@@ -93,7 +93,7 @@ const comparisonItems = [
 
 const testimonials = [
   {
-    quote: "We run a busy supermarket in Ikeja, and whenever heavy rain cuts our fiber line, other POS apps crash and customers abandon their carts. With RetailPOS, our cashiers don't even notice the outage. Everything rings up instantly and auto-syncs the moment network returns.",
+    quote: "We run a busy supermarket in Ikeja, and whenever heavy rain cuts our fiber line, other POS apps crash and customers abandon their carts. With Kluda, our cashiers don't even notice the outage. Everything rings up instantly and auto-syncs the moment network returns.",
     author: 'Emmanuel Adeleke',
     role: 'Supermarket Operations Manager',
     location: 'Lagos, Nigeria',
@@ -109,7 +109,7 @@ const testimonials = [
     metric: '100% Zero Debt Leakage'
   },
   {
-    quote: "I opened two new boutique kiosks at a weekend lifestyle fair. I didn't need to rent POS terminals or buy Wi-Fi routers. My staff simply opened RetailPOS on their Android phones and printed receipts via Bluetooth.",
+    quote: "I opened two new boutique kiosks at a weekend lifestyle fair. I didn't need to rent POS terminals or buy Wi-Fi routers. My staff simply opened Kluda on their Android phones and printed receipts via Bluetooth.",
     author: 'Chidinma Okafor',
     role: 'Founder & Retail Director',
     location: 'Port Harcourt, Nigeria',
@@ -120,16 +120,16 @@ const testimonials = [
 
 const faqs = [
   {
-    q: 'Does RetailPOS really work without an active internet connection?',
-    a: 'Yes! RetailPOS is built so your store never stops. Your entire product catalog, prices, and customer balances live safely on your device. Cashiers can ring up items, apply discounts, and print thermal receipts with zero internet connection. The moment network or Wi-Fi reconnects, all pending sales sync automatically to your store cloud.'
+    q: 'Does Kluda really work without an active internet connection?',
+    a: 'Yes! Kluda is built so your store never stops. Your entire product catalog, prices, and customer balances live safely on your device. Cashiers can ring up items, apply discounts, and print thermal receipts with zero internet connection. The moment network or Wi-Fi reconnects, all pending sales sync automatically to your store cloud.'
   },
   {
     q: 'Do I need to buy expensive barcode scanner guns or POS machines?',
-    a: 'No! RetailPOS turns any smartphone, tablet, laptop, or existing desktop computer into a full POS register. It uses the built-in device camera to scan standard barcodes (EAN-13, UPC-A, Code-128) with instant sound feedback. If you already own USB or Bluetooth scanner guns, RetailPOS supports them out of the box.'
+    a: 'No! Kluda turns any smartphone, tablet, laptop, or existing desktop computer into a full POS register. It uses the built-in device camera to scan standard barcodes (EAN-13, UPC-A, Code-128) with instant sound feedback. If you already own USB or Bluetooth scanner guns, Kluda supports them out of the box.'
   },
   {
-    q: 'How much does RetailPOS cost right now?',
-    a: 'RetailPOS is currently in open Public Testing / Community Beta and is 100% FREE for all participating merchants. You get unrestricted access to unlimited store branches, unlimited cashier accounts, offline selling, customer debt ledgers, and analytics with no credit card required.'
+    q: 'How much does Kluda cost right now?',
+    a: 'Kluda is currently in open Public Testing / Community Beta and is 100% FREE for all participating merchants. You get unrestricted access to unlimited store branches, unlimited cashier accounts, offline selling, customer debt ledgers, and analytics with no credit card required.'
   },
   {
     q: 'How does real-time multi-counter sync work?',
@@ -137,18 +137,18 @@ const faqs = [
   },
   {
     q: 'Can I print receipts to thermal printers?',
-    a: 'Yes! RetailPOS supports standard 58mm and 80mm thermal receipt printers via Bluetooth, USB, or the standard print dialog. Receipts include your store name, address, cashier ID, itemized products, payment method, customer balance, and customizable footer notes.'
+    a: 'Yes! Kluda supports standard 58mm and 80mm thermal receipt printers via Bluetooth, USB, or the standard print dialog. Receipts include your store name, address, cashier ID, itemized products, payment method, customer balance, and customizable footer notes.'
   },
   {
     q: 'Can I track customer credits, debts, and partial payments?',
-    a: 'Absolutely. RetailPOS features a built-in Customer Debt Ledger. During checkout, cashiers can assign a sale to a registered customer. If the customer pays a partial amount, the remaining balance is automatically saved as debt with optional timestamped notes. When the customer pays later, you can settle it with a single tap.'
+    a: 'Absolutely. Kluda features a built-in Customer Debt Ledger. During checkout, cashiers can assign a sale to a registered customer. If the customer pays a partial amount, the remaining balance is automatically saved as debt with optional timestamped notes. When the customer pays later, you can settle it with a single tap.'
   },
   {
     q: 'How do I add staff cashiers and assign permissions?',
     a: 'From the Store Owner Portal, go to the Staff section. You can create staff profiles, generate custom Staff IDs (e.g. STF1001), set passwords, and check off specific permissions (e.g., Record Sales, View Products, Manage Products, View Analytics, Manage Staff).'
   },
   {
-    q: 'Can I use RetailPOS on multiple store branches?',
+    q: 'Can I use Kluda on multiple store branches?',
     a: 'Yes! Store owners can create multiple distinct store branches (e.g., "Main Supermarket", "Branch 2 - Express"). Each branch has its own isolated staff, products, and sales logs, while the owner dashboard aggregates analytics across all locations.'
   }
 ]
@@ -170,7 +170,7 @@ const faqs = [
           <a href="#architecture" class="hover:text-emerald-500 transition">How It Works</a>
           <a href="#calculator" class="hover:text-emerald-500 transition">Savings Calculator</a>
           <a href="#use-cases" class="hover:text-emerald-500 transition">Store Types</a>
-          <a href="#comparison" class="hover:text-emerald-500 transition">Why RetailPOS</a>
+          <a href="#comparison" class="hover:text-emerald-500 transition">Why Kluda</a>
           <a href="#pricing" class="hover:text-emerald-500 transition">Free Access</a>
           <a href="#faq" class="hover:text-emerald-500 transition">FAQ</a>
         </nav>
@@ -461,10 +461,10 @@ const faqs = [
         <div class="text-center max-w-2xl mx-auto mb-14">
           <h2 class="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-2">Cost & Capability</h2>
           <h3 class="text-3xl sm:text-4xl font-extrabold text-(--ui-text-highlighted)">
-            Why Modern Merchants Choose RetailPOS
+            Why Modern Merchants Choose Kluda
           </h3>
           <p class="text-sm text-(--ui-text-muted) mt-2">
-            See how RetailPOS compares against legacy hardware registers and generic cloud POS systems.
+            See how Kluda compares against legacy hardware registers and generic cloud POS systems.
           </p>
         </div>
 
@@ -475,7 +475,7 @@ const faqs = [
                 <th class="p-4 sm:p-5 text-xs sm:text-sm font-bold text-(--ui-text-highlighted)">Feature / Metric</th>
                 <th class="p-4 sm:p-5 text-xs sm:text-sm font-semibold text-rose-500">Legacy Hardware POS</th>
                 <th class="p-4 sm:p-5 text-xs sm:text-sm font-semibold text-amber-500">Generic Cloud POS</th>
-                <th class="p-4 sm:p-5 text-xs sm:text-sm font-bold text-emerald-500 bg-emerald-500/10">RetailPOS</th>
+                <th class="p-4 sm:p-5 text-xs sm:text-sm font-bold text-emerald-500 bg-emerald-500/10">Kluda</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-(--ui-border) text-xs sm:text-sm">
@@ -762,7 +762,7 @@ const faqs = [
 
         <!-- Bottom Copyright & Badges -->
         <div class="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-(--ui-text-muted)">
-          <p>© {{ new Date().getFullYear() }} RetailPOS Platform. All rights reserved.</p>
+          <p>© {{ new Date().getFullYear() }} Kluda Platform. All rights reserved.</p>
           <div class="flex flex-wrap items-center gap-4 text-xs text-(--ui-text-dimmed)">
             <span class="text-emerald-500 font-semibold">100% Offline-Ready POS</span>
             <span>•</span>

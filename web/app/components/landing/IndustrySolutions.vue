@@ -9,7 +9,7 @@ const industries = [
     name: 'Supermarkets & Groceries',
     icon: 'i-lucide-shopping-bag',
     headline: 'Eliminate Long Checkout Queues & Hardware Failure',
-    description: 'During peak morning and evening rushes, system lag costs customers. RetailPOS allows cashiers to scan products at 60 FPS directly from their tablets or smartphones with 0ms response time.',
+    description: 'During peak morning and evening rushes, system lag costs customers. Kluda allows cashiers to scan products at 60 FPS directly from their tablets or smartphones with 0ms response time.',
     benefits: [
       'Line-busting: Deploy mobile cashiers anywhere in the store',
       'Barcode generator for loose produce and packed goods',
@@ -65,7 +65,7 @@ const industries = [
     name: 'Pop-ups & Food Trucks',
     icon: 'i-lucide-store',
     headline: 'Full POS Superpowers Where Wi-Fi Does Not Reach',
-    description: 'Selling at weekend trade fairs, festivals, or pop-up markets? RetailPOS operates 100% offline from battery-powered phones and auto-syncs when you get home.',
+    description: 'Selling at weekend trade fairs, festivals, or pop-up markets? Kluda operates 100% offline from battery-powered phones and auto-syncs when you get home.',
     benefits: [
       'No Wi-Fi or cellular network required during the event',
       'Runs on standard mobile batteries all day long',
@@ -88,7 +88,7 @@ const industries = [
         Built for Your Specific Retail Workflow
       </h3>
       <p class="text-sm text-(--ui-text-muted) mt-2">
-        Whether you manage a high-volume supermarket or a single boutique kiosk, RetailPOS adapts to your counter.
+        Whether you manage a high-volume supermarket or a single boutique kiosk, Kluda adapts to your counter.
       </p>
     </div>
 

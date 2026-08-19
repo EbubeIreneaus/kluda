@@ -23,7 +23,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       link: [
-        { rel: "icon", type: "image/x-icon", href: "/favicon.svg" }
+        { rel: "icon", type: "image/jpeg", href: "/kluda_icon.jpg" }
       ]
     }
   },
@@ -58,13 +58,13 @@ export default defineNuxtConfig({
   },
   pwa: {
     registerType: "prompt",
-    includeAssets: ["favicon.svg", "splash.png", "robots.txt"],
+    includeAssets: ["favicon.svg", "splash.png", "robots.txt", "custom-sw.js"],
     manifest: {
-      name: "Retail POS System",
-      short_name: "Retail POS",
+      name: "Kluda",
+      short_name: "Kluda",
       display: "standalone",
       start_url: "/",
-      description: "Point of Sale system for Retail Businesses",
+      description: "Sell Faster, Track Everything",
       theme_color: "#1e293b",
       background_color: "#0f172a",
       icons: [
@@ -87,6 +87,7 @@ export default defineNuxtConfig({
       ],
     },
     workbox: {
+      importScripts: ["/custom-sw.js"],
       navigateFallback: "/",
       navigateFallbackDenylist: [/^\/api/],
       globPatterns: ["**/*.{js,css,html,png,svg,ico,woff,woff2}"],

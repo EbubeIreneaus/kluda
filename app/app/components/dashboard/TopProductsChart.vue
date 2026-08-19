@@ -33,16 +33,16 @@ const products = computed(() => {
   if (sorted.length > 0) return sorted
 
   // Fallback if no sales recorded yet
-  return productStore.products.slice(0, 5).map(p => ({
+  return productStore.products.slice(0, 5).map((p: any) => ({
     name: p.name,
     sold: 0
   }))
 })
 
 const chartData = computed(() => ({
-  labels: products.value.map(p => p.name),
+  labels: products.value.map((p: any) => p.name),
   datasets: [{
-    data: products.value.map(p => p.sold),
+    data: products.value.map((p: any) => p.sold),
     backgroundColor: [
       'rgba(16, 185, 129, 0.8)',
       'rgba(59, 130, 246, 0.8)',

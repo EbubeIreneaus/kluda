@@ -6,6 +6,9 @@ from models.config import LocalSession
 from libs.init_db import create_super_staff
 from routers.v1.index import router as v1Router
 from fastapi_pagination import add_pagination
+from libs.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from fastapi.exceptions import HTTPException
 
 
 @asynccontextmanager
@@ -20,11 +23,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Retail POS System API",
-    description="High-performance backend API for Retail POS System",
+    title="Kluda Platform API",
+    description="High-performance backend API for Kluda Retail Platform",
     version="1.0.0",
     lifespan=lifespan,
 )
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(request, exc):
+    raise HTTPException(status_code=429, detail="Too Many Requests")
+
+app.state.limiter = limiter
+# app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 add_pagination(app)
 
@@ -41,7 +51,7 @@ app.include_router(v1Router, prefix="/api", tags=['version 1.0.0'])
 
 @app.get("/")
 async def root():
-    return {"message": "Retail POS API is running"}
+    return {"message": "Kluda API is running"}
 
 
 @app.websocket("/ws/{store_id}/{staff_id}")

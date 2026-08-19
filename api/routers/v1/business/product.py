@@ -5,8 +5,8 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from models.config import get_db
-from models.stock import Stock
-from schemas.stock import StockCreate, StockUpdate, StockResponse
+from models.stock import Stock, StockHistory
+from schemas.stock import StockCreate, StockUpdate, StockResponse, StockHistoryCreate, StockHistoryResponse
 from schemas.user import StaffPermission
 from models.user import Staff
 from libs.deps import require_permission, get_staff, get_staff_store
@@ -76,6 +76,84 @@ async def create_stock(
         exclude_staff_id=staff_id,
     )
     return new_stock
+
+@router.post("/stock-history", response_model=StockHistoryResponse, status_code=status.HTTP_201_CREATED)
+async def create_stock_history(
+    store_id: uuid.UUID,
+    history_data: StockHistoryCreate,
+    store: StoreResponseMini = Depends(get_staff_store),
+    db: AsyncSession = Depends(get_db),
+    staff: Staff = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+):
+    res = await db.execute(
+        select(Stock).where(
+            Stock.slug == history_data.stock_slug,
+            Stock.store_id == store.store_id,
+            Stock.deleted == False
+        )
+    )
+    product = res.scalar_one_or_none()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with slug '{history_data.stock_slug}' not found",
+        )
+
+    if history_data.quantity <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Quantity must be greater than zero",
+        )
+
+    current_qty = float(product.quantities or 0)
+    if history_data.action_type == "addition":
+        new_qty = current_qty + float(history_data.quantity)
+    else:
+        new_qty = current_qty - float(history_data.quantity)
+
+    product.quantities = new_qty
+
+    staff_id_val = getattr(staff, "staff_id", None)
+    history_record = StockHistory(
+        stock_slug=history_data.stock_slug,
+        quantity=history_data.quantity,
+        action_type=history_data.action_type,
+        reason=history_data.reason,
+        note=history_data.note,
+        staff_id=staff_id_val,
+        store_id=store.store_id
+    )
+    db.add(history_record)
+    await db.commit()
+    await db.refresh(history_record)
+    await db.refresh(product)
+
+    await ws_manager.broadcast(
+        store.store_id,
+        {
+            "event": "update_product",
+            "data": StockResponse.model_validate(product).model_dump(mode="json")
+        },
+        exclude_staff_id=staff_id_val,
+    )
+
+    return history_record
+
+
+@router.get("/stock-history", response_model=list[StockHistoryResponse])
+async def get_stock_histories(
+    store_id: uuid.UUID,
+    slug: str | None = Query(None, description="Filter history by product slug"),
+    limit: int = Query(50, ge=1, le=200),
+    store: StoreResponseMini = Depends(get_staff_store),
+    db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
+):
+    stmt = select(StockHistory).where(StockHistory.store_id == store.store_id).order_by(StockHistory.created_at.desc()).limit(limit)
+    if slug:
+        stmt = stmt.where(StockHistory.stock_slug == slug)
+    res = await db.execute(stmt)
+    return res.scalars().all()
 
 
 @router.get("/", response_model=list[StockResponse])
@@ -160,7 +238,6 @@ async def update_stock(
             detail=f"Product with slug '{slug}' not found",
         )
 
-    # Check barcode uniqueness if updating barcode
     if update_data.barcode_id and update_data.barcode_id.strip():
         existing_barcode = await db.execute(
             select(Stock).where(
@@ -176,7 +253,7 @@ async def update_stock(
                 detail=f"A product with barcode '{update_data.barcode_id}' already exists",
             )
 
-    values = update_data.model_dump(exclude_unset=True, exclude_none=True)
+    values = update_data.model_dump(exclude_unset=True, exclude_none=True, exclude={"quantities"})
     if values:
         await db.execute(update(Stock).values(**values).where(Stock.slug == slug))
 

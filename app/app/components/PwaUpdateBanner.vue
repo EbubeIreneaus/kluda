@@ -30,7 +30,7 @@ async function handleUpdate() {
             </div>
             <div class="min-w-0">
               <p class="text-sm font-semibold text-white truncate">Update Available</p>
-              <p class="text-xs text-zinc-400 truncate">A new version of RetailPOS is ready.</p>
+              <p class="text-xs text-zinc-400 truncate">A new version of Kluda is ready.</p>
             </div>
           </div>
 

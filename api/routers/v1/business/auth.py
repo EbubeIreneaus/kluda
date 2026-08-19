@@ -3,10 +3,11 @@ import secrets
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, status, Request, Response, Cookie, Header
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from models.config import get_db
-from models.user import Staff, StaffSession
+from models.user import Staff, StaffSession, User, UserSession
+from models.business import Store
 from schemas.user import (
     StaffLogin,
     StaffResponse,
@@ -15,7 +16,9 @@ from schemas.user import (
     PasswordResetVerifyRequest,
     PasswordResetSubmitRequest,
     StaffStatus,
+    UserStatus,
 )
+from schemas.business import StoreResponseMini, StoreStatus
 from libs.security import (
     verify_password,
     hash_password,
@@ -38,7 +41,101 @@ async def login(
     user_agent: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Staff).where(Staff.staff_id == login_data.staff_id))
+    identifier = login_data.staff_id.strip()
+
+    if "@" in identifier:
+        user_res = await db.execute(
+            select(User).options(selectinload(User.stores)).where(func.lower(User.email) == identifier.lower())
+        )
+        user = user_res.scalar_one_or_none()
+        if not user or not verify_password(login_data.password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+        if user.status != UserStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Owner account is suspended or inactive",
+            )
+        active_stores = [s for s in (user.stores or []) if s.status == StoreStatus.ACTIVE]
+        if not active_stores:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No active store found under your account. Please create a store first.",
+            )
+        primary_store = active_stores[0]
+
+        now = datetime.now(timezone.utc)
+        user.last_login = now
+        raw_refresh_token = generate_refresh_token()
+        r_hash = hash_token(raw_refresh_token)
+        access_token_expired_at = now + timedelta(hours=1)
+        refresh_token_expired_at = now + timedelta(days=30)
+        client_ip = get_client_ip(request)
+
+        new_session = UserSession(
+            user_id=user.user_id,
+            refresh_token_hash=r_hash,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            expired_at=refresh_token_expired_at,
+        )
+        db.add(new_session)
+        await db.flush()
+
+        payload = {
+            "sub": str(user.user_id),
+            "session_id": str(new_session.session_id),
+            "role": "owner",
+            "type": "owner",
+        }
+        access_token = create_access_token(payload, expires_delta=timedelta(hours=1))
+        user.access_token = access_token
+
+        name_parts = (user.fullname or "Store Owner").split()
+        first_name = name_parts[0]
+        last_name = name_parts[-1] if len(name_parts) > 1 else ""
+        user_email = user.email
+        primary_store_id = primary_store.store_id
+        store_list = [StoreResponseMini.model_validate(s).model_dump(mode="json") for s in active_stores]
+
+        await db.commit()
+
+        cookie_cfg = get_cookie_settings()
+        response.set_cookie(
+            "staff_access_token",
+            access_token,
+            expires=access_token_expired_at,
+            max_age=3600,
+            **cookie_cfg,
+        )
+        response.set_cookie(
+            "staff_refresh_token",
+            raw_refresh_token,
+            expires=refresh_token_expired_at,
+            max_age=30 * 24 * 3600,
+            **cookie_cfg,
+        )
+
+        return {
+            "success": True,
+            "access_token": access_token,
+            "store_id": primary_store_id,
+            "stores": store_list,
+            "staff": {
+                "staff_id": "OWNER",
+                "first_name": first_name,
+                "last_name": last_name,
+                "role": "owner",
+                "email": user_email,
+                "store_id": primary_store_id,
+                "permission": ["record:sales", "view:product", "manage:product", "manage:user", "manage:staff", "view:analytics", "manage:store", "manage:all"],
+                "status": "active"
+            }
+        }
+
+    result = await db.execute(select(Staff).where(Staff.staff_id == identifier))
     staff = result.scalar_one_or_none()
 
     if not staff or not verify_password(login_data.password, staff.password):
@@ -87,6 +184,10 @@ async def login(
     }
     access_token = create_access_token(payload, expires_delta=timedelta(hours=1))
 
+    staff_store_id = staff.store_id
+    staff_payload = StaffResponse.model_validate(staff).model_dump(mode="json")
+    await db.commit()
+
     cookie_cfg = get_cookie_settings()
     response.set_cookie(
         "staff_access_token",
@@ -106,8 +207,8 @@ async def login(
     return {
         "success": True,
         "access_token": access_token,
-        "store_id": staff.store_id,
-        "staff": StaffResponse.model_validate(staff).model_dump()
+        "store_id": staff_store_id,
+        "staff": staff_payload
     }
 
 
@@ -134,13 +235,92 @@ async def refresh_token_endpoint(
 
     now = datetime.now(timezone.utc)
     if not session_rec:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or revoked session",
+        user_sess_res = await db.execute(
+            select(UserSession)
+            .options(selectinload(UserSession.user).selectinload(User.stores))
+            .where(
+                UserSession.refresh_token_hash == r_hash,
+                UserSession.active == True,
+            )
         )
+        user_sess = user_sess_res.scalar_one_or_none()
+        if not user_sess or not user_sess.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or revoked session",
+            )
+        if now >= user_sess.expired_at or user_sess.user.status != UserStatus.ACTIVE:
+            await db.delete(user_sess)
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired or account suspended",
+            )
+
+        new_raw_refresh = generate_refresh_token()
+        new_r_hash = hash_token(new_raw_refresh)
+        access_token_expired_at = now + timedelta(hours=1)
+        refresh_token_expired_at = now + timedelta(days=30)
+
+        user_sess.refresh_token_hash = new_r_hash
+        user_sess.expired_at = refresh_token_expired_at
+
+        owner_user = user_sess.user
+        parts = (owner_user.fullname or "Store Owner").split()
+        first_name = parts[0]
+        last_name = parts[-1] if len(parts) > 1 else ""
+        user_email = owner_user.email
+        active_stores = [s for s in (owner_user.stores or []) if s.status == StoreStatus.ACTIVE]
+        primary_store_id = active_stores[0].store_id if active_stores else None
+
+        access_token = create_access_token(
+            {
+                "sub": str(owner_user.user_id),
+                "session_id": str(user_sess.session_id),
+                "role": "owner",
+                "type": "owner",
+            },
+            expires_delta=timedelta(hours=1),
+        )
+
+        owner_user.access_token = access_token
+        await db.commit()
+
+        cookie_cfg = get_cookie_settings()
+        response.set_cookie(
+            "staff_access_token",
+            access_token,
+            expires=access_token_expired_at,
+            max_age=3600,
+            **cookie_cfg,
+        )
+        response.set_cookie(
+            "staff_refresh_token",
+            new_raw_refresh,
+            expires=refresh_token_expired_at,
+            max_age=30 * 24 * 3600,
+            **cookie_cfg,
+        )
+
+        return {
+            "success": True,
+            "access_token": access_token,
+            "store_id": primary_store_id,
+            "staff": {
+                "staff_id": "OWNER",
+                "first_name": first_name,
+                "last_name": last_name,
+                "role": "owner",
+                "email": user_email,
+                "store_id": primary_store_id,
+                "permission": ["record:sales", "view:product", "manage:product", "manage:user", "manage:staff", "view:analytics", "manage:store", "manage:all"],
+                "status": "active"
+            }
+        }
 
     if now >= session_rec.expired_at:
         await db.delete(session_rec)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired",
@@ -163,6 +343,7 @@ async def refresh_token_endpoint(
         "terminated",
     ]:
         await db.delete(session_rec)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Staff account is suspended or terminated",
@@ -177,9 +358,13 @@ async def refresh_token_endpoint(
     session_rec.expired_at = refresh_token_expired_at
 
     access_token = create_access_token(
-        {"sub": str(staff.staff_id), "staff_id": str(session_rec.session_id), "role": staff.role},
+        {"sub": str(staff.staff_id), "staff_id": str(session_rec.session_id), "session_id": str(session_rec.session_id), "role": staff.role},
         expires_delta=timedelta(hours=1),
     )
+
+    staff_store_id = staff.store_id
+    staff_payload = StaffResponse.model_validate(staff).model_dump(mode="json")
+    await db.commit()
 
     cookie_cfg = get_cookie_settings()
     response.set_cookie(
@@ -200,7 +385,8 @@ async def refresh_token_endpoint(
     return {
         "success": True,
         "access_token": access_token,
-         "staff": StaffResponse.model_validate(staff).model_dump()
+        "store_id": staff_store_id,
+        "staff": staff_payload
     }
 
 

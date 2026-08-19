@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     DOMAIN_NAME: str = "localhost"
     APP_ENV: str = "development"
 
+    REDIS_URL: str
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

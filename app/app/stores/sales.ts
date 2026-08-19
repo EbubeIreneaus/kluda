@@ -140,12 +140,19 @@ export const useSalesStore = defineStore('sales', () => {
     discount: number
     payment_method: 'cash' | 'pos' | 'debt' | 'transfer' | 'online'
     amount_recived: number
-    customer_id?: string
-    staff_note?: string
+    customer_id?: string | null
+    staff_note?: string | null
+    idempotency_key?: string
+    status?: string
   }) {
     const newSale: PendingSale = {
-      idempotency_key: crypto.randomUUID(),
-      ...payload,
+      idempotency_key: payload.idempotency_key || crypto.randomUUID(),
+      items: payload.items,
+      discount: payload.discount,
+      payment_method: payload.payment_method,
+      amount_recived: payload.amount_recived,
+      customer_id: payload.customer_id || null,
+      staff_note: payload.staff_note || null,
       created_at: new Date().toISOString(),
       status: 'completed'
     }
@@ -252,6 +259,7 @@ export const useSalesStore = defineStore('sales', () => {
     init,
     fetchSales,
     recordSale,
+    addSale: recordSale,
     syncPendingSales,
     appendSaleFromWs,
     updateFromWs,

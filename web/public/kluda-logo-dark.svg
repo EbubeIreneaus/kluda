@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 80" fill="none">
+  <defs>
+    <linearGradient id="kluda-ld-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(6, 6) scale(0.82)">
+    <rect width="84" height="84" rx="20" fill="#0f172a" stroke="rgba(52, 211, 153, 0.2)" stroke-width="2"/>
+    <g transform="translate(4, 4) scale(0.9)">
+      <rect x="12" y="10" width="10" height="64" rx="5" stroke="url(#kluda-ld-grad)" stroke-width="3.5" fill="rgba(16, 185, 129, 0.08)"/>
+      <circle cx="17" cy="22" r="3" fill="#34d399"/>
+      <circle cx="17" cy="42" r="3" fill="#10b981"/>
+      <circle cx="17" cy="62" r="3" fill="#059669"/>
+      <line x1="17" y1="22" x2="17" y2="62" stroke="url(#kluda-ld-grad)" stroke-width="2"/>
+      <path d="M22 42 L52 14 H66 L32 46 Z" fill="url(#kluda-ld-grad)"/>
+      <path d="M24 40 L42 60 L64 28 L72 34 L42 72 L18 48 Z" fill="url(#kluda-ld-grad)"/>
+    </g>
+  </g>
+
+  <g transform="translate(90, 48)">
+    <text font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="34" fill="#ffffff" letter-spacing="3">KLUDA</text>
+  </g>
+  <g transform="translate(92, 65)">
+    <text font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="11" fill="#94a3b8" letter-spacing="0.5">Sell Faster, Track Everything</text>
+  </g>
+</svg>

@@ -11,7 +11,7 @@ useHead({
   }
 })
 
-const title = 'RetailPOS — The Offline-First Multi-Store POS Platform'
+const title = 'Kluda — Sell Faster, Track Everything | Modern Retail Platform'
 const description = 'Turn any phone, tablet, or laptop into a fast, offline-ready retail POS with instant camera barcode scanning, customer ledgers, and real-time multi-register mesh.'
 
 useSeoMeta({
