@@ -45,7 +45,7 @@ class WorkerSettings:
         cron_daily_sales_digest,
         cron_prune_expired_sessions,
     ]
-    poll_delay = 10.0
+    poll_delay = 12.0
     cron_jobs = [
         cron(cron_daily_sales_digest, hour=22, minute=0),
         cron(cron_prune_expired_sessions, minute=0),

@@ -44,7 +44,12 @@ async function openManagementDashboard() {
     const { api } = useApi()
     const res = await api<{ ticket: string }>('/auth/sso/ticket', { method: 'POST' })
     if (res?.ticket) {
-      const webUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin
+      const config = useRuntimeConfig()
+      let webUrl = (config.public.webDashboardUrl as string) || ''
+      if (!webUrl || (webUrl.includes('localhost') && window.location.hostname !== 'localhost')) {
+        const origin = window.location.origin
+        webUrl = origin.replace('app.', '').replace('pos.', '')
+      }
       window.open(`${webUrl}/auth/sso?ticket=${encodeURIComponent(res.ticket)}`, '_blank')
     }
   } catch (err: any) {
