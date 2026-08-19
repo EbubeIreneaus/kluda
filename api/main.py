@@ -10,23 +10,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    pass
-#     async with LocalSession() as session:
-#         try:
-#             await create_super_staff(session)
-#             await session.commit()
-#         except Exception:
-#             await session.rollback()
-#     yield
-
 
 app = FastAPI(
     title="Kluda Platform API",
     description="High-performance backend API for Kluda Retail Platform",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 app.state.limiter = limiter

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     VAPID_PUBLIC_KEY: str
     VAPID_PRIVATE_KEY: str
+    VAPID_CLAIM_EMAIL: str
 
     DEFAULT_RATE_LIMIT: str = "120/minute"
     AUTH_RATE_LIMIT: str = "10/minute"
