@@ -31,7 +31,9 @@ function addDemoProduct() {
       { id: String(Date.now()), name: 'Indomie Super Pack x5', price: 1750, qty: 1 }
     ]
     const chosen = demoItems[Math.floor(Math.random() * demoItems.length)]
-    cart.value.unshift(chosen)
+    if (chosen) {
+      cart.value.unshift(chosen)
+    }
   }, 400)
 }
 

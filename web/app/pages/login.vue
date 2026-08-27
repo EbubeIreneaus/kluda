@@ -36,7 +36,8 @@ const perks = [
   }
 ]
 
-// Auto-rotate perks every 5 seconds
+const currentPerk = computed(() => perks[activePerkIndex.value] || perks[0]!)
+
 if (import.meta.client) {
   setInterval(() => {
     activePerkIndex.value = (activePerkIndex.value + 1) % perks.length
@@ -113,18 +114,17 @@ async function handleLogin() {
               Log in to view live branch revenue, add product stock, provision cashier IDs, and review store performance.
             </p>
 
-            <!-- Dynamic Rotating Perk Card -->
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 transition-all duration-300">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                  <UIcon :name="perks[activePerkIndex].icon" class="w-4 h-4" />
+                  <UIcon :name="currentPerk.icon" class="w-4 h-4" />
                 </div>
                 <h4 class="font-bold text-xs text-emerald-300">
-                  {{ perks[activePerkIndex].title }}
+                  {{ currentPerk.title }}
                 </h4>
               </div>
               <p class="text-[11px] text-slate-400 leading-relaxed pl-11">
-                {{ perks[activePerkIndex].description }}
+                {{ currentPerk.description }}
               </p>
             </div>
 

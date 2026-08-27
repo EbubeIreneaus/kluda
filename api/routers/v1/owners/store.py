@@ -16,6 +16,7 @@ import uuid
 router = APIRouter(prefix="/store")
 
 @router.post("")
+@router.post("/", include_in_schema=False)
 async def create_store(
     body: StoreCreate,
     user = Depends(get_user),
@@ -33,6 +34,7 @@ async def create_store(
     return store
 
 @router.get("")
+@router.get("/", include_in_schema=False)
 async def get_stores(
     user: UserResponseMini = Depends(get_user),
     db: AsyncSession = Depends(get_db)

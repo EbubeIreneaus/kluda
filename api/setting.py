@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     DEFAULT_RATE_LIMIT: str = "120/minute"
     AUTH_RATE_LIMIT: str = "10/minute"
 
+    SUPER_STAFF_EMAIL: str = "admin@example.com"
+    SUPER_STAFF_NAME: str = "Admin"
+    SUPER_STAFF_PASSWORD: str = "Admin@123456"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

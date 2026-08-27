@@ -43,7 +43,8 @@ async def ping(
         )
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_sales_batch(
     sales_data: list[SaleCreate],
     store_id: uuid.UUID,
@@ -371,7 +372,8 @@ async def get_analytics(
     }
 
 
-@router.get("/", response_model=Page[SaleResponse])
+@router.get("", response_model=Page[SaleResponse])
+@router.get("/", response_model=Page[SaleResponse], include_in_schema=False)
 async def get_sales(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),

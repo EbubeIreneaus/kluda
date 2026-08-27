@@ -25,7 +25,8 @@ def slugify(text: str, prefix="") -> str:
     return text.strip("-")
 
 
-@router.post("/", response_model=StockResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=StockResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=StockResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_stock(
     stock_data: StockCreate,
     store_id: uuid.UUID,
@@ -68,7 +69,6 @@ async def create_stock(
     db.add(new_stock)
     await db.flush()
 
-    await db.commit()
     await db.refresh(new_stock)
     await ws_manager.broadcast(
         store.store_id,
@@ -154,7 +154,8 @@ async def get_stock_histories(
     return res.scalars().all()
 
 
-@router.get("/", response_model=list[StockResponse])
+@router.get("", response_model=list[StockResponse])
+@router.get("/", response_model=list[StockResponse], include_in_schema=False)
 async def get_stocks(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),

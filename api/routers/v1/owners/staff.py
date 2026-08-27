@@ -76,7 +76,8 @@ async def create_staff(
 
     return new_staff
 
-@router.get("/", response_model=list[StaffResponse])
+@router.get("", response_model=list[StaffResponse])
+@router.get("/", response_model=list[StaffResponse], include_in_schema=False)
 async def get_staffs(
     store_id: uuid.UUID,
     status_filter: StaffStatus | None = Query(None, alias="status"),

@@ -62,7 +62,7 @@ class StaffUpdate(BaseModel):
 class StaffResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     staff_id: str
-    store_id: uuid.UUID
+    store_id: uuid.UUID | None = None
     first_name: str
     last_name: str
     other_name: str | None = None
@@ -72,7 +72,7 @@ class StaffResponse(BaseModel):
     permission: list[StaffPermission]
     status: StaffStatus
     last_login: datetime | None = None
-    created_at: datetime
+    created_at: datetime | None = None
 
 class StaffLogin(BaseModel):
     staff_id: str

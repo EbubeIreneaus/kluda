@@ -61,8 +61,8 @@ export const useOwnerStore = defineStore('owner',  {
     initials: (state) => {
       if (!state.user?.fullname) return 'OP'
       const parts = state.user.fullname.trim().split(' ')
-      if (parts && parts.length >= 2) {
-        return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      if (parts && parts.length >= 2 && parts[0] && parts[1]) {
+        return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
       }
       return state.user.fullname.substring(0, 2).toUpperCase()
     }
@@ -138,7 +138,7 @@ export const useOwnerStore = defineStore('owner',  {
         })
         if (Array.isArray(res)) {
           this.stores = res
-          if (!this.selectedStoreId && res.length > 0) {
+          if (!this.selectedStoreId && res.length > 0 && res[0]) {
             this.selectStore(res[0].store_id)
           }
         }

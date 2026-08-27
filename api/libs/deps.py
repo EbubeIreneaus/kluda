@@ -98,7 +98,8 @@ async def get_staff(
                 email=owner_user.email,
                 permission=[StaffPermission.RECORD_SALES.value, StaffPermission.VIEW_PRODUCT.value, StaffPermission.MANAGE_PRODUCT.value, StaffPermission.MANAGE_STAFF.value, StaffPermission.MANAGE_USER.value, StaffPermission.VIEW_ANALYTICS.value, "manage:all"],
                 status=StaffStatus.ACTIVE,
-                store_id=None
+                store_id=None,
+                created_at=getattr(owner_user, "created_at", None)
             )
             setattr(owner_staff, "user_id", owner_user.user_id)
             return owner_staff

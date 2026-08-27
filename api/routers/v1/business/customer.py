@@ -26,7 +26,8 @@ from libs.ws_manager import manager as ws_manager
 router = APIRouter(prefix="/{store_id}/customer", tags=["Customer"])
 
 
-@router.post("/", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_customer(
     customer_data: CustomerCreate,
     store_id: uuid.UUID,
@@ -72,7 +73,8 @@ async def create_customer(
     return new_customer
 
 
-@router.get("/", response_model=list[CustomerResponse])
+@router.get("", response_model=list[CustomerResponse])
+@router.get("/", response_model=list[CustomerResponse], include_in_schema=False)
 async def get_customers(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),
@@ -217,7 +219,8 @@ async def delete_customer(
 router2 = APIRouter(prefix="/{store_id}/debt", tags=["Debt"])
 
 
-@router2.post("/", response_model=DebtResponse, status_code=status.HTTP_201_CREATED)
+@router2.post("", response_model=DebtResponse, status_code=status.HTTP_201_CREATED)
+@router2.post("/", response_model=DebtResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_debt(
     store_id: uuid.UUID,
     debt_data: DebtCreate,
@@ -269,7 +272,8 @@ async def create_debt(
     return new_debt
 
 
-@router2.get("/", response_model=list[DebtResponse])
+@router2.get("", response_model=list[DebtResponse])
+@router2.get("/", response_model=list[DebtResponse], include_in_schema=False)
 async def get_debts(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),

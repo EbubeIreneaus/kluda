@@ -32,7 +32,8 @@ async def generate_staff_id(db: AsyncSession, prefix="STF") -> str:
         return code
 
 
-@router.post("/", response_model=StaffResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=StaffResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=StaffResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_staff(
     staff_data: StaffCreate,
     store_id: uuid.UUID,
@@ -89,7 +90,8 @@ async def reset_access_token(
     return {"message": f"Access token revoked for staff '{target_staff_id}'"}
 
 
-@router.get("/", response_model=list[StaffResponse])
+@router.get("", response_model=list[StaffResponse])
+@router.get("/", response_model=list[StaffResponse], include_in_schema=False)
 async def get_staffs(
     store_id: uuid.UUID,
     status_filter: StaffStatus | None = Query(None, alias="status"),
