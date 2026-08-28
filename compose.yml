@@ -16,12 +16,16 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+    env_file:
+      - ./web/.env
     restart: unless-stopped
 
   app:
     build:
       context: ./app
       dockerfile: Dockerfile
+    env_file:
+      - ./app/.env
     restart: unless-stopped
 
   api:
