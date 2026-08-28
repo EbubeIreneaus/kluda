@@ -4,6 +4,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+ARG NUXT_PUBLIC_API_BASE=https://api.kluda.app/api/v1
+ENV NUXT_PUBLIC_API_BASE=$NUXT_PUBLIC_API_BASE
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml ./
