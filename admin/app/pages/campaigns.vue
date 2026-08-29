@@ -456,8 +456,8 @@ onMounted(() => {
 
         <div class="flex items-center gap-1.5 text-xs text-zinc-400">
           <span class="text-[11px]">Variables:</span>
-          <button type="button" class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]" @click="insertVariable('{{merchant_name}}')">{{ '{{merchant_name}}' }}</button>
-          <button type="button" class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]" @click="insertVariable('{{store_name}}')">{{ '{{store_name}}' }}</button>
+          <button type="button" class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]" @click="insertVariable('{{merchant_name}}')">&#123;&#123;merchant_name&#125;&#125;</button>
+          <button type="button" class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]" @click="insertVariable('{{store_name}}')">&#123;&#123;store_name&#125;&#125;</button>
         </div>
       </div>
 
