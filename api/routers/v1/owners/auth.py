@@ -28,6 +28,7 @@ from libs.security import (
     get_client_ip,
 )
 from libs.deps import get_user
+from worker.config import get_arq_pool
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -296,6 +297,13 @@ async def send_reset_email(
 
         user.otp_token = otp_token
         user.otp_expires_at = otp_expires_at
+        await db.flush()
+
+        try:
+            pool = await get_arq_pool()
+            await pool.enqueue_job("send_auth_reset_email", user.email, otp_token, "Merchant")
+        except Exception:
+            pass
 
     return {"message": "If an account with that email exists, password reset instructions have been sent."}
 

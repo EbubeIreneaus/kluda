@@ -24,11 +24,17 @@ class Settings(BaseSettings):
     SUPER_STAFF_PASSWORD: str = "Admin@123456"
 
     RESEND_API_KEY: str
+    RESEND_SIGNING_SECRET: str
 
     CLOUDINARY_NAME: str
     CLOUDINARY_SECRET: str
     CLOUDINARY_KEY: str
     IMAGE_FOLDER: str = "kluda"
+
+    SUPER_ADMIN_NAME: str
+    SUPER_ADMIN_EMAIL: str
+    SUPER_ADMIN_PASSWORD: str
+    SUPER_ADMIN_PHONE: str
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

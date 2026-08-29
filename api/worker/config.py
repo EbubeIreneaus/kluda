@@ -4,13 +4,14 @@ from setting import settings
 from worker.tasks import (
     send_push_notification,
     notify_staff_store,
-    notify_owner,
-    notify_store,
+    notify_user_personal,
     notify_low_stock,
-    notify_credit_sale,
-    notify_staff_login,
-    cron_daily_sales_digest,
-    cron_prune_expired_sessions,
+    send_admin_email_campaign,
+    send_auth_reset_email,
+    cron_generate_daily_metrics,
+    cron_cleanup_expired_sessions,
+    process_inbound_resend_email,
+    process_resend_event,
 )
 
 REDIS_SETTINGS = RedisSettings.from_dsn(settings.REDIS_URL)
@@ -37,18 +38,19 @@ class WorkerSettings:
     functions = [
         send_push_notification,
         notify_staff_store,
-        notify_owner,
-        notify_store,
+        notify_user_personal,
         notify_low_stock,
-        notify_credit_sale,
-        notify_staff_login,
-        cron_daily_sales_digest,
-        cron_prune_expired_sessions,
+        send_admin_email_campaign,
+        send_auth_reset_email,
+        cron_generate_daily_metrics,
+        cron_cleanup_expired_sessions,
+        process_inbound_resend_email,
+        process_resend_event,
     ]
-    poll_delay = 12.0
+    poll_delay = 1
     cron_jobs = [
-        cron(cron_daily_sales_digest, hour=22, minute=0),
-        cron(cron_prune_expired_sessions, minute=0),
+        cron(cron_cleanup_expired_sessions, minute=0),
+        cron(cron_generate_daily_metrics, hour=23, minute=55),
     ]
     redis_settings = REDIS_SETTINGS
     on_startup = startup

@@ -5,13 +5,16 @@ from datetime import datetime
 class DailyPlatformMetricResponse(BaseModel):
     id: int
     date: datetime
+    total_merchants: int
+    new_merchants_today: int
     total_stores: int
     active_stores: int
-    total_sales_count: int
-    total_revenue_amount: int
-    total_offline_synced_sales: int
-    new_users_registered: int
-    new_staff_created: int
+    total_staff: int
+    total_products: int
+    total_transactions: int
+    total_gmv: int
+    total_tickets_open: int
+    total_emails_unread: int
     created_at: datetime
 
     class Config:

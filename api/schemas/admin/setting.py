@@ -19,3 +19,7 @@ class SystemSettingResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+SettingUpdate = SystemSettingUpdate
+SettingItem = SystemSettingResponse

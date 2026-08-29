@@ -11,12 +11,18 @@ from slowapi.middleware import SlowAPIMiddleware
 
 
 
+from libs.logger import setup_logging
+from middleware.request_logger import RequestLoggingMiddleware
+
+setup_logging()
+
 app = FastAPI(
     title="Kluda Platform API",
     description="High-performance backend API for Kluda Retail Platform",
     version="1.0.0",
 )
 
+app.add_middleware(RequestLoggingMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
@@ -31,7 +37,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from routers.v1.admin.webhook import router as InboundWebhookRouter
+
 app.include_router(v1Router, prefix="/api", tags=['version 1.0.0'])
+app.include_router(InboundWebhookRouter, prefix="/api/admin")
+app.include_router(InboundWebhookRouter, prefix="/api")
+app.include_router(InboundWebhookRouter, prefix="")
 
 
 @app.get("/ping")

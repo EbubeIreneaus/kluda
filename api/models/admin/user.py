@@ -1,9 +1,7 @@
-from enum import Enum as TypeEnum
 from pydantic import EmailStr
 from ..config import Base
 from sqlalchemy.orm import MappedColumn, mapped_column, relationship
 from sqlalchemy import DateTime, String, Enum, Integer, func, UUID, ForeignKey, Boolean, JSON
-from schemas.user import UserStatus
 from datetime import datetime
 import uuid
 from schemas.admin.user import AdminPermission, AdminStatus, AdminRole
@@ -14,11 +12,11 @@ class Admin(Base):
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
     admin_id: MappedColumn[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, index=True, unique=True)
     fullname: MappedColumn[str] = mapped_column(String(255), nullable=False)
-    email: MappedColumn[EmailStr] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    company_email: MappedColumn[EmailStr] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    personal_email: MappedColumn[EmailStr] = mapped_column(String(255), unique=True, index=True, nullable=False)
     phone: MappedColumn[str | None] = mapped_column(String(20), nullable=True)
-    access_token: MappedColumn[str | None] = mapped_column(String(500), nullable=True, unique=True, index=True)
     last_login: MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    otp_token: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True)
+    otp_token: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     otp_expires_at: MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password: MappedColumn[str] = mapped_column(String(255), nullable=False)
     role: MappedColumn[AdminRole] = mapped_column(Enum(AdminRole), default=AdminRole.MODERATOR)
