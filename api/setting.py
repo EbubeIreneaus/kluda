@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     SUPER_STAFF_NAME: str = "Admin"
     SUPER_STAFF_PASSWORD: str = "Admin@123456"
 
+    RESEND_API_KEY: str
+
+    CLOUDINARY_NAME: str
+    CLOUDINARY_SECRET: str
+    CLOUDINARY_KEY: str
+    IMAGE_FOLDER: str = "kluda"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
