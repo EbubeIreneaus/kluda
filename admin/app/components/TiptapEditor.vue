@@ -280,7 +280,7 @@ defineExpose({
       </div>
     </div>
 
-    <div v-if="variant === 'email-light'" class="bg-zinc-950 p-4 md:p-6 flex justify-center overflow-y-auto max-h-[560px]">
+    <div v-if="variant === 'email-light'" class="bg-zinc-950 p-4 md:p-5 flex justify-center overflow-y-auto max-h-[460px]">
       <div class="w-full max-w-[620px] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
         <div class="bg-slate-900 px-6 py-4 flex items-center justify-between border-b border-slate-800">
           <div class="flex items-center gap-2.5">

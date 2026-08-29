@@ -326,19 +326,20 @@ watch(search, () => {
 
     <div
       v-if="isComposeOpen"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-      @click="isComposeOpen = false"
+      class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex justify-center items-start overflow-y-auto p-4 sm:p-6 md:p-8"
     >
       <div
-        class="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-5 shadow-2xl"
-        @click.stop
+        class="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col shadow-2xl h-[88vh] max-h-[760px] my-auto"
       >
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
-          <h2 class="text-base font-bold text-white">Compose Outbound Email</h2>
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3 shrink-0">
+          <div>
+            <h2 class="text-base font-bold text-white">Compose Outbound Email</h2>
+            <p class="text-xs text-zinc-400">Dispatch direct email communication to user or customer</p>
+          </div>
           <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isComposeOpen = false" />
         </div>
 
-        <div class="flex flex-col gap-3.5">
+        <div class="flex flex-col gap-3.5 overflow-y-auto pr-1.5 py-3 flex-1 min-h-0">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
               <label class="text-xs font-medium text-zinc-300">From Mailbox</label>
@@ -376,7 +377,7 @@ watch(search, () => {
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-3">
+        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-3 shrink-0">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isComposeOpen = false" />
           <UButton
             label="Send Message"

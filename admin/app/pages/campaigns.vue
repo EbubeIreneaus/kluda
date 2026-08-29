@@ -456,8 +456,8 @@ onMounted(() => {
 
         <div class="flex items-center gap-1.5 text-xs text-zinc-400">
           <span class="text-[11px]">Variables:</span>
-          <button type="button" class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]" @click="insertVariable('{{merchant_name}}')">{{merchant_name}}</button>
-          <button type="button" class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]" @click="insertVariable('{{store_name}}')">{{store_name}}</button>
+          <button type="button" class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]" @click="insertVariable('{{merchant_name}}')">{{ '{{merchant_name}}' }}</button>
+          <button type="button" class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]" @click="insertVariable('{{store_name}}')">{{ '{{store_name}}' }}</button>
         </div>
       </div>
 
@@ -510,7 +510,7 @@ onMounted(() => {
             >
               <iframe
                 :srcdoc="renderedPreviewHtml"
-                class="w-full h-[580px] border-0"
+                class="w-full h-[460px] border-0"
               />
             </div>
           </div>
