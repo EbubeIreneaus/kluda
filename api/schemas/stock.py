@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Any
 import uuid
 from schemas.user import CustomerResponse
 
@@ -23,13 +23,23 @@ class ProductImageResponse(BaseModel):
 class StockCreate(BaseModel):
     name: str
     barcode_id: str | None = None
-    unit_price: int  # in kobo/cent
+    unit_price: int
     sku: str | None = None
     quantities: float = 1.0
     unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag'] = "piece"
     max_discount: int = 0
     description: str | None = None
     staff_note: str | None = None
+
+    @field_validator('barcode_id', mode='before')
+    @classmethod
+    def normalize_barcode(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            clean = v.strip()
+            return clean if clean else None
+        return v
 
 
 class StockUpdate(BaseModel):
@@ -43,6 +53,16 @@ class StockUpdate(BaseModel):
     description: str | None = None
     staff_note: str | None = None
     deleted: bool | None = None
+
+    @field_validator('barcode_id', mode='before')
+    @classmethod
+    def normalize_barcode(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            clean = v.strip()
+            return clean if clean else None
+        return v
 
 
 class StockResponse(BaseModel):

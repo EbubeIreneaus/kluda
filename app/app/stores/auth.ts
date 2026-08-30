@@ -67,6 +67,11 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     setAuth(token: string, staff: Staff, storeId?: string) {
       this.token = token || 'cookie_session'
+      if (this.staff?.has_pin && !staff.has_pin) {
+        staff.has_pin = true
+        staff.pin_hash = this.staff.pin_hash
+        staff.pin_salt = this.staff.pin_salt
+      }
       this.staff = staff
       this.store_id = storeId || staff?.store_id || null
       if (import.meta.client) {
@@ -101,6 +106,11 @@ export const useAuthStore = defineStore('auth', {
           headers: this.token ? { Authorization: `Bearer ${this.token}` } : {}
         })
         if (res) {
+          if (this.staff?.has_pin && !res.has_pin) {
+            res.has_pin = true
+            res.pin_hash = this.staff.pin_hash
+            res.pin_salt = this.staff.pin_salt
+          }
           this.staff = res
           this.store_id = res.store_id || this.store_id
           if (import.meta.client) {

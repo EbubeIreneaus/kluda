@@ -1,19 +1,60 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+
 const { $pwa } = useNuxtApp()
 const isUpdating = ref(false)
+let checkInterval: any = null
+
+async function checkForUpdates() {
+  if (import.meta.client && 'serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration()
+      if (reg) {
+        await reg.update()
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
 
 async function handleUpdate() {
   if (!$pwa) return
   isUpdating.value = true
   try {
     await $pwa.updateServiceWorker(true)
-  } catch (err) {
-    console.error('Failed to update service worker:', err)
+    setTimeout(() => {
+      window.location.reload()
+    }, 800)
+  } catch {
+    window.location.reload()
   } finally {
     isUpdating.value = false
   }
 }
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    checkForUpdates()
+  }
+}
+
+onMounted(() => {
+  if (import.meta.client) {
+    checkForUpdates()
+    checkInterval = setInterval(checkForUpdates, 30000)
+    window.addEventListener('focus', checkForUpdates)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+  }
+})
+
+onUnmounted(() => {
+  if (import.meta.client) {
+    if (checkInterval) clearInterval(checkInterval)
+    window.removeEventListener('focus', checkForUpdates)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+  }
+})
 </script>
 
 <template>
@@ -30,7 +71,7 @@ async function handleUpdate() {
             </div>
             <div class="min-w-0">
               <p class="text-sm font-semibold text-white truncate">Update Available</p>
-              <p class="text-xs text-zinc-400 truncate">A new version of Kluda is ready.</p>
+              <p class="text-xs text-zinc-400 truncate">A new version of Kluda POS is ready.</p>
             </div>
           </div>
 

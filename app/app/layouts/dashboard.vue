@@ -257,7 +257,7 @@ watch(() => route.path, () => {
               class="text-xs text-primary-500 hover:underline font-medium"
               @click="isNotificationsOpen = false"
             >
-              Configure Push Alert Preferences &rarr;
+              Notification Settings &rarr;
             </NuxtLink>
           </div>
         </div>

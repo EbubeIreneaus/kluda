@@ -240,26 +240,30 @@ async def update_stock(
             detail=f"Product with slug '{slug}' not found",
         )
 
-    if update_data.barcode_id and update_data.barcode_id.strip():
-        existing_barcode = await db.execute(
-            select(Stock).where(
-                Stock.barcode_id == update_data.barcode_id.strip(),
-                Stock.slug != slug,
-                Stock.deleted == False,
-                Stock.store_id == store.store_id
+    values = update_data.model_dump(exclude_unset=True, exclude={"quantities"})
+    if "barcode_id" in update_data.model_fields_set:
+        clean_barcode = update_data.barcode_id.strip() if update_data.barcode_id and update_data.barcode_id.strip() else None
+        if clean_barcode:
+            existing_barcode = await db.execute(
+                select(Stock).where(
+                    Stock.barcode_id == clean_barcode,
+                    Stock.slug != slug,
+                    Stock.deleted == False,
+                    Stock.store_id == store.store_id
+                )
             )
-        )
-        if existing_barcode.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"A product with barcode '{update_data.barcode_id}' already exists",
-            )
+            if existing_barcode.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"A product with barcode '{clean_barcode}' already exists",
+                )
+        values["barcode_id"] = clean_barcode
 
-    values = update_data.model_dump(exclude_unset=True, exclude_none=True, exclude={"quantities"})
-    if values:
-        await db.execute(update(Stock).values(**values).where(Stock.slug == slug))
+    clean_values = {k: v for k, v in values.items() if v is not None or k == "barcode_id"}
+    if clean_values:
+        await db.execute(update(Stock).values(**clean_values).where(Stock.slug == slug))
 
-    await db.commit()
+    await db.flush()
     await db.refresh(stock)
     await ws_manager.broadcast(
         store.store_id,
@@ -288,7 +292,7 @@ async def delete_stock(
 
     stock.deleted = True
     stock.deleted_at = datetime.now(timezone.utc)
-    await db.commit()
+    await db.flush()
     await ws_manager.broadcast(
         store.store_id,
         {"event": "delete_product", "data": {"slug": slug}},

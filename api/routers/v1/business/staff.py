@@ -59,7 +59,7 @@ async def set_my_pin(
 
     staff.pin_salt = salt
     staff.pin_hash = pin_hash
-    await db.commit()
+    await db.flush()
 
     return {
         "status": "ok",

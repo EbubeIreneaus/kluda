@@ -40,7 +40,16 @@ watch(() => auth.isLoggedIn, async (loggedIn) => {
 })
 
 function checkPinStatus() {
-  if (auth.isLoggedIn && auth.staff && !auth.staff.has_pin && !(auth.staff as any).pin_hash) {
+  if (
+    auth.isLoggedIn &&
+    auth.staff &&
+    auth.staff.role !== 'owner' &&
+    auth.staff.staff_id !== 'OWNER' &&
+    !auth.staff.has_pin &&
+    !(auth.staff as any).pin_hash &&
+    import.meta.client &&
+    localStorage.getItem('has_set_pin') !== 'true'
+  ) {
     openSetPinModal()
   }
 }

@@ -52,19 +52,23 @@ export function usePinAuth() {
     try {
       const staffList = await api<any[]>(`/${storeId}/staff`)
       if (Array.isArray(staffList) && staffList.length > 0) {
-        const localMembers: LocalStaffMember[] = staffList.map(s => ({
-          staff_id: s.staff_id,
-          first_name: s.first_name,
-          last_name: s.last_name,
-          role: s.role,
-          email: s.email,
-          permission: s.permission || [],
-          pin_hash: s.pin_hash || null,
-          pin_salt: s.pin_salt || null,
-          has_pin: !!s.has_pin || !!s.pin_hash,
-          status: s.status,
-        }))
-        await db.staffMembers.bulkPut(localMembers)
+        const localMembers: LocalStaffMember[] = staffList
+          .filter(s => s && s.staff_id)
+          .map(s => ({
+            staff_id: s.staff_id,
+            first_name: s.first_name,
+            last_name: s.last_name,
+            role: s.role,
+            email: s.email,
+            permission: s.permission || [],
+            pin_hash: s.pin_hash || null,
+            pin_salt: s.pin_salt || null,
+            has_pin: !!s.has_pin || !!s.pin_hash,
+            status: s.status,
+          }))
+        if (localMembers.length > 0) {
+          await db.staffMembers.bulkPut(localMembers)
+        }
       }
     } catch {
       // ignore
@@ -96,8 +100,9 @@ export function usePinAuth() {
           auth.staff.pin_salt = res.pin_salt || null
           if (import.meta.client) {
             localStorage.setItem('pos_staff', JSON.stringify(auth.staff))
+            localStorage.setItem('has_set_pin', 'true')
           }
-          if (res.pin_hash && res.pin_salt) {
+          if (res.pin_hash && res.pin_salt && auth.staff.staff_id) {
             try {
               await db.staffMembers.put({
                 staff_id: auth.staff.staff_id,
@@ -112,9 +117,12 @@ export function usePinAuth() {
                 status: auth.staff.status,
               })
             } catch {
-              // ignore local database cache error
+              // ignore
             }
           }
+        }
+        if (import.meta.client) {
+          localStorage.setItem('has_set_pin', 'true')
         }
         return { success: true, message: res.message || 'PIN updated successfully' }
       }
@@ -125,6 +133,9 @@ export function usePinAuth() {
   }
 
   function requirePinAuth(options?: PinAuthOptions): Promise<boolean> {
+    if (auth.staff?.role === 'owner' && !(auth.staff as any)?.pin_hash) {
+      return Promise.resolve(true)
+    }
     return new Promise((resolve) => {
       modalState.value = {
         isOpen: true,

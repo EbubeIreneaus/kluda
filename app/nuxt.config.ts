@@ -87,6 +87,10 @@ export default defineNuxtConfig({
         },
       ],
     },
+    devOptions: {
+      enabled: true,
+      type: "module",
+    },
     workbox: {
       importScripts: ["/custom-sw.js"],
       navigateFallback: "/",

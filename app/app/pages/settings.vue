@@ -20,25 +20,25 @@ function updatePermissionState() {
 
 async function handleTogglePush(val: boolean) {
   if (val) {
-    const ok = await subscribe()
+    const res = await subscribe()
     updatePermissionState()
-    if (ok) {
+    if (res.success) {
       toast.add({
         title: 'Notifications Enabled',
         description: 'This terminal is now registered for store announcements and stock alerts.',
         color: 'success',
       })
-    } else if (permissionState.value === 'denied') {
+    } else {
       toast.add({
-        title: 'Notifications Blocked',
-        description: 'Please enable notifications in your browser site settings.',
+        title: permissionState.value === 'denied' ? 'Notifications Blocked' : 'Notification Setup Failed',
+        description: res.message || 'Please enable notifications in your browser site settings.',
         color: 'error',
       })
     }
   } else {
-    const ok = await unsubscribe()
+    const res = await unsubscribe()
     updatePermissionState()
-    if (ok) {
+    if (res.success) {
       toast.add({
         title: 'Notifications Disabled',
         description: 'This terminal has been unsubscribed from push notifications.',
@@ -201,10 +201,10 @@ onMounted(async () => {
         <div>
           <h3 class="text-base font-semibold text-(--ui-text-highlighted) flex items-center gap-2">
             <UIcon name="i-lucide-bell" class="w-4 h-4 text-primary-500" />
-            Push Notifications & Terminal Alerts
+            Notifications
           </h3>
           <p class="text-xs text-(--ui-text-muted) mt-0.5">
-            Receive instant alerts for low inventory thresholds, cashier shift summaries, and platform broadcasts.
+            Receive instant notifications for low stock, sales summaries, and store updates.
           </p>
         </div>
         <USwitch
@@ -217,7 +217,7 @@ onMounted(async () => {
 
       <div v-if="!isSupported" class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
         <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 shrink-0" />
-        <span>Push notifications are not supported on this browser engine.</span>
+        <span>Notifications are not supported on this browser.</span>
       </div>
 
       <div v-else-if="permissionState === 'denied'" class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 space-y-2">
@@ -226,13 +226,13 @@ onMounted(async () => {
           <span>Notifications Blocked by Browser</span>
         </div>
         <p class="text-xs text-red-300/80 leading-relaxed">
-          Browser notifications have been denied on this device. To allow alerts, tap the lock or settings icon in your browser address bar and set <strong>Notifications</strong> to <strong>Allow</strong>.
+          Notifications are blocked on this device. To enable them, click the lock or settings icon in your browser address bar and set <strong>Notifications</strong> to <strong>Allow</strong>.
         </p>
       </div>
 
       <div v-else-if="isSubscribed" class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
         <UIcon name="i-lucide-check-circle" class="w-4 h-4 shrink-0" />
-        <span>This device is active and receiving background push alerts.</span>
+        <span>Notifications are active on this device.</span>
       </div>
     </div>
 

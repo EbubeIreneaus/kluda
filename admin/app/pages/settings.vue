@@ -33,6 +33,8 @@ const editingMailboxForm = ref({
 
 const selectedAuditLog = ref<any>(null)
 
+const toast = useToast()
+
 const {
   isSupported: isPushSupported,
   isSubscribed: isPushSubscribed,
@@ -46,21 +48,46 @@ const {
 
 async function handleTogglePush(val: boolean) {
   if (val) {
-    const success = await subscribePush()
-    if (!success) {
-      alert('Could not enable notifications. Please ensure you allowed notification permissions in your browser.')
+    const res = await subscribePush()
+    if (res.success) {
+      toast.add({
+        title: 'Push Notifications Enabled',
+        description: res.message || 'You will now receive system notifications and security alerts.',
+        color: 'success',
+      })
+    } else {
+      toast.add({
+        title: 'Could Not Enable Notifications',
+        description: res.message || 'Please check your browser notification permissions.',
+        color: 'error',
+      })
     }
   } else {
-    await unsubscribePush()
+    const res = await unsubscribePush()
+    if (res.success) {
+      toast.add({
+        title: 'Push Notifications Disabled',
+        description: res.message || 'This device will no longer receive alerts.',
+        color: 'neutral',
+      })
+    }
   }
 }
 
 async function handleSendTestAlert() {
-  const success = await sendTestNotification()
-  if (success) {
-    alert('Test notification dispatched to your registered devices!')
+  const res = await sendTestNotification()
+  if (res.success) {
+    toast.add({
+      title: 'Test Alert Sent',
+      description: res.message || 'Test notification dispatched to your registered devices!',
+      color: 'success',
+    })
   } else {
-    alert('Failed to send test notification. Ensure push notifications are enabled.')
+    toast.add({
+      title: 'Failed to Send Test Alert',
+      description: res.message || 'Ensure push notifications are enabled on your account.',
+      color: 'error',
+    })
   }
 }
 
@@ -268,7 +295,7 @@ onMounted(() => {
           <div>
             <h2 class="text-sm font-bold text-white flex items-center gap-2">
               <UIcon name="i-lucide-bell-ring" class="w-4 h-4 text-emerald-400" />
-              Admin Push Notifications
+              Notifications
             </h2>
             <p class="text-xs text-zinc-400 mt-0.5">Real-time alerts for incoming tickets and system events</p>
           </div>
@@ -276,9 +303,9 @@ onMounted(() => {
           <div class="flex flex-col gap-4">
             <div class="flex items-center justify-between p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
               <div>
-                <div class="text-xs font-semibold text-zinc-200">Browser Push Alerts</div>
+                <div class="text-xs font-semibold text-zinc-200">Notifications</div>
                 <div class="text-[11px] text-zinc-400">
-                  {{ isPushSubscribed ? 'Alerts active on this browser' : 'Receive instant operational alerts' }}
+                  {{ isPushSubscribed ? 'Notifications active on this browser' : 'Receive instant notifications' }}
                 </div>
               </div>
               <USwitch
@@ -300,7 +327,7 @@ onMounted(() => {
             <div v-if="isPushSubscribed" class="flex items-center justify-between pt-1">
               <span class="text-[11px] text-zinc-400">Verify device connectivity</span>
               <UButton
-                label="Send Test Alert"
+                label="Send Test Notification"
                 icon="i-lucide-send"
                 color="neutral"
                 variant="outline"

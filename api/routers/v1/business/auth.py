@@ -132,6 +132,7 @@ async def login(
                 "email": user_email,
                 "store_id": primary_store_id,
                 "permission": ["record:sales", "view:product", "manage:product", "manage:user", "manage:staff", "view:analytics", "manage:store", "manage:all"],
+                "has_pin": True,
                 "status": "active"
             }
         }
@@ -319,6 +320,7 @@ async def refresh_token_endpoint(
                 "email": user_email,
                 "store_id": primary_store_id,
                 "permission": ["record:sales", "view:product", "manage:product", "manage:user", "manage:staff", "view:analytics", "manage:store", "manage:all"],
+                "has_pin": True,
                 "status": "active"
             }
         }

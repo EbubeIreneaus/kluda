@@ -38,77 +38,116 @@ export function useAdminPushNotification() {
     }
   }
 
-  async function subscribe(): Promise<boolean> {
-    if (!import.meta.client || !isSupported.value) return false
+  async function subscribe(): Promise<{ success: boolean; message?: string }> {
+    if (!import.meta.client) {
+      return { success: false, message: 'Browser environment required.' }
+    }
+    if (!('Notification' in window)) {
+      return { success: false, message: 'Your browser does not support push notifications.' }
+    }
+    if (!('serviceWorker' in navigator)) {
+      return { success: false, message: 'Your browser does not support service workers.' }
+    }
+
     isLoading.value = true
     try {
       const permission = await Notification.requestPermission()
       permissionStatus.value = permission
       if (permission !== 'granted') {
         isLoading.value = false
-        return false
+        return {
+          success: false,
+          message: permission === 'denied'
+            ? 'Notification permissions are blocked in your browser settings. Please allow notifications for this site.'
+            : 'Notification permission request was dismissed.'
+        }
+      }
+
+      let reg = await navigator.serviceWorker.getRegistration()
+      if (!reg) {
+        reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      }
+      const registration = reg || (await navigator.serviceWorker.ready)
+      if (!registration?.pushManager) {
+        isLoading.value = false
+        return { success: false, message: 'Push manager is not available on this browser.' }
       }
 
       const keyRes = await apiFetch<{ public_key: string }>('/admin/notifications/vapid-public-key')
       if (!keyRes?.public_key) {
         isLoading.value = false
-        return false
+        return { success: false, message: 'Failed to retrieve notification keys from the server.' }
       }
 
-      const registration = await navigator.serviceWorker.ready
       const convertedVapidKey = urlBase64ToUint8Array(keyRes.public_key)
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey
       })
 
-      await apiFetch('/admin/notifications/subscribe', {
+      const res = await apiFetch<{ success?: boolean; message?: string }>('/admin/notifications/subscribe', {
         method: 'POST',
         body: subscription.toJSON()
       })
 
       isSubscribed.value = true
-      return true
-    } catch {
-      return false
+      return { success: true, message: res?.message || 'Notifications enabled successfully!' }
+    } catch (err: any) {
+      return { success: false, message: err?.data?.detail || err?.message || 'Failed to enable notifications.' }
     } finally {
       isLoading.value = false
     }
   }
 
-  async function unsubscribe(): Promise<boolean> {
-    if (!import.meta.client || !isSupported.value) return false
+  async function unsubscribe(): Promise<{ success: boolean; message?: string }> {
+    if (!import.meta.client) return { success: false, message: 'Browser environment required.' }
     isLoading.value = true
     try {
       const registration = await navigator.serviceWorker.ready
       if (registration) {
         const subscription = await registration.pushManager.getSubscription()
         if (subscription) {
-          await apiFetch('/admin/notifications/unsubscribe', {
-            method: 'POST',
-            body: subscription.toJSON()
-          })
+          try {
+            await apiFetch('/admin/notifications/unsubscribe', {
+              method: 'POST',
+              body: subscription.toJSON()
+            })
+          } catch {
+            // ignore
+          }
           await subscription.unsubscribe()
         }
       }
       isSubscribed.value = false
-      return true
-    } catch {
-      return false
+      return { success: true, message: 'Notifications disabled successfully.' }
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Failed to unsubscribe.' }
     } finally {
       isLoading.value = false
     }
   }
 
-  async function sendTestNotification(): Promise<boolean> {
+  async function sendTestNotification(): Promise<{ success: boolean; message?: string }> {
     try {
       const res = await apiFetch<{ success: boolean; sent_to_devices: number }>('/admin/notifications/test', {
         method: 'POST'
       })
-      return !!res?.success
-    } catch {
-      return false
+      if (res?.success) {
+        return {
+          success: true,
+          message: res.sent_to_devices > 0
+            ? `Test alert sent to ${res.sent_to_devices} device(s).`
+            : 'No active device subscriptions found for this account.'
+        }
+      }
+      return { success: false, message: 'Failed to send test notification.' }
+    } catch (err: any) {
+      return { success: false, message: err?.data?.detail || err?.message || 'Failed to send test notification.' }
     }
+  }
+
+  if (import.meta.client) {
+    checkSupportAndStatus()
   }
 
   return {

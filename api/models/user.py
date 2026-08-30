@@ -57,9 +57,6 @@ class Staff(Base):
     last_name: MappedColumn[str] = mapped_column(String(100), nullable=False)
     other_name: MappedColumn[str | None] = mapped_column(String(100), nullable=True)
     role: MappedColumn[str] = mapped_column(String(100))
-    notification_subscription: MappedColumn[list['StaffNotificationSubscription']] = relationship(
-        back_populates="staff", cascade="all, delete-orphan"
-    )
     access_token: MappedColumn[str | None] = mapped_column(String(500), nullable=True, unique=True, index=True)
     last_login: MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     otp_token: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True)
@@ -125,8 +122,7 @@ class Debt(Base):
 class StaffNotificationSubscription(Base):
     __tablename__ = "staff_notification_subscriptions"
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
-    staff_id: MappedColumn[str] = mapped_column(String(10), ForeignKey("staffs.staff_id", ondelete="CASCADE"), nullable=False, index=True)
-    staff: MappedColumn['Staff'] = relationship(back_populates="notification_subscription")
+    staff_id: MappedColumn[str] = mapped_column(String(64), nullable=False, index=True)
     sub_info: MappedColumn[dict] = mapped_column(JSON)
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

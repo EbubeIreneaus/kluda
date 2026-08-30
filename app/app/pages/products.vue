@@ -10,6 +10,7 @@ const toast = useToast()
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase
 const auth = useAuthStore()
+const { requirePinAuth } = usePinAuth()
 
 const productStore = useProductsStore()
 
@@ -120,12 +121,17 @@ function proceedToConfirm() {
 async function handleApplyAdjustment() {
   if (!adjustingProduct.value) return
 
+  showConfirmDialog.value = false
+
   const authorized = await requirePinAuth({
     title: 'Authorize Stock Adjustment',
     description: `Enter your PIN to confirm adjusting ${adjustingProduct.value.name} by ${adjustForm.value.quantity} ${adjustingProduct.value.unit || 'units'}.`,
     requiredPermission: 'manage:product'
   })
-  if (!authorized) return
+  if (!authorized) {
+    showConfirmDialog.value = true
+    return
+  }
 
   isSubmittingAdjustment.value = true
   try {

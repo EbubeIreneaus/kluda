@@ -32,9 +32,10 @@ async def subscribe_staff(
     db: AsyncSession = Depends(get_db),
 ):
     sub_data = body.model_dump()
+    target_id = f"OWNER_{store.store_id}" if staff.staff_id == "OWNER" else staff.staff_id
     existing = await db.execute(
         select(StaffNotificationSubscription).where(
-            StaffNotificationSubscription.staff_id == staff.staff_id
+            StaffNotificationSubscription.staff_id.in_([staff.staff_id, target_id])
         )
     )
     for sub in existing.scalars().all():
@@ -42,11 +43,11 @@ async def subscribe_staff(
             return {"success": True, "message": "Already subscribed"}
 
     new_sub = StaffNotificationSubscription(
-        staff_id=staff.staff_id,
+        staff_id=target_id,
         sub_info=sub_data
     )
     db.add(new_sub)
-    await db.commit()
+    await db.flush()
     return {"success": True, "message": "Subscribed successfully"}
 
 
@@ -58,13 +59,14 @@ async def unsubscribe_staff(
     staff: Staff = Depends(get_staff),
     db: AsyncSession = Depends(get_db),
 ):
+    target_id = f"OWNER_{store.store_id}" if staff.staff_id == "OWNER" else staff.staff_id
     existing = await db.execute(
         select(StaffNotificationSubscription).where(
-            StaffNotificationSubscription.staff_id == staff.staff_id
+            StaffNotificationSubscription.staff_id.in_([staff.staff_id, target_id])
         )
     )
     for sub in existing.scalars().all():
         if sub.sub_info.get("endpoint") == body.endpoint:
             await db.delete(sub)
-    await db.commit()
+    await db.flush()
     return {"success": True, "message": "Unsubscribed successfully"}

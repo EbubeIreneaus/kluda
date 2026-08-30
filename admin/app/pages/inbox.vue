@@ -348,13 +348,18 @@ watch(search, () => {
                   v-model="composeForm.mailbox_id"
                   class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
                 >
-                  <optgroup label="My Personal Mailbox">
-                    <option v-if="myPersonalMailbox.mailbox_id" :value="myPersonalMailbox.mailbox_id">
+                  <optgroup v-if="myPersonalMailbox" label="My Personal Mailbox">
+                    <option :value="myPersonalMailbox.mailbox_id">
                       {{ myPersonalMailbox.name }} ({{ myPersonalMailbox.email }})
                     </option>
                   </optgroup>
-                  <optgroup label="Public / Shared Mailboxes">
+                  <optgroup v-if="sharedMailboxes.length > 0" label="Public / Shared Mailboxes">
                     <option v-for="mb in sharedMailboxes" :key="mb.mailbox_id" :value="mb.mailbox_id">
+                      {{ mb.name }} ({{ mb.email }})
+                    </option>
+                  </optgroup>
+                  <optgroup v-if="!myPersonalMailbox && sharedMailboxes.length === 0 && mailboxes.length > 0" label="Available Mailboxes">
+                    <option v-for="mb in mailboxes" :key="mb.mailbox_id" :value="mb.mailbox_id">
                       {{ mb.name }} ({{ mb.email }})
                     </option>
                   </optgroup>
