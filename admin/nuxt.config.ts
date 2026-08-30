@@ -90,7 +90,7 @@ export default defineNuxtConfig({
     },
     devOptions: {
       enabled: true,
-      type: 'module'
+      type: 'classic'
     },
     client: {
       installPrompt: true

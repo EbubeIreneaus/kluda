@@ -47,14 +47,19 @@ async def list_notifications(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(get_admin),
 ):
-    stmt = select(Notification).order_by(Notification.created_at.desc()).limit(limit).offset(offset)
+    stmt = (
+        select(Notification)
+        .order_by(Notification.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     result = await db.scalars(stmt)
     items = result.all()
     return [
         {
             "id": n.id,
             "notification_id": str(n.notification_id),
-            "scope": n.scope.value if hasattr(n.scope, 'value') else str(n.scope),
+            "scope": n.scope.value if hasattr(n.scope, "value") else str(n.scope),
             "target_id": str(n.target_id) if n.target_id else None,
             "title": n.title,
             "message": n.message,
@@ -87,9 +92,13 @@ async def broadcast_notification(
     await db.refresh(new_notif)
 
     if payload.scope == NotificationScope.STORE and payload.target_id:
-        await notif_manager.send_to_store(payload.target_id, payload.title, payload.message, notif_data)
+        await notif_manager.send_to_store(
+            payload.target_id, payload.title, payload.message, notif_data
+        )
     elif payload.scope == NotificationScope.PERSONAL and payload.target_id:
-        await notif_manager.send_to_staff(payload.target_id, payload.title, payload.message, notif_data)
+        await notif_manager.send_to_staff(
+            payload.target_id, payload.title, payload.message, notif_data
+        )
 
     await record_audit_log(
         db=db,
@@ -125,6 +134,7 @@ async def subscribe_admin(
     db: AsyncSession = Depends(get_db),
 ):
     from models.admin.user import AdminNotificationSubscription
+
     sub_data = body.model_dump()
     existing = await db.execute(
         select(AdminNotificationSubscription).where(
@@ -135,12 +145,9 @@ async def subscribe_admin(
         if sub.sub_info.get("endpoint") == body.endpoint:
             return {"success": True, "message": "Already subscribed"}
 
-    new_sub = AdminNotificationSubscription(
-        admin_id=admin.admin_id,
-        sub_info=sub_data
-    )
+    new_sub = AdminNotificationSubscription(admin_id=admin.admin_id, sub_info=sub_data)
     db.add(new_sub)
-    await db.commit()
+    await db.flush()
     return {"success": True, "message": "Admin subscribed successfully"}
 
 
@@ -152,6 +159,7 @@ async def unsubscribe_admin(
 ):
     from models.admin.user import AdminNotificationSubscription
     from sqlalchemy import delete
+
     await db.execute(
         delete(AdminNotificationSubscription).where(
             AdminNotificationSubscription.admin_id == admin.admin_id
@@ -167,20 +175,24 @@ async def test_admin_notification(
     db: AsyncSession = Depends(get_db),
 ):
     from models.admin.user import AdminNotificationSubscription
+
     subs = await db.scalars(
-        select(AdminNotificationSubscription).where(AdminNotificationSubscription.admin_id == admin.admin_id)
+        select(AdminNotificationSubscription).where(
+            AdminNotificationSubscription.admin_id == admin.admin_id
+        )
     )
     all_subs = subs.all()
     count = 0
     for s in all_subs:
         try:
-            await notif_manager.send_push_notification(
+            ok = await notif_manager.send_push_notification(
                 subscription_info=s.sub_info,
                 title="Kluda Admin Notification",
                 body="Test push alert received successfully from Kluda Control Center.",
-                data={"type": "admin_test"}
+                data={"type": "admin_test"},
             )
-            count += 1
+            if ok:
+                count += 1
         except Exception:
             pass
 

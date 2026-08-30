@@ -89,7 +89,7 @@ export default defineNuxtConfig({
     },
     devOptions: {
       enabled: true,
-      type: "module",
+      type: "classic",
     },
     workbox: {
       importScripts: ["/custom-sw.js"],

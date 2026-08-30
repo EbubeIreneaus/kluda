@@ -12,11 +12,18 @@ from pywebpush import webpush, WebPushException
 from worker.config import get_arq_pool
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class NotificationManager:
     def __init__(self):
         self.public_key = settings.VAPID_PUBLIC_KEY
         self.private_key = settings.VAPID_PRIVATE_KEY
-        self.claims = {"sub": settings.VAPID_CLAIM_EMAIL}
+        claim_email = settings.VAPID_CLAIM_EMAIL or "admin@kluda.app"
+        if not claim_email.startswith(("mailto:", "https://")):
+            claim_email = f"mailto:{claim_email}"
+        self.claims = {"sub": claim_email}
 
     def get_public_key(self) -> str:
         return self.public_key
@@ -34,15 +41,24 @@ class NotificationManager:
             )
             return True
         except WebPushException as ex:
-            response_code = getattr(ex.response, "status_code", None) if hasattr(ex, "response") else None
-            if response_code in (404, 410):
-                return False
+            logger.error("WebPush error: %s", ex)
             return False
-        except Exception:
+        except Exception as ex:
+            logger.error("Unexpected push notification error: %s", ex)
             return False
 
     async def _send_push(self, sub_info: dict, payload: dict) -> bool:
         return await asyncio.to_thread(self._send_push_sync, sub_info, payload)
+
+    async def send_push_notification(
+        self,
+        subscription_info: dict,
+        title: str,
+        body: str,
+        data: dict | None = None
+    ) -> bool:
+        payload = {"title": title, "body": body, "data": data or {}}
+        return await self._send_push(subscription_info, payload)
 
     async def enqueue_low_stock(
         self,
