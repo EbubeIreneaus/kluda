@@ -33,6 +33,37 @@ const editingMailboxForm = ref({
 
 const selectedAuditLog = ref<any>(null)
 
+const {
+  isSupported: isPushSupported,
+  isSubscribed: isPushSubscribed,
+  isLoading: isPushLoading,
+  permissionStatus: pushPermissionStatus,
+  checkSupportAndStatus: checkPushStatus,
+  subscribe: subscribePush,
+  unsubscribe: unsubscribePush,
+  sendTestNotification,
+} = useAdminPushNotification()
+
+async function handleTogglePush(val: boolean) {
+  if (val) {
+    const success = await subscribePush()
+    if (!success) {
+      alert('Could not enable notifications. Please ensure you allowed notification permissions in your browser.')
+    }
+  } else {
+    await unsubscribePush()
+  }
+}
+
+async function handleSendTestAlert() {
+  const success = await sendTestNotification()
+  if (success) {
+    alert('Test notification dispatched to your registered devices!')
+  } else {
+    alert('Failed to send test notification. Ensure push notifications are enabled.')
+  }
+}
+
 async function fetchData() {
   isLoading.value = true
   try {
@@ -178,6 +209,7 @@ async function handleDeleteMailbox(id: string) {
 
 onMounted(() => {
   fetchData()
+  checkPushStatus()
 })
 </script>
 
@@ -189,45 +221,94 @@ onMounted(() => {
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col gap-5 backdrop-blur-sm">
-        <div>
-          <h2 class="text-sm font-bold text-white">Platform Controls</h2>
-          <p class="text-xs text-zinc-400 mt-0.5">Maintenance switches and terminal requirements</p>
-        </div>
-
-        <div class="flex flex-col gap-4">
-          <div class="flex items-center justify-between p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-            <div>
-              <div class="text-xs font-semibold text-zinc-200">Maintenance Mode</div>
-              <div class="text-[11px] text-zinc-400">Lock merchant and POS apps for updates</div>
-            </div>
-            <USwitch v-model="maintenanceEnabled" :disabled="!canManageSettings" />
+      <div class="flex flex-col gap-6">
+        <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col gap-5 backdrop-blur-sm">
+          <div>
+            <h2 class="text-sm font-bold text-white">Platform Controls</h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Maintenance switches and terminal requirements</p>
           </div>
 
-          <div v-if="maintenanceEnabled" class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Public Maintenance Message</label>
-            <UInput
-              v-model="maintenanceMessage"
-              placeholder="e.g. Upgrading database clusters..."
+          <div class="flex flex-col gap-4">
+            <div class="flex items-center justify-between p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+              <div>
+                <div class="text-xs font-semibold text-zinc-200">Maintenance Mode</div>
+                <div class="text-[11px] text-zinc-400">Lock merchant and POS apps for updates</div>
+              </div>
+              <USwitch v-model="maintenanceEnabled" :disabled="!canManageSettings" />
+            </div>
+
+            <div v-if="maintenanceEnabled" class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-zinc-300">Public Maintenance Message</label>
+              <UInput
+                v-model="maintenanceMessage"
+                placeholder="e.g. Upgrading database clusters..."
+                size="sm"
+              />
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-zinc-300">Minimum POS App Version</label>
+              <UInput v-model="minPosVersion" placeholder="1.0.0" size="sm" />
+              <span class="text-[10px] text-zinc-500">Older client versions will be prompted to reload.</span>
+            </div>
+
+            <UButton
+              label="Save Configurations"
+              icon="i-lucide-check"
+              color="primary"
               size="sm"
+              :disabled="!canManageSettings"
+              :loading="isSaving"
+              @click="saveSettings"
             />
           </div>
+        </div>
 
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Minimum POS App Version</label>
-            <UInput v-model="minPosVersion" placeholder="1.0.0" size="sm" />
-            <span class="text-[10px] text-zinc-500">Older client versions will be prompted to reload.</span>
+        <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col gap-5 backdrop-blur-sm">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <UIcon name="i-lucide-bell-ring" class="w-4 h-4 text-emerald-400" />
+              Admin Push Notifications
+            </h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Real-time alerts for incoming tickets and system events</p>
           </div>
 
-          <UButton
-            label="Save Configurations"
-            icon="i-lucide-check"
-            color="primary"
-            size="sm"
-            :disabled="!canManageSettings"
-            :loading="isSaving"
-            @click="saveSettings"
-          />
+          <div class="flex flex-col gap-4">
+            <div class="flex items-center justify-between p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+              <div>
+                <div class="text-xs font-semibold text-zinc-200">Browser Push Alerts</div>
+                <div class="text-[11px] text-zinc-400">
+                  {{ isPushSubscribed ? 'Alerts active on this browser' : 'Receive instant operational alerts' }}
+                </div>
+              </div>
+              <USwitch
+                :model-value="isPushSubscribed"
+                :loading="isPushLoading"
+                :disabled="!isPushSupported"
+                @update:model-value="handleTogglePush"
+              />
+            </div>
+
+            <div v-if="pushPermissionStatus === 'denied'" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-start gap-2">
+              <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <p class="font-bold">Notifications Blocked</p>
+                <p class="text-[11px] text-amber-300/80 mt-0.5">Please click the site permissions icon in your address bar and set Notifications to "Allow".</p>
+              </div>
+            </div>
+
+            <div v-if="isPushSubscribed" class="flex items-center justify-between pt-1">
+              <span class="text-[11px] text-zinc-400">Verify device connectivity</span>
+              <UButton
+                label="Send Test Alert"
+                icon="i-lucide-send"
+                color="neutral"
+                variant="outline"
+                size="xs"
+                @click="handleSendTestAlert"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

@@ -11,6 +11,9 @@ interface Staff {
   phone?: string
   permission: string[]
   status: string
+  has_pin?: boolean
+  pin_hash?: string | null
+  pin_salt?: string | null
   last_login?: string
   created_at: string
 }

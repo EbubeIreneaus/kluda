@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
+const isDev = import.meta.dev
 const isStandalone = ref(true)
 const isIos = ref(false)
 const deferredPrompt = ref<any>(null)
@@ -18,7 +19,7 @@ onMounted(() => {
     isIos.value = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
 
     const bypassed = sessionStorage.getItem('bypass_pwa_gate') === 'true'
-    if (bypassed) {
+    if (bypassed && isDev) {
       bypassGate.value = true
     }
 
@@ -49,6 +50,7 @@ async function handleInstall() {
 }
 
 function handleBypass() {
+  if (!isDev) return
   bypassGate.value = true
   if (import.meta.client) {
     sessionStorage.setItem('bypass_pwa_gate', 'true')
@@ -59,7 +61,7 @@ function handleBypass() {
 <template>
   <ClientOnly>
     <div
-      v-if="!isStandalone && !bypassGate"
+      v-if="!isStandalone && (!isDev || !bypassGate)"
       class="fixed inset-0 z-[999999] flex flex-col items-center justify-center bg-zinc-950 text-white p-6 sm:p-10 select-none overflow-y-auto"
     >
       <div class="w-full max-w-sm flex flex-col items-center text-center gap-6">
@@ -103,6 +105,7 @@ function handleBypass() {
           </button>
 
           <button
+            v-if="isDev"
             type="button"
             class="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors py-2"
             @click="handleBypass"

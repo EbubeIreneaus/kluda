@@ -37,7 +37,7 @@ async def set_my_pin(
     salt = secrets.token_hex(16)
     pin_hash = hashlib.sha256((payload.pin + salt).encode()).hexdigest()
 
-    if current_staff.staff_id == "OWNER":
+    if current_staff.staff_id == "OWNER" or getattr(current_staff, "role", None) == "owner":
         return {
             "status": "ok",
             "message": "PIN updated successfully",
@@ -50,11 +50,15 @@ async def set_my_pin(
         select(Staff).where(Staff.staff_id == current_staff.staff_id, Staff.store_id == store.store_id)
     )
     if not staff:
+        staff = await db.scalar(
+            select(Staff).where(Staff.staff_id == current_staff.staff_id)
+        )
+    if not staff:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff record not found")
 
     staff.pin_salt = salt
     staff.pin_hash = pin_hash
-    await db.flush()
+    await db.commit()
 
     return {
         "status": "ok",

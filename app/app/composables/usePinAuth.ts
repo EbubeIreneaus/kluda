@@ -81,6 +81,11 @@ export function usePinAuth() {
       })
       if (res?.status === 'ok' && auth.staff) {
         auth.staff.has_pin = true
+        auth.staff.pin_hash = res.pin_hash || null
+        auth.staff.pin_salt = res.pin_salt || null
+        if (import.meta.client) {
+          localStorage.setItem('pos_staff', JSON.stringify(auth.staff))
+        }
         if (res.pin_hash && res.pin_salt) {
           await db.staffMembers.put({
             staff_id: auth.staff.staff_id,

@@ -14,17 +14,21 @@ const isSubmitting = ref(false)
 function handleNumber(n: string) {
   errorMessage.value = ''
   if (step.value === 'enter') {
-    if (firstPin.value.length < 4) {
+    if (firstPin.value.length < 4 && !isSubmitting.value) {
       firstPin.value += n
       if (firstPin.value.length === 4) {
-        step.value = 'confirm'
+        setTimeout(() => {
+          step.value = 'confirm'
+        }, 180)
       }
     }
   } else {
-    if (confirmPin.value.length < 4) {
+    if (confirmPin.value.length < 4 && !isSubmitting.value) {
       confirmPin.value += n
       if (confirmPin.value.length === 4) {
-        submitNewPin()
+        setTimeout(() => {
+          submitNewPin()
+        }, 180)
       }
     }
   }
@@ -84,7 +88,7 @@ async function submitNewPin() {
   <ClientOnly>
     <div
       v-if="isSettingPinOpen"
-      class="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+      class="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 select-none touch-manipulation"
     >
       <div
         class="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-3xl p-6 flex flex-col items-center gap-6 shadow-2xl relative"
@@ -127,7 +131,7 @@ async function submitNewPin() {
             v-for="n in ['1', '2', '3', '4', '5', '6', '7', '8', '9']"
             :key="n"
             type="button"
-            class="h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-lg font-bold text-white hover:bg-zinc-800 active:scale-95 transition-all flex items-center justify-center shadow-xs select-none"
+            class="h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-lg font-bold text-white hover:bg-zinc-800 active:scale-95 transition-all flex items-center justify-center shadow-xs select-none touch-manipulation cursor-pointer"
             :disabled="isSubmitting"
             @click="handleNumber(n)"
           >
@@ -135,7 +139,7 @@ async function submitNewPin() {
           </button>
           <button
             type="button"
-            class="h-14 rounded-2xl bg-zinc-900/40 text-xs font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800/80 active:scale-95 transition-all flex items-center justify-center select-none"
+            class="h-14 rounded-2xl bg-zinc-900/40 text-xs font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800/80 active:scale-95 transition-all flex items-center justify-center select-none touch-manipulation cursor-pointer"
             :disabled="isSubmitting"
             @click="handleClear"
           >
@@ -143,7 +147,7 @@ async function submitNewPin() {
           </button>
           <button
             type="button"
-            class="h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-lg font-bold text-white hover:bg-zinc-800 active:scale-95 transition-all flex items-center justify-center shadow-xs select-none"
+            class="h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-lg font-bold text-white hover:bg-zinc-800 active:scale-95 transition-all flex items-center justify-center shadow-xs select-none touch-manipulation cursor-pointer"
             :disabled="isSubmitting"
             @click="handleNumber('0')"
           >
@@ -151,7 +155,7 @@ async function submitNewPin() {
           </button>
           <button
             type="button"
-            class="h-14 rounded-2xl bg-zinc-900/40 text-zinc-400 hover:text-white hover:bg-zinc-800/80 active:scale-95 transition-all flex items-center justify-center select-none"
+            class="h-14 rounded-2xl bg-zinc-900/40 text-zinc-400 hover:text-white hover:bg-zinc-800/80 active:scale-95 transition-all flex items-center justify-center select-none touch-manipulation cursor-pointer"
             :disabled="isSubmitting"
             @click="handleBackspace"
           >

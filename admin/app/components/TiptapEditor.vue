@@ -280,31 +280,33 @@ defineExpose({
       </div>
     </div>
 
-    <div v-if="variant === 'email-light'" class="bg-zinc-950 p-4 md:p-5 flex justify-center overflow-y-auto max-h-[460px]">
-      <div class="w-full max-w-[620px] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
-        <div class="bg-slate-900 px-6 py-4 flex items-center justify-between border-b border-slate-800">
-          <div class="flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-slate-950 text-sm font-mono">K</div>
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-bold text-white tracking-tight">Kluda</span>
-              <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">RETAIL POS</span>
+    <ClientOnly>
+      <div v-if="variant === 'email-light'" class="bg-zinc-950 p-4 md:p-5 flex justify-center overflow-y-auto max-h-[460px]">
+        <div class="w-full max-w-[620px] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
+          <div class="bg-slate-900 px-6 py-4 flex items-center justify-between border-b border-slate-800">
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-slate-950 text-sm font-mono">K</div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-white tracking-tight">Kluda</span>
+                <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">RETAIL POS</span>
+              </div>
             </div>
+            <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Email Body Canvas</span>
           </div>
-          <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Email Body Canvas</span>
-        </div>
 
-        <div class="tiptap-email-canvas flex-1">
-          <EditorContent :editor="editor" />
-        </div>
+          <div class="tiptap-email-canvas flex-1">
+            <EditorContent v-if="editor" :editor="editor" />
+          </div>
 
-        <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-          <span>&copy; Kluda Inc. All rights reserved.</span>
-          <span>Merchant Control Center</span>
+          <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+            <span>&copy; Kluda Inc. All rights reserved.</span>
+            <span>Merchant Control Center</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <EditorContent v-else :editor="editor" class="flex-1 overflow-y-auto" />
+      <EditorContent v-else-if="editor" :editor="editor" class="flex-1 overflow-y-auto" />
+    </ClientOnly>
   </div>
 </template>
 

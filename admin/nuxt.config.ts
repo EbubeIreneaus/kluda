@@ -25,7 +25,7 @@ export default defineNuxtConfig({
   },
 
   pwa: {
-    registerType: 'autoUpdate',
+    registerType: 'prompt',
     includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'splash.png', 'robots.txt', 'custom-sw.js'],
     manifest: {
       name: 'Kluda Platform Admin',

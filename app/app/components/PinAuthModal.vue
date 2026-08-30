@@ -39,7 +39,9 @@ function handleNumber(num: string) {
     enteredPin.value += num
     errorMessage.value = ''
     if (enteredPin.value.length === maxPinLength) {
-      submitPin()
+      setTimeout(() => {
+        submitPin()
+      }, 180)
     }
   }
 }

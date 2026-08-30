@@ -105,3 +105,83 @@ async def broadcast_notification(
         "message": "Notification dispatched successfully",
         "notification_id": str(new_notif.notification_id),
     }
+
+
+class AdminPushSubscriptionBody(BaseModel):
+    endpoint: str
+    keys: dict
+    expirationTime: float | None = None
+
+
+@router.get("/vapid-public-key")
+async def get_admin_vapid_public_key():
+    return {"public_key": notif_manager.get_public_key()}
+
+
+@router.post("/subscribe", status_code=status.HTTP_201_CREATED)
+async def subscribe_admin(
+    body: AdminPushSubscriptionBody,
+    admin: Admin = Depends(get_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from models.admin.user import AdminNotificationSubscription
+    sub_data = body.model_dump()
+    existing = await db.execute(
+        select(AdminNotificationSubscription).where(
+            AdminNotificationSubscription.admin_id == admin.admin_id
+        )
+    )
+    for sub in existing.scalars().all():
+        if sub.sub_info.get("endpoint") == body.endpoint:
+            return {"success": True, "message": "Already subscribed"}
+
+    new_sub = AdminNotificationSubscription(
+        admin_id=admin.admin_id,
+        sub_info=sub_data
+    )
+    db.add(new_sub)
+    await db.commit()
+    return {"success": True, "message": "Admin subscribed successfully"}
+
+
+@router.post("/unsubscribe")
+async def unsubscribe_admin(
+    body: AdminPushSubscriptionBody,
+    admin: Admin = Depends(get_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from models.admin.user import AdminNotificationSubscription
+    from sqlalchemy import delete
+    await db.execute(
+        delete(AdminNotificationSubscription).where(
+            AdminNotificationSubscription.admin_id == admin.admin_id
+        )
+    )
+    await db.commit()
+    return {"success": True, "message": "Admin unsubscribed successfully"}
+
+
+@router.post("/test")
+async def test_admin_notification(
+    admin: Admin = Depends(get_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from models.admin.user import AdminNotificationSubscription
+    subs = await db.scalars(
+        select(AdminNotificationSubscription).where(AdminNotificationSubscription.admin_id == admin.admin_id)
+    )
+    all_subs = subs.all()
+    count = 0
+    for s in all_subs:
+        try:
+            await notif_manager.send_push_notification(
+                subscription_info=s.sub_info,
+                title="Kluda Admin Notification",
+                body="Test push alert received successfully from Kluda Control Center.",
+                data={"type": "admin_test"}
+            )
+            count += 1
+        except Exception:
+            pass
+
+    return {"success": True, "sent_to_devices": count}

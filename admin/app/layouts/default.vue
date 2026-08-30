@@ -117,41 +117,66 @@ const navLinks = computed(() => {
 
     <div
       v-if="isSidebarOpen"
-      class="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex"
+      class="md:hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex"
       @click="isSidebarOpen = false"
     >
       <div
-        class="w-72 bg-zinc-900 border-r border-zinc-800 h-full p-4 flex flex-col justify-between"
+        class="w-80 max-w-[85vw] bg-zinc-900 border-r border-zinc-800 h-full p-5 flex flex-col justify-between shadow-2xl overflow-y-auto"
         @click.stop
       >
         <div class="flex flex-col gap-6">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-sm text-zinc-100">Navigation</span>
-            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isSidebarOpen = false" />
+          <div class="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center font-black text-zinc-950 text-base shadow-lg shadow-emerald-500/20">
+                K
+              </div>
+              <div>
+                <div class="font-bold text-sm text-white">Kluda Admin</div>
+                <div class="text-xs text-zinc-400 font-mono">Control Center</div>
+              </div>
+            </div>
+            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" @click="isSidebarOpen = false" />
           </div>
-          <nav class="flex flex-col gap-1">
+
+          <nav class="flex flex-col gap-1.5">
             <NuxtLink
               v-for="link in navLinks"
               :key="link.to"
               :to="link.to"
-              class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all"
-              :class="route.path === link.to ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'"
+              class="flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+              :class="route.path === link.to ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-xs' : 'text-zinc-300 hover:text-white hover:bg-zinc-800/60 active:bg-zinc-800'"
               @click="isSidebarOpen = false"
             >
-              <UIcon :name="link.icon" class="w-4 h-4 shrink-0" />
+              <UIcon :name="link.icon" class="w-5 h-5 shrink-0" />
               <span>{{ link.label }}</span>
             </NuxtLink>
           </nav>
         </div>
-        <UButton
-          label="Sign Out"
-          icon="i-lucide-log-out"
-          color="error"
-          variant="soft"
-          block
-          size="sm"
-          @click="logout"
-        />
+
+        <div class="border-t border-zinc-800/80 pt-4 flex flex-col gap-3">
+          <div class="flex items-center justify-between bg-zinc-950 border border-zinc-800 p-3 rounded-xl">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
+                {{ adminUser?.fullname?.charAt(0) || 'A' }}
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-zinc-100 truncate">{{ adminUser?.fullname }}</div>
+                <div class="text-[11px] text-zinc-400 font-mono truncate">{{ adminUser?.company_email }}</div>
+              </div>
+            </div>
+          </div>
+
+          <UButton
+            label="Sign Out"
+            icon="i-lucide-log-out"
+            color="error"
+            variant="soft"
+            block
+            size="md"
+            class="font-semibold py-3"
+            @click="logout"
+          />
+        </div>
       </div>
     </div>
 

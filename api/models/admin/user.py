@@ -23,6 +23,7 @@ class Admin(Base):
     permission: MappedColumn[list[AdminPermission]] = mapped_column(JSON, default=list)
     status: MappedColumn[AdminStatus] = mapped_column(Enum(AdminStatus), default=AdminStatus.ACTIVE)
     sessions: MappedColumn[list["AdminSession"]] = relationship(back_populates="admin", cascade="all, delete-orphan")
+    notification_subscriptions: MappedColumn[list["AdminNotificationSubscription"]] = relationship(back_populates="admin", cascade="all, delete-orphan")
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -38,3 +39,12 @@ class AdminSession(Base):
     expired_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     admin: MappedColumn["Admin"] = relationship(back_populates="sessions")
+
+
+class AdminNotificationSubscription(Base):
+    __tablename__ = "admin_notification_subscriptions"
+    id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
+    admin_id: MappedColumn[uuid.UUID] = mapped_column(UUID, ForeignKey("admins.admin_id", ondelete="CASCADE"), nullable=False, index=True)
+    sub_info: MappedColumn[dict] = mapped_column(JSON, nullable=False)
+    created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    admin: MappedColumn["Admin"] = relationship(back_populates="notification_subscriptions")
