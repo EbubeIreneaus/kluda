@@ -85,6 +85,11 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchMe() {
+      if (import.meta.client && typeof navigator !== 'undefined' && !navigator.onLine) {
+        this.loadFromStorage()
+        return
+      }
+
       const config = useRuntimeConfig()
       const apiBase = config.public.apiBase
       try {
@@ -104,6 +109,10 @@ export const useAuthStore = defineStore('auth', {
         }
       } catch (err: any) {
         const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
+        if (!statusCode) {
+          this.loadFromStorage()
+          return
+        }
         if (statusCode === 401) {
           try {
             const refreshRes = await $fetch<{ success: boolean; staff?: Staff; access_token?: string; store_id?: string }>(

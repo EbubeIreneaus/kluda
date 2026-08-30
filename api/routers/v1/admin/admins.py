@@ -12,6 +12,7 @@ from libs.security import hash_password
 from libs.audit import record_audit_log
 from libs.resend import resend_client
 from setting import settings
+from worker.config import get_arq_pool
 
 
 router = APIRouter(prefix="/admins", tags=["Admin Team Management"])
@@ -68,22 +69,16 @@ async def invite_admin(
         details={"company_email": company_email, "role": payload.role.value},
     )
 
-    if hasattr(settings, "RESEND_API_KEY") and settings.RESEND_API_KEY:
-        try:
-            resend_client.Emails.send({
-                "from": f"Kluda Team <team@{settings.DOMAIN_NAME}>",
-                "to": [new_admin.personal_email],
-                "subject": "You have been invited to Kluda Admin Portal",
-                "html": f"""
-                    <p>Hello {new_admin.fullname},</p>
-                    <p>You have been assigned an administrator account on Kluda Platform.</p>
-                    <p><strong>Company Email:</strong> {new_admin.company_email}</p>
-                    <p><strong>Temporary Password:</strong> {temp_password}</p>
-                    <p><a href="https://administration.{settings.DOMAIN_NAME}/login">Click here to log into Admin Portal</a></p>
-                """,
-            })
-        except Exception:
-            pass
+    arq_pool = await get_arq_pool()
+    if arq_pool:
+        await arq_pool.enqueue_job(
+            "send_admin_welcome_email",
+            new_admin.fullname,
+            new_admin.personal_email,
+            new_admin.company_email,
+            new_admin.role.value if hasattr(new_admin.role, 'value') else str(new_admin.role),
+            temp_password,
+        )
 
     return new_admin
 

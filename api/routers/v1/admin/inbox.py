@@ -39,11 +39,15 @@ async def list_threads(
 
     if mailbox_id:
         stmt = stmt.where(EmailThread.mailbox_id == mailbox_id)
-    elif admin.role != AdminRole.SUPER_ADMIN and AdminPermission.MANAGE_ALL.value not in admin.permission and AdminPermission.MANAGE_EMAILS.value not in admin.permission:
+    elif (
+        admin.role != AdminRole.SUPER_ADMIN
+        and AdminPermission.MANAGE_ALL.value not in admin.permission
+        and AdminPermission.MANAGE_EMAILS.value not in admin.permission
+    ):
         user_mailboxes = await db.scalars(
             select(EmailMailbox.mailbox_id).where(
-                (EmailMailbox.owner_admin_id == admin.admin_id) |
-                (EmailMailbox.type == MailboxType.SHARED)
+                (EmailMailbox.owner_admin_id == admin.admin_id)
+                | (EmailMailbox.type == MailboxType.SHARED)
             )
         )
         accessible_ids = user_mailboxes.all()
@@ -61,13 +65,17 @@ async def list_threads(
         if status_filter:
             stmt = stmt.where(EmailThread.status == status_filter)
         else:
-            stmt = stmt.where(EmailThread.status.notin_([EmailThreadStatus.ARCHIVED, EmailThreadStatus.SPAM]))
+            stmt = stmt.where(
+                EmailThread.status.notin_(
+                    [EmailThreadStatus.ARCHIVED, EmailThreadStatus.SPAM]
+                )
+            )
 
     if search:
         stmt = stmt.where(
-            (EmailThread.subject.ilike(f"%{search}%")) |
-            (EmailThread.customer_email.ilike(f"%{search}%")) |
-            (EmailThread.snippet.ilike(f"%{search}%"))
+            (EmailThread.subject.ilike(f"%{search}%"))
+            | (EmailThread.customer_email.ilike(f"%{search}%"))
+            | (EmailThread.snippet.ilike(f"%{search}%"))
         )
 
     stmt = stmt.order_by(EmailThread.last_message_at.desc()).limit(limit).offset(offset)
@@ -81,10 +89,16 @@ async def get_thread_detail(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(get_admin),
 ):
-    stmt = select(EmailThread).options(selectinload(EmailThread.messages)).where(EmailThread.thread_id == thread_id)
+    stmt = (
+        select(EmailThread)
+        .options(selectinload(EmailThread.messages))
+        .where(EmailThread.thread_id == thread_id)
+    )
     thread = await db.scalar(stmt)
     if not thread:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found"
+        )
 
     if thread.status == EmailThreadStatus.UNREAD:
         thread.status = EmailThreadStatus.READ
@@ -99,33 +113,47 @@ async def compose_new_email(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(get_admin),
 ):
-    mailbox = await db.scalar(select(EmailMailbox).where(EmailMailbox.mailbox_id == payload.mailbox_id))
+    mailbox = await db.scalar(
+        select(EmailMailbox).where(EmailMailbox.mailbox_id == payload.mailbox_id)
+    )
     if not mailbox:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sender mailbox not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Sender mailbox not found"
+        )
 
     if mailbox.type == MailboxType.PERSONAL:
         if mailbox.owner_admin_id != admin.admin_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You cannot send emails from another admin's personal mailbox"
+                detail="You cannot send emails from another admin's personal mailbox",
             )
     elif mailbox.type == MailboxType.SHARED:
-        if admin.role != AdminRole.SUPER_ADMIN and mailbox.allowed_admin_ids and str(admin.admin_id) not in [str(x) for x in mailbox.allowed_admin_ids]:
+        if (
+            admin.role != AdminRole.SUPER_ADMIN
+            and mailbox.allowed_admin_ids
+            and str(admin.admin_id) not in [str(x) for x in mailbox.allowed_admin_ids]
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to send from this shared mailbox"
+                detail="You do not have permission to send from this shared mailbox",
             )
 
     resend_id = None
     if hasattr(settings, "RESEND_API_KEY") and settings.RESEND_API_KEY:
         try:
-            send_res = resend_client.Emails.send({
-                "from": f"{mailbox.name} <{mailbox.email}>",
-                "to": [payload.to_email],
-                "subject": payload.subject,
-                "html": payload.body,
-            })
-            resend_id = send_res.get("id") if isinstance(send_res, dict) else getattr(send_res, "id", None)
+            send_res = resend_client.Emails.send(
+                {
+                    "from": f"{mailbox.name} <{mailbox.email}>",
+                    "to": [payload.to_email],
+                    "subject": payload.subject,
+                    "html": payload.body,
+                }
+            )
+            resend_id = (
+                send_res.get("id")
+                if isinstance(send_res, dict)
+                else getattr(send_res, "id", None)
+            )
         except Exception:
             pass
 
@@ -135,7 +163,9 @@ async def compose_new_email(
         customer_email=payload.to_email,
         to=mailbox.email,
         subject=payload.subject,
-        snippet=(payload.body[:150] + "...") if len(payload.body) > 150 else payload.body,
+        snippet=(
+            (payload.body[:150] + "...") if len(payload.body) > 150 else payload.body
+        ),
         status=EmailThreadStatus.READ,
         last_message_at=now,
     )
@@ -164,7 +194,11 @@ async def compose_new_email(
             customer_email=mailbox.email,
             to=recipient_mailbox.email,
             subject=payload.subject,
-            snippet=(payload.body[:150] + "...") if len(payload.body) > 150 else payload.body,
+            snippet=(
+                (payload.body[:150] + "...")
+                if len(payload.body) > 150
+                else payload.body
+            ),
             status=EmailThreadStatus.UNREAD,
             last_message_at=now,
         )
@@ -184,7 +218,11 @@ async def compose_new_email(
         db.add(incoming_message)
         await db.flush()
 
-    stmt = select(EmailThread).options(selectinload(EmailThread.messages)).where(EmailThread.thread_id == new_thread.thread_id)
+    stmt = (
+        select(EmailThread)
+        .options(selectinload(EmailThread.messages))
+        .where(EmailThread.thread_id == new_thread.thread_id)
+    )
     return await db.scalar(stmt)
 
 
@@ -195,22 +233,36 @@ async def reply_to_thread(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(get_admin),
 ):
-    thread = await db.scalar(select(EmailThread).where(EmailThread.thread_id == thread_id))
+    thread = await db.scalar(
+        select(EmailThread).where(EmailThread.thread_id == thread_id)
+    )
     if not thread:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found"
+        )
 
     sender_email = thread.to if thread.to else f"support@{settings.DOMAIN_NAME}"
     resend_id = None
 
     if hasattr(settings, "RESEND_API_KEY") and settings.RESEND_API_KEY:
         try:
-            send_res = resend_client.Emails.send({
-                "from": f"Kluda Support <{sender_email}>",
-                "to": [thread.customer_email],
-                "subject": f"Re: {thread.subject}" if not thread.subject.startswith("Re:") else thread.subject,
-                "html": payload.body,
-            })
-            resend_id = send_res.get("id") if isinstance(send_res, dict) else getattr(send_res, "id", None)
+            send_res = resend_client.Emails.send(
+                {
+                    "from": f"Kluda Support <{sender_email}>",
+                    "to": [thread.customer_email],
+                    "subject": (
+                        f"Re: {thread.subject}"
+                        if not thread.subject.startswith("Re:")
+                        else thread.subject
+                    ),
+                    "html": payload.body,
+                }
+            )
+            resend_id = (
+                send_res.get("id")
+                if isinstance(send_res, dict)
+                else getattr(send_res, "id", None)
+            )
         except Exception:
             pass
 
@@ -226,7 +278,9 @@ async def reply_to_thread(
     )
     db.add(new_message)
 
-    thread.snippet = (payload.body[:150] + "...") if len(payload.body) > 150 else payload.body
+    thread.snippet = (
+        (payload.body[:150] + "...") if len(payload.body) > 150 else payload.body
+    )
     thread.last_message_at = now
     await db.flush()
     await db.refresh(new_message)
@@ -241,9 +295,13 @@ async def update_thread_status(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(get_admin),
 ):
-    thread = await db.scalar(select(EmailThread).where(EmailThread.thread_id == thread_id))
+    thread = await db.scalar(
+        select(EmailThread).where(EmailThread.thread_id == thread_id)
+    )
     if not thread:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found"
+        )
 
     thread.status = status_val
     await db.flush()

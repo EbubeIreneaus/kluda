@@ -1,0 +1,138 @@
+import { ref } from 'vue'
+import { db, type LocalStaffMember } from '~/utils/db'
+
+export interface PinAuthOptions {
+  title?: string
+  description?: string
+  targetStaffId?: string
+  requiredPermission?: string
+}
+
+export interface PinModalState {
+  isOpen: boolean
+  title: string
+  description: string
+  targetStaffId?: string
+  requiredPermission?: string
+  resolve?: (value: boolean) => void
+}
+
+const modalState = ref<PinModalState>({
+  isOpen: false,
+  title: 'Enter Terminal PIN',
+  description: 'Enter your 4-digit PIN to authorize this action',
+})
+
+const isSettingPinOpen = ref(false)
+
+export function usePinAuth() {
+  const auth = useAuthStore()
+  const { api } = useApi()
+
+  async function computeSha256(pin: string, salt: string): Promise<string> {
+    if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+      return ''
+    }
+    const encoder = new TextEncoder()
+    const data = encoder.encode(pin + salt)
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  async function verifyStaffPin(pin: string, staff: LocalStaffMember): Promise<boolean> {
+    if (!staff.pin_hash || !staff.pin_salt) return false
+    const computed = await computeSha256(pin, staff.pin_salt)
+    return computed === staff.pin_hash
+  }
+
+  async function syncStaffCredentials(): Promise<void> {
+    const storeId = auth.store_id || auth.staff?.store_id
+    if (!storeId || (typeof navigator !== 'undefined' && !navigator.onLine)) return
+    try {
+      const staffList = await api<any[]>(`/${storeId}/staff`)
+      if (Array.isArray(staffList) && staffList.length > 0) {
+        const localMembers: LocalStaffMember[] = staffList.map(s => ({
+          staff_id: s.staff_id,
+          first_name: s.first_name,
+          last_name: s.last_name,
+          role: s.role,
+          email: s.email,
+          permission: s.permission || [],
+          pin_hash: s.pin_hash || null,
+          pin_salt: s.pin_salt || null,
+          has_pin: !!s.has_pin || !!s.pin_hash,
+          status: s.status,
+        }))
+        await db.staffMembers.bulkPut(localMembers)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function setPinOnline(pin: string): Promise<{ success: boolean; message?: string }> {
+    const storeId = auth.store_id || auth.staff?.store_id
+    if (!storeId) return { success: false, message: 'No store ID found' }
+    try {
+      const res = await api<{ status: string; message: string; pin_hash?: string; pin_salt?: string }>(`/${storeId}/staff/pin`, {
+        method: 'POST',
+        body: { pin },
+      })
+      if (res?.status === 'ok' && auth.staff) {
+        auth.staff.has_pin = true
+        if (res.pin_hash && res.pin_salt) {
+          await db.staffMembers.put({
+            staff_id: auth.staff.staff_id,
+            first_name: auth.staff.first_name,
+            last_name: auth.staff.last_name,
+            role: auth.staff.role,
+            email: auth.staff.email,
+            permission: auth.staff.permission || [],
+            pin_hash: res.pin_hash,
+            pin_salt: res.pin_salt,
+            has_pin: true,
+            status: auth.staff.status,
+          })
+        }
+        return { success: true, message: res.message }
+      }
+      return { success: false, message: 'Failed to update PIN' }
+    } catch (err: any) {
+      return { success: false, message: err?.data?.detail || 'Failed to update PIN' }
+    }
+  }
+
+  function requirePinAuth(options?: PinAuthOptions): Promise<boolean> {
+    return new Promise((resolve) => {
+      modalState.value = {
+        isOpen: true,
+        title: options?.title || 'Enter Terminal PIN',
+        description: options?.description || 'Enter your 4-digit PIN to authorize this action',
+        targetStaffId: options?.targetStaffId,
+        requiredPermission: options?.requiredPermission,
+        resolve,
+      }
+    })
+  }
+
+  function openSetPinModal() {
+    isSettingPinOpen.value = true
+  }
+
+  function closeSetPinModal() {
+    isSettingPinOpen.value = false
+  }
+
+  return {
+    modalState,
+    isSettingPinOpen,
+    computeSha256,
+    verifyStaffPin,
+    syncStaffCredentials,
+    setPinOnline,
+    requirePinAuth,
+    openSetPinModal,
+    closeSetPinModal,
+  }
+}

@@ -4,6 +4,7 @@ const route = useRoute()
 const toast = useToast()
 const isMobileMenuOpen = ref(false)
 const isGeneratingSSO = ref(false)
+const isNotificationsOpen = ref(false)
 
 usePosSocket()
 const isCollapsed = ref(false)
@@ -101,17 +102,18 @@ watch(() => route.path, () => {
         </div>
       </div>
 
-      <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <NuxtLink
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
           :class="[
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group',
             isActive(item.to)
-              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-              : 'text-(--ui-text-muted) hover:text-(--ui-text-highlighted) hover:bg-(--ui-bg-accented)'
+              ? 'bg-primary-500/10 text-primary-500 font-semibold shadow-xs'
+              : 'text-(--ui-text-muted) hover:bg-(--ui-bg-accented) hover:text-(--ui-text-highlighted)'
           ]"
+          :title="isCollapsed ? item.label : undefined"
         >
           <UIcon :name="item.icon" class="w-5 h-5 shrink-0" />
           <Transition name="fade">
@@ -122,11 +124,10 @@ watch(() => route.path, () => {
         <button
           v-if="auth.hasPermission('manage:all') || auth.hasPermission('manage:store') || auth.staff?.role === 'manager' || auth.staff?.role === 'owner' || auth.staff?.role === 'admin'"
           type="button"
-          :disabled="isGeneratingSSO"
           :class="[
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-all duration-150',
-            'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-amber-500 hover:bg-amber-500/10 mt-4',
           ]"
+          :title="isCollapsed ? 'Store Management' : undefined"
           @click="openManagementDashboard"
         >
           <UIcon :name="isGeneratingSSO ? 'i-lucide-loader' : 'i-lucide-external-link'" :class="['w-5 h-5 shrink-0', isGeneratingSSO ? 'animate-spin' : '']" />
@@ -171,6 +172,15 @@ watch(() => route.path, () => {
             Management
           </UButton>
 
+          <UButton
+            icon="i-lucide-bell"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            title="Terminal Notifications"
+            @click="isNotificationsOpen = true"
+          />
+
           <UColorModeButton />
 
           <UDropdownMenu
@@ -203,35 +213,55 @@ watch(() => route.path, () => {
             :key="item.to"
             :to="item.to"
             :class="[
-              'flex items-center gap-4 px-4 py-3.5 rounded-xl text-base font-medium transition-all',
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition',
               isActive(item.to)
-                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                : 'text-(--ui-text-muted) hover:text-(--ui-text-highlighted) hover:bg-(--ui-bg-accented)'
+                ? 'bg-primary-500/10 text-primary-500 font-semibold'
+                : 'text-(--ui-text-muted) hover:bg-(--ui-bg-accented)'
             ]"
           >
-            <UIcon :name="item.icon" class="w-6 h-6 shrink-0" />
-            <span>{{ item.label }}</span>
+            <UIcon :name="item.icon" class="w-5 h-5" />
+            {{ item.label }}
           </NuxtLink>
-
-          <button
-            type="button"
-            class="flex items-center gap-4 px-4 py-3.5 rounded-xl text-base font-medium w-full text-left text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-all"
-            @click="openManagementDashboard"
-          >
-            <UIcon name="i-lucide-external-link" class="w-6 h-6 shrink-0" />
-            <span>Store Management</span>
-          </button>
         </nav>
+      </template>
+    </USlideover>
+
+    <USlideover v-model:open="isNotificationsOpen" side="right" title="Terminal Alerts & Notifications">
+      <template #body>
+        <div class="flex flex-col gap-4">
+          <div class="p-4 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-primary-500 uppercase tracking-wider">System Broadcast</span>
+              <span class="text-[10px] text-(--ui-text-dimmed)">Live</span>
+            </div>
+            <h4 class="text-sm font-bold text-(--ui-text-highlighted)">Offline Sync Active</h4>
+            <p class="text-xs text-(--ui-text-muted) leading-relaxed">
+              Your register terminal is operating with full local SQLite/IndexedDB caching. All sales transactions and inventory updates will synchronize automatically.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-emerald-500 uppercase tracking-wider">Hardware Status</span>
+              <span class="text-[10px] text-(--ui-text-dimmed)">Connected</span>
+            </div>
+            <h4 class="text-sm font-bold text-(--ui-text-highlighted)">Printer & Barcode Scanner</h4>
+            <p class="text-xs text-(--ui-text-muted) leading-relaxed">
+              Thermal receipt printer communication and USB/Bluetooth HID scanner listeners are active.
+            </p>
+          </div>
+
+          <div class="pt-2 text-center">
+            <NuxtLink
+              to="/settings"
+              class="text-xs text-primary-500 hover:underline font-medium"
+              @click="isNotificationsOpen = false"
+            >
+              Configure Push Alert Preferences &rarr;
+            </NuxtLink>
+          </div>
+        </div>
       </template>
     </USlideover>
   </div>
 </template>
-
-<style scoped>
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-</style>

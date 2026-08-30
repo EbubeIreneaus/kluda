@@ -3,6 +3,42 @@ export default defineAppConfig({
     colors: {
       primary: 'green',
       neutral: 'slate'
-    }
+    },
+    button: {
+      defaultVariants: {
+        size: 'xl'
+      }
+    },
+
+    input: {
+      slots: {
+        root: 'w-full',
+        base: "w-full min-h-10"
+      },
+      defaultVariants: {
+        size: 'lg'
+      }
+    },
+    select: {
+      slots: {
+        base: 'w-full min-h-10',
+      },
+      defaultVariants: {
+        size: 'lg'
+      }
+    },
+    textarea: {
+      defaultVariants: {
+        size: 'lg'
+      },
+      slots: {
+        root: 'w-full',
+      }
+    },
+    formField: {
+      defaultVariants: {
+        size: 'lg'
+      }
+    },
   }
 })

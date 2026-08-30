@@ -422,3 +422,78 @@ async def cron_generate_daily_metrics(ctx: dict):
         )
         db.add(metric)
         await db.commit()
+
+
+async def send_admin_welcome_email(
+    ctx: dict,
+    fullname: str,
+    personal_email: str,
+    company_email: str,
+    role_name: str,
+    temp_password: str,
+):
+    from libs.email_template import render_branded_email
+    import resend
+
+    if not (hasattr(settings, "RESEND_API_KEY") and settings.RESEND_API_KEY):
+        return
+
+    resend.api_key = settings.RESEND_API_KEY
+    admin_login_url = f"https://administration.{settings.DOMAIN_NAME}/login"
+
+    body_content = f"""
+<h2>Welcome to Kluda Operations &amp; Administration</h2>
+<p>Hello <strong>{fullname}</strong>,</p>
+<p>You have been assigned an administrator account on the <strong>Kluda Retail Platform</strong>.</p>
+
+<blockquote style="margin: 16px 0; padding: 14px 18px; border-left: 4px solid #059669; background-color: #f8fafc; color: #1e293b; border-radius: 0 8px 8px 0;">
+  <strong>Assigned Role:</strong> <span style="display: inline-block; background-color: #d1fae5; color: #065f46; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">{role_name}</span>
+</blockquote>
+
+<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+  <tbody>
+    <tr style="border-bottom: 1px solid #e2e8f0;">
+      <td style="padding: 8px 0; color: #64748b; font-weight: 600; width: 140px;">Company Login:</td>
+      <td style="padding: 8px 0; font-family: monospace; font-weight: 700; color: #0f172a;">{company_email}</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e2e8f0;">
+      <td style="padding: 8px 0; color: #64748b; font-weight: 600;">Recovery Email:</td>
+      <td style="padding: 8px 0; color: #0f172a;">{personal_email}</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; color: #64748b; font-weight: 600;">Temporary Password:</td>
+      <td style="padding: 8px 0; font-family: monospace; font-weight: 700; color: #059669; font-size: 14px;">{temp_password}</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="margin: 24px 0 16px 0;">
+  <a href="{admin_login_url}" style="display: inline-block; background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px;">Log Into Admin Portal &rarr;</a>
+</p>
+
+<div style="margin: 16px 0; padding: 12px 16px; border-left: 4px solid #f59e0b; background-color: #fffbeb; border-radius: 0 8px 8px 0; font-size: 12px; color: #92400e;">
+  <strong>Security Requirement:</strong> For account security, please sign in and set a new permanent password.
+</div>
+"""
+
+    html = render_branded_email(
+        subject="Welcome to Kluda Admin Portal",
+        body_html=body_content,
+        recipient_email=personal_email,
+        recipient_name=fullname,
+        action_text="Log Into Admin Portal",
+        action_url=admin_login_url,
+    )
+
+    try:
+        await asyncio.to_thread(
+            resend.Emails.send,
+            {
+                "from": f"Kluda Team <team@{settings.DOMAIN_NAME}>",
+                "to": [personal_email],
+                "subject": "Welcome to Kluda Admin Portal",
+                "html": html,
+            }
+        )
+    except Exception:
+        pass

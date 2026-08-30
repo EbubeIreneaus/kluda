@@ -15,6 +15,8 @@ class AdminAuditLogResponse(BaseModel):
     id: int
     log_id: uuid.UUID
     admin_id: uuid.UUID | None = None
+    admin_name: str | None = None
+    admin_email: str | None = None
     action: str
     target_type: str
     target_id: uuid.UUID | None = None

@@ -61,6 +61,15 @@ class EmailCampaignCreate(BaseModel):
     scheduled_at: datetime | None = None
 
 
+class EmailCampaignUpdate(BaseModel):
+    title: str | None = None
+    subject: str | None = None
+    sender: EmailStr | None = None
+    body: str | None = None
+    target_audience: str | None = None
+    scheduled_at: datetime | None = None
+
+
 class EmailCampaignResponse(BaseModel):
     id: int
     campaign_id: uuid.UUID

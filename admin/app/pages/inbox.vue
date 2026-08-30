@@ -30,9 +30,9 @@ const folderTabs = [
   { id: 'spam', label: 'Spam', icon: 'i-lucide-alert-triangle' }
 ]
 
-// const myPersonalMailbox = computed(() => {
-//   return mailboxes.value.find(m => m.type === 'personal' && (m.owner_admin_id === adminUser.value?.admin_id || m.email === adminUser.value?.company_email))
-// })
+const myPersonalMailbox = computed(() => {
+  return mailboxes.value.find(m => m.type === 'personal' && (m.owner_admin_id === adminUser.value?.admin_id || m.email === adminUser.value?.company_email))
+})
 
 const sharedMailboxes = computed(() => {
   return mailboxes.value.filter(m => m.type === 'shared')
@@ -348,8 +348,8 @@ watch(search, () => {
                 class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
               >
                 <optgroup label="My Personal Mailbox">
-                  <option v-if="adminUser?.company_email" :value="adminUser?.company_email">
-                    {{ adminUser?.fullname }} ({{ adminUser?.company_email }})
+                  <option v-if="myPersonalMailbox.mailbox_id" :value="myPersonalMailbox.mailbox_id">
+                    {{ myPersonalMailbox.name }} ({{ myPersonalMailbox.email }})
                   </option>
                 </optgroup>
                 <optgroup label="Public / Shared Mailboxes">

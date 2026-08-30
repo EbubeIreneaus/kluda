@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from models.config import get_db
 from models.admin.audit import AdminAuditLog
 from models.admin.user import Admin
@@ -21,7 +22,7 @@ async def list_audit_logs(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(require_admin_permission(AdminPermission.VIEW_AUDIT_LOGS)),
 ):
-    stmt = select(AdminAuditLog)
+    stmt = select(AdminAuditLog).options(selectinload(AdminAuditLog.admin))
     if action:
         stmt = stmt.where(AdminAuditLog.action == action)
     if target_type:
@@ -29,4 +30,25 @@ async def list_audit_logs(
 
     stmt = stmt.order_by(AdminAuditLog.created_at.desc()).limit(limit).offset(offset)
     result = await db.scalars(stmt)
-    return result.all()
+    logs = result.all()
+
+    output = []
+    for log in logs:
+        admin_name = log.admin.fullname if log.admin else None
+        admin_email = log.admin.company_email or log.admin.personal_email if log.admin else None
+        output.append(
+            AdminAuditLogResponse(
+                id=log.id,
+                log_id=log.log_id,
+                admin_id=log.admin_id,
+                admin_name=admin_name,
+                admin_email=admin_email,
+                action=log.action,
+                target_type=log.target_type,
+                target_id=log.target_id,
+                details=log.details,
+                ip_address=log.ip_address,
+                created_at=log.created_at,
+            )
+        )
+    return output

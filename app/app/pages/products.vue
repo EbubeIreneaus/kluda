@@ -119,6 +119,14 @@ function proceedToConfirm() {
 
 async function handleApplyAdjustment() {
   if (!adjustingProduct.value) return
+
+  const authorized = await requirePinAuth({
+    title: 'Authorize Stock Adjustment',
+    description: `Enter your PIN to confirm adjusting ${adjustingProduct.value.name} by ${adjustForm.value.quantity} ${adjustingProduct.value.unit || 'units'}.`,
+    requiredPermission: 'manage:product'
+  })
+  if (!authorized) return
+
   isSubmittingAdjustment.value = true
   try {
     await productStore.adjustStock({

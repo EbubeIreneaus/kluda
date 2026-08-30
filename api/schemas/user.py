@@ -71,8 +71,16 @@ class StaffResponse(BaseModel):
     phone: str | None = None
     permission: list[StaffPermission]
     status: StaffStatus
+    has_pin: bool = False
+    pin_hash: str | None = None
+    pin_salt: str | None = None
     last_login: datetime | None = None
     created_at: datetime | None = None
+
+
+class StaffSetPin(BaseModel):
+    pin: str = Field(min_length=4, max_length=6)
+
 
 class StaffLogin(BaseModel):
     staff_id: str

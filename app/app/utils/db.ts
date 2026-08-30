@@ -52,6 +52,19 @@ export interface LocalDebtor {
 }
 
 
+export interface LocalStaffMember {
+  staff_id: string
+  first_name: string
+  last_name: string
+  role: string
+  email: string
+  permission: string[]
+  pin_hash: string | null
+  pin_salt: string | null
+  has_pin: boolean
+  status: string
+}
+
 export interface LocalSale {
   sale_id: string
   full_sale_id: string
@@ -59,7 +72,7 @@ export interface LocalSale {
   date: string
   customer: string | null
   items: Array<{ name: string; qty: number; price: number }>
-  total: number // in kobo
+  total: number
   method: string
   status: string
   staff: string
@@ -72,12 +85,9 @@ export class POSDatabase extends Dexie {
   customers!: Table<LocalCustomer, string>
   salesCache!: Table<LocalSale, string>
   debtors!: Table<LocalDebtor, string>
+  staffMembers!: Table<LocalStaffMember, string>
 
   constructor() {
-    // ⚠️ Renamed from 'POSDatabase' — the old DB had a broken migration
-    // (primary key rename from idompotency_key → idempotency_key).
-    // Dexie cannot change a PK in-place, so we start fresh with a new name.
-    // The old 'POSDatabase' is left dormant in the browser; it causes no harm.
     super('RetailPOS_DB')
     this.version(1).stores({
       pendingSales: 'idempotency_key, created_at',
@@ -85,6 +95,14 @@ export class POSDatabase extends Dexie {
       customers:    'customer_id, fullname, phone',
       salesCache:   'sale_id, date',
       debtors:      'debtor_id',
+    })
+    this.version(2).stores({
+      pendingSales: 'idempotency_key, created_at',
+      products:     'slug, name, barcode_id',
+      customers:    'customer_id, fullname, phone',
+      salesCache:   'sale_id, date',
+      debtors:      'debtor_id',
+      staffMembers: 'staff_id, role',
     })
   }
 }

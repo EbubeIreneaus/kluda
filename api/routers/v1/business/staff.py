@@ -1,3 +1,4 @@
+import hashlib
 from schemas.business import StoreResponseMini
 from sqlalchemy import update, delete
 import secrets
@@ -12,13 +13,56 @@ from schemas.user import (
     StaffResponse,
     StaffPermission,
     StaffStatus,
+    StaffSetPin,
 )
 from libs.security import hash_password
-from libs.deps import require_permission, get_staff_store
+from libs.deps import require_permission, get_staff_store, get_staff
 from libs.ws_manager import manager as ws_manager
 import uuid
 
 router = APIRouter(prefix="/{store_id}/staff", tags=["Staff"])
+
+
+@router.post("/pin")
+async def set_my_pin(
+    payload: StaffSetPin,
+    store_id: uuid.UUID,
+    store: StoreResponseMini = Depends(get_staff_store),
+    db: AsyncSession = Depends(get_db),
+    current_staff: Staff = Depends(get_staff),
+):
+    if not payload.pin.isdigit():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PIN must contain only numbers")
+
+    salt = secrets.token_hex(16)
+    pin_hash = hashlib.sha256((payload.pin + salt).encode()).hexdigest()
+
+    if current_staff.staff_id == "OWNER":
+        return {
+            "status": "ok",
+            "message": "PIN updated successfully",
+            "has_pin": True,
+            "pin_hash": pin_hash,
+            "pin_salt": salt,
+        }
+
+    staff = await db.scalar(
+        select(Staff).where(Staff.staff_id == current_staff.staff_id, Staff.store_id == store.store_id)
+    )
+    if not staff:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff record not found")
+
+    staff.pin_salt = salt
+    staff.pin_hash = pin_hash
+    await db.flush()
+
+    return {
+        "status": "ok",
+        "message": "PIN updated successfully",
+        "has_pin": True,
+        "pin_hash": pin_hash,
+        "pin_salt": salt,
+    }
 
 
 async def generate_staff_id(db: AsyncSession, prefix="STF") -> str:

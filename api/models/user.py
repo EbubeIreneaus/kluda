@@ -65,6 +65,8 @@ class Staff(Base):
     otp_token: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True)
     otp_expires_at: MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password: MappedColumn[str] = mapped_column(String(255), nullable=False)
+    pin_hash: MappedColumn[str | None] = mapped_column(String(255), nullable=True)
+    pin_salt: MappedColumn[str | None] = mapped_column(String(64), nullable=True)
     phone: MappedColumn[str | None] = mapped_column(String(100), nullable=True)
     store_id: MappedColumn[uuid.UUID] = mapped_column(ForeignKey("stores.store_id", ondelete="CASCADE"), index=True)
     store: MappedColumn["Store"] = relationship(back_populates="staffs")
@@ -73,6 +75,11 @@ class Staff(Base):
     status: MappedColumn[StaffStatus] = mapped_column(Enum(StaffStatus), default=StaffStatus.ACTIVE)
     sessions: MappedColumn[list["StaffSession"]] = relationship(back_populates="staff", cascade="all, delete-orphan")
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    @property
+    def has_pin(self) -> bool:
+        return bool(self.pin_hash)
+
 
 class StaffSession(Base):
     __tablename__ = "staff_sessions"

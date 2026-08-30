@@ -3,6 +3,10 @@ from sqlalchemy.orm import MappedColumn, mapped_column, relationship
 from ..config import Base
 from datetime import datetime
 import uuid
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .user import Admin
 
 
 class AdminAuditLog(Base):
@@ -16,3 +20,5 @@ class AdminAuditLog(Base):
     details: MappedColumn[dict | None] = mapped_column(JSON, nullable=True)
     ip_address: MappedColumn[str | None] = mapped_column(String(50), nullable=True)
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    admin: MappedColumn["Admin | None"] = relationship("Admin", foreign_keys=[admin_id], lazy="selectin")

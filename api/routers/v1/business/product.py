@@ -113,6 +113,9 @@ async def create_stock_history(
     product.quantities = new_qty
 
     staff_id_val = getattr(staff, "staff_id", None)
+    if staff_id_val == "OWNER":
+        staff_id_val = None
+
     history_record = StockHistory(
         stock_slug=history_data.stock_slug,
         quantity=history_data.quantity,
@@ -123,7 +126,7 @@ async def create_stock_history(
         store_id=store.store_id
     )
     db.add(history_record)
-    await db.commit()
+    await db.flush()
     await db.refresh(history_record)
     await db.refresh(product)
 

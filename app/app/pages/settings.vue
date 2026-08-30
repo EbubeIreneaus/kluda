@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -7,6 +7,46 @@ const auth = useAuthStore()
 const toast = useToast()
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase
+
+const { isSupported, isSubscribed, isLoading: isPushLoading, checkSupportAndStatus, subscribe, unsubscribe } = usePushNotification()
+
+const permissionState = ref<NotificationPermission>('default')
+
+function updatePermissionState() {
+  if (import.meta.client && 'Notification' in window) {
+    permissionState.value = Notification.permission
+  }
+}
+
+async function handleTogglePush(val: boolean) {
+  if (val) {
+    const ok = await subscribe()
+    updatePermissionState()
+    if (ok) {
+      toast.add({
+        title: 'Notifications Enabled',
+        description: 'This terminal is now registered for store announcements and stock alerts.',
+        color: 'success',
+      })
+    } else if (permissionState.value === 'denied') {
+      toast.add({
+        title: 'Notifications Blocked',
+        description: 'Please enable notifications in your browser site settings.',
+        color: 'error',
+      })
+    }
+  } else {
+    const ok = await unsubscribe()
+    updatePermissionState()
+    if (ok) {
+      toast.add({
+        title: 'Notifications Disabled',
+        description: 'This terminal has been unsubscribed from push notifications.',
+        color: 'neutral',
+      })
+    }
+  }
+}
 
 const isChangingPassword = ref(false)
 const passwordForm = ref({
@@ -70,7 +110,6 @@ async function handleChangePassword() {
       confirm_password: '',
     }
 
-    // Since token is revoked on backend upon password change, log out cleanly
     setTimeout(() => {
       auth.logout()
       navigateTo('/login')
@@ -85,13 +124,18 @@ async function handleChangePassword() {
     isChangingPassword.value = false
   }
 }
+
+onMounted(async () => {
+  await checkSupportAndStatus()
+  updatePermissionState()
+})
 </script>
 
 <template>
   <div class="max-w-4xl space-y-6">
     <div>
       <h2 class="text-xl font-bold text-(--ui-text-highlighted)">Account Settings</h2>
-      <p class="text-sm text-(--ui-text-muted)">View your staff profile and update your security credentials.</p>
+      <p class="text-sm text-(--ui-text-muted)">View your staff profile, terminal preferences, and security credentials.</p>
     </div>
 
     <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-6 space-y-6">
@@ -149,6 +193,46 @@ async function handleChangePassword() {
             <span class="font-medium text-(--ui-text-highlighted)">{{ auth.staff?.last_login ? new Date(auth.staff.last_login).toLocaleString() : 'Recent' }}</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-6 space-y-4">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h3 class="text-base font-semibold text-(--ui-text-highlighted) flex items-center gap-2">
+            <UIcon name="i-lucide-bell" class="w-4 h-4 text-primary-500" />
+            Push Notifications & Terminal Alerts
+          </h3>
+          <p class="text-xs text-(--ui-text-muted) mt-0.5">
+            Receive instant alerts for low inventory thresholds, cashier shift summaries, and platform broadcasts.
+          </p>
+        </div>
+        <USwitch
+          v-if="isSupported && permissionState !== 'denied'"
+          :model-value="isSubscribed"
+          :disabled="isPushLoading"
+          @update:model-value="handleTogglePush"
+        />
+      </div>
+
+      <div v-if="!isSupported" class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
+        <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 shrink-0" />
+        <span>Push notifications are not supported on this browser engine.</span>
+      </div>
+
+      <div v-else-if="permissionState === 'denied'" class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 space-y-2">
+        <div class="flex items-center gap-2 text-xs font-semibold text-red-400">
+          <UIcon name="i-lucide-bell-off" class="w-4 h-4" />
+          <span>Notifications Blocked by Browser</span>
+        </div>
+        <p class="text-xs text-red-300/80 leading-relaxed">
+          Browser notifications have been denied on this device. To allow alerts, tap the lock or settings icon in your browser address bar and set <strong>Notifications</strong> to <strong>Allow</strong>.
+        </p>
+      </div>
+
+      <div v-else-if="isSubscribed" class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+        <UIcon name="i-lucide-check-circle" class="w-4 h-4 shrink-0" />
+        <span>This device is active and receiving background push alerts.</span>
       </div>
     </div>
 

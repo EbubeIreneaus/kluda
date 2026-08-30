@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 
 useHead({
   meta: [
@@ -22,6 +22,28 @@ useSeoMeta({
 })
 
 const isAppReady = ref(true)
+const auth = useAuthStore()
+const { syncStaffCredentials, openSetPinModal } = usePinAuth()
+
+onMounted(async () => {
+  if (auth.isLoggedIn) {
+    await syncStaffCredentials()
+    checkPinStatus()
+  }
+})
+
+watch(() => auth.isLoggedIn, async (loggedIn) => {
+  if (loggedIn) {
+    await syncStaffCredentials()
+    checkPinStatus()
+  }
+})
+
+function checkPinStatus() {
+  if (auth.isLoggedIn && auth.staff && !auth.staff.has_pin && !(auth.staff as any).pin_hash) {
+    openSetPinModal()
+  }
+}
 </script>
 
 <template>
@@ -29,6 +51,9 @@ const isAppReady = ref(true)
     <VitePwaManifest />
     <PwaUpdateBanner />
     <PwaInstallModal />
+    <PwaStandaloneGatekeeper />
+    <PinAuthModal />
+    <SetPinModal />
     <NetworkStatusBar />
     <NuxtLoadingIndicator color="#10b981" :height="3" />
 
@@ -61,30 +86,20 @@ const isAppReady = ref(true)
 </template>
 
 <style>
-.splash-fade-leave-active {
-  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+@keyframes splashProgress {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
 }
+.animate-splash-progress {
+  animation: splashProgress 1.2s ease-in-out infinite;
+}
+.splash-fade-enter-active,
+.splash-fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+.splash-fade-enter-from,
 .splash-fade-leave-to {
   opacity: 0;
-  transform: scale(1.02);
-}
-
-@keyframes splash-progress {
-  0% {
-    width: 0%;
-    transform: translateX(-100%);
-  }
-  50% {
-    width: 70%;
-    transform: translateX(20%);
-  }
-  100% {
-    width: 100%;
-    transform: translateX(100%);
-  }
-}
-
-.animate-splash-progress {
-  animation: splash-progress 1.2s infinite ease-in-out;
 }
 </style>

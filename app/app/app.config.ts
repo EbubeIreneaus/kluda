@@ -6,13 +6,14 @@ export default defineAppConfig({
     },
     button: {
       defaultVariants: {
-        size: 'lg'
+        size: 'xl'
       }
     },
+
     input: {
       slots: {
         root: 'w-full',
-        base: "w-full"
+        base: "w-full min-h-10"
       },
       defaultVariants: {
         size: 'lg'
@@ -20,7 +21,7 @@ export default defineAppConfig({
     },
     select: {
       slots: {
-        base: 'w-full',
+        base: 'w-full min-h-10',
       },
       defaultVariants: {
         size: 'lg'
@@ -38,6 +39,6 @@ export default defineAppConfig({
       defaultVariants: {
         size: 'lg'
       }
-    }
+    },
   }
 })

@@ -23,6 +23,16 @@ const mailboxForm = ref({
   allowed_admin_ids: [] as string[]
 })
 
+const isEditMailboxModalOpen = ref(false)
+const isUpdatingMailbox = ref(false)
+const editingMailbox = ref<any>(null)
+const editingMailboxForm = ref({
+  name: '',
+  allowed_admin_ids: [] as string[]
+})
+
+const selectedAuditLog = ref<any>(null)
+
 async function fetchData() {
   isLoading.value = true
   try {
@@ -91,42 +101,75 @@ function toggleAdminAccess(adminId: string) {
   }
 }
 
+function toggleEditAdminAccess(adminId: string) {
+  const idx = editingMailboxForm.value.allowed_admin_ids.indexOf(adminId)
+  if (idx > -1) {
+    editingMailboxForm.value.allowed_admin_ids.splice(idx, 1)
+  } else {
+    editingMailboxForm.value.allowed_admin_ids.push(adminId)
+  }
+}
+
 async function handleCreatePublicMailbox() {
   if (!mailboxForm.value.name || !mailboxForm.value.emailPrefix) {
-    alert('Please enter mailbox name and email prefix')
+    alert('Please provide a name and email prefix for the public mailbox')
     return
   }
-
   isCreatingMailbox.value = true
-  const fullEmail = `${mailboxForm.value.emailPrefix.trim().toLowerCase()}@${domain}`
   try {
     await apiFetch('/admin/mailboxes', {
       method: 'POST',
       body: {
         name: mailboxForm.value.name,
-        email: fullEmail,
+        email: `${mailboxForm.value.emailPrefix.trim()}@${domain}`,
         type: 'shared',
         allowed_admin_ids: mailboxForm.value.allowed_admin_ids
       }
     })
     isMailboxModalOpen.value = false
-    mailboxForm.value = {
-      name: '',
-      emailPrefix: '',
-      allowed_admin_ids: []
-    }
+    mailboxForm.value = { name: '', emailPrefix: '', allowed_admin_ids: [] }
     await fetchData()
   } catch (err: any) {
-    alert(err?.data?.detail || 'Failed to create public mailbox')
+    alert(err?.data?.detail || 'Failed to create mailbox')
   } finally {
     isCreatingMailbox.value = false
   }
 }
 
-async function handleDeleteMailbox(mbId: string) {
+function openEditMailbox(mb: any) {
+  editingMailbox.value = mb
+  editingMailboxForm.value = {
+    name: mb.name,
+    allowed_admin_ids: mb.allowed_admin_ids ? [...mb.allowed_admin_ids] : []
+  }
+  isEditMailboxModalOpen.value = true
+}
+
+async function handleUpdateMailbox() {
+  if (!editingMailbox.value) return
+  isUpdatingMailbox.value = true
+  try {
+    await apiFetch(`/admin/mailboxes/${editingMailbox.value.mailbox_id}`, {
+      method: 'PUT',
+      body: {
+        name: editingMailboxForm.value.name,
+        allowed_admin_ids: editingMailboxForm.value.allowed_admin_ids
+      }
+    })
+    isEditMailboxModalOpen.value = false
+    editingMailbox.value = null
+    await fetchData()
+  } catch (err: any) {
+    alert(err?.data?.detail || 'Failed to update mailbox access')
+  } finally {
+    isUpdatingMailbox.value = false
+  }
+}
+
+async function handleDeleteMailbox(id: string) {
   if (!confirm('Are you sure you want to delete this shared mailbox?')) return
   try {
-    await apiFetch(`/admin/mailboxes/${mbId}`, { method: 'DELETE' })
+    await apiFetch(`/admin/mailboxes/${id}`, { method: 'DELETE' })
     await fetchData()
   } catch (err: any) {
     alert(err?.data?.detail || 'Failed to delete mailbox')
@@ -141,42 +184,45 @@ onMounted(() => {
 <template>
   <div class="p-6 md:p-8 flex flex-col gap-8 max-w-7xl w-full mx-auto">
     <div>
-      <h1 class="text-xl font-bold tracking-tight text-white">System Settings & Public Inboxes</h1>
+      <h1 class="text-xl font-bold tracking-tight text-white">System Settings & Infrastructure Control</h1>
       <p class="text-xs text-zinc-400 mt-0.5">Dynamic platform configurations, shared email mailboxes, and audit trails</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col gap-6 backdrop-blur-sm">
-        <h2 class="text-sm font-bold text-white">Remote Platform Controls</h2>
+      <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col gap-5 backdrop-blur-sm">
+        <div>
+          <h2 class="text-sm font-bold text-white">Platform Controls</h2>
+          <p class="text-xs text-zinc-400 mt-0.5">Maintenance switches and terminal requirements</p>
+        </div>
 
         <div class="flex flex-col gap-4">
-          <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+          <div class="flex items-center justify-between p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
             <div>
               <div class="text-xs font-semibold text-zinc-200">Maintenance Mode</div>
-              <div class="text-[11px] text-zinc-400 mt-0.5">Temporarily pauses all POS sync and portal access</div>
+              <div class="text-[11px] text-zinc-400">Lock merchant and POS apps for updates</div>
             </div>
-            <input
-              v-model="maintenanceEnabled"
-              type="checkbox"
-              class="w-5 h-5 rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0 cursor-pointer"
-            >
+            <USwitch v-model="maintenanceEnabled" :disabled="!canManageSettings" />
           </div>
 
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Maintenance Message</label>
-            <UInput v-model="maintenanceMessage" size="sm" />
+          <div v-if="maintenanceEnabled" class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300">Public Maintenance Message</label>
+            <UInput
+              v-model="maintenanceMessage"
+              placeholder="e.g. Upgrading database clusters..."
+              size="sm"
+            />
           </div>
 
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-zinc-300">Minimum POS App Version</label>
             <UInput v-model="minPosVersion" placeholder="1.0.0" size="sm" />
+            <span class="text-[10px] text-zinc-500">Older client versions will be prompted to reload.</span>
           </div>
 
           <UButton
-            label="Save Remote Settings"
-            icon="i-lucide-save"
+            label="Save Configurations"
+            icon="i-lucide-check"
             color="primary"
-            block
             size="sm"
             :disabled="!canManageSettings"
             :loading="isSaving"
@@ -209,7 +255,7 @@ onMounted(() => {
                 <th class="px-4 py-3">Public Email</th>
                 <th class="px-4 py-3">Type</th>
                 <th class="px-4 py-3">Access Scope</th>
-                <th class="px-4 py-3 text-right">Action</th>
+                <th class="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-zinc-800/50">
@@ -230,19 +276,32 @@ onMounted(() => {
                 <td class="px-4 py-3 uppercase text-[10px] text-zinc-400">{{ mb.type }}</td>
                 <td class="px-4 py-3 text-zinc-300">
                   <span v-if="mb.type === 'personal'" class="text-zinc-500">Personal (Owner only)</span>
-                  <span v-else-if="!mb.allowed_admin_ids || mb.allowed_admin_ids.length === 0" class="text-emerald-400">All Admins</span>
+                  <span v-else-if="!mb.allowed_admin_ids || mb.allowed_admin_ids.length === 0" class="text-emerald-400 font-medium">All Admins</span>
                   <span v-else class="text-blue-400 font-mono">{{ mb.allowed_admin_ids.length }} assigned admins</span>
                 </td>
                 <td class="px-4 py-3 text-right">
-                  <UButton
-                    v-if="mb.type === 'shared'"
-                    icon="i-lucide-trash-2"
-                    color="error"
-                    variant="ghost"
-                    size="xs"
-                    title="Delete Public Mailbox"
-                    @click="handleDeleteMailbox(mb.mailbox_id)"
-                  />
+                  <div class="flex items-center justify-end gap-1.5">
+                    <UButton
+                      v-if="mb.type === 'shared'"
+                      icon="i-lucide-user-check"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      title="Manage Access"
+                      :disabled="!canManageSettings"
+                      @click="openEditMailbox(mb)"
+                    />
+                    <UButton
+                      v-if="mb.type === 'shared'"
+                      icon="i-lucide-trash-2"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      title="Delete Public Mailbox"
+                      :disabled="!canManageSettings"
+                      @click="handleDeleteMailbox(mb.mailbox_id)"
+                    />
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -253,7 +312,10 @@ onMounted(() => {
 
     <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col gap-4 backdrop-blur-sm">
       <div class="flex items-center justify-between">
-        <h2 class="text-sm font-bold text-white">Security & Administrative Audit Trail</h2>
+        <div>
+          <h2 class="text-sm font-bold text-white">Security & Administrative Audit Trail</h2>
+          <p class="text-xs text-zinc-400 mt-0.5">Click on any record to inspect structured event details</p>
+        </div>
         <span class="text-[11px] text-zinc-400 font-mono">{{ auditLogs.length }} recorded events</span>
       </div>
 
@@ -263,29 +325,52 @@ onMounted(() => {
             <tr>
               <th class="px-4 py-3">Action</th>
               <th class="px-4 py-3">Target</th>
-              <th class="px-4 py-3">Details</th>
+              <th class="px-4 py-3">Performed By</th>
+              <th class="px-4 py-3">IP Address</th>
               <th class="px-4 py-3">Timestamp</th>
+              <th class="px-4 py-3 text-right">Inspect</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-800/50">
             <tr v-if="isLoading">
-              <td colspan="4" class="px-4 py-6 text-center text-zinc-500">Loading audit trail...</td>
+              <td colspan="6" class="px-4 py-6 text-center text-zinc-500">Loading audit trail...</td>
             </tr>
             <tr v-else-if="auditLogs.length === 0">
-              <td colspan="4" class="px-4 py-6 text-center text-zinc-500">No audit events recorded yet.</td>
+              <td colspan="6" class="px-4 py-6 text-center text-zinc-500">No audit events recorded yet.</td>
             </tr>
             <tr
               v-for="l in auditLogs"
+              v-else
               :key="l.log_id"
-              class="hover:bg-zinc-800/30 transition-colors"
+              class="hover:bg-zinc-800/40 transition-colors cursor-pointer"
+              @click="selectedAuditLog = l"
             >
-              <td class="px-4 py-3 font-mono font-semibold text-emerald-400">{{ l.action }}</td>
-              <td class="px-4 py-3 uppercase text-[10px] text-zinc-300">{{ l.target_type }}</td>
-              <td class="px-4 py-3 text-zinc-400 font-mono text-[11px] max-w-xs truncate">
-                {{ l.details ? JSON.stringify(l.details) : 'None' }}
+              <td class="px-4 py-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {{ l.action }}
+                </span>
               </td>
+              <td class="px-4 py-3 text-zinc-300">
+                <span class="capitalize text-[11px] font-medium">{{ l.target_type }}</span>
+                <span v-if="l.target_id" class="text-zinc-500 font-mono text-[10px] ml-1">#{{ String(l.target_id).slice(0, 8) }}</span>
+              </td>
+              <td class="px-4 py-3 text-zinc-200">
+                <div class="font-medium">{{ l.admin_name || 'System / Automated' }}</div>
+                <div v-if="l.admin_email" class="text-[10px] text-zinc-500">{{ l.admin_email }}</div>
+              </td>
+              <td class="px-4 py-3 font-mono text-[11px] text-zinc-400">{{ l.ip_address || '—' }}</td>
               <td class="px-4 py-3 text-zinc-500 text-[11px] font-mono whitespace-nowrap">
                 {{ new Date(l.created_at).toLocaleString() }}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <UButton
+                  icon="i-lucide-eye"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  title="Inspect Event"
+                  @click.stop="selectedAuditLog = l"
+                />
               </td>
             </tr>
           </tbody>
@@ -362,6 +447,126 @@ onMounted(() => {
             :loading="isCreatingMailbox"
             @click="handleCreatePublicMailbox"
           />
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="isEditMailboxModalOpen && editingMailbox"
+      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      @click="isEditMailboxModalOpen = false"
+    >
+      <div
+        class="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-5 shadow-2xl"
+        @click.stop
+      >
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-white">Manage Mailbox Access</h2>
+            <p class="text-xs text-zinc-400">{{ editingMailbox.email }}</p>
+          </div>
+          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isEditMailboxModalOpen = false" />
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300">Mailbox Display Name</label>
+            <UInput v-model="editingMailboxForm.name" placeholder="Support Desk" size="sm" />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-medium text-zinc-300">Assigned Admins</label>
+              <button
+                type="button"
+                class="text-[11px] text-emerald-400 hover:underline"
+                @click="editingMailboxForm.allowed_admin_ids = []"
+              >
+                Reset to All Admins
+              </button>
+            </div>
+            <div class="grid grid-cols-1 gap-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800 max-h-48 overflow-y-auto">
+              <label
+                v-for="adm in admins"
+                :key="adm.admin_id"
+                class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  :checked="editingMailboxForm.allowed_admin_ids.includes(adm.admin_id)"
+                  class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0"
+                  @change="toggleEditAdminAccess(adm.admin_id)"
+                >
+                <span>{{ adm.fullname }} ({{ adm.company_email }})</span>
+              </label>
+            </div>
+            <p class="text-[11px] text-zinc-500">
+              {{ editingMailboxForm.allowed_admin_ids.length === 0 ? 'Currently accessible by All Admins.' : `Restricted to ${editingMailboxForm.allowed_admin_ids.length} selected admin(s).` }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-3">
+          <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isEditMailboxModalOpen = false" />
+          <UButton
+            label="Save Access Permissions"
+            icon="i-lucide-check"
+            color="primary"
+            size="sm"
+            :disabled="!canManageSettings"
+            :loading="isUpdatingMailbox"
+            @click="handleUpdateMailbox"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="selectedAuditLog"
+      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
+      @click="selectedAuditLog = null"
+    >
+      <div
+        class="w-full max-w-md bg-zinc-900 border-l border-zinc-800 h-full p-6 flex flex-col gap-5 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-200"
+        @click.stop
+      >
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-white">Audit Event Details</h2>
+            <p class="text-[11px] text-zinc-400 font-mono">{{ selectedAuditLog.log_id }}</p>
+          </div>
+          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="selectedAuditLog = null" />
+        </div>
+
+        <div class="flex flex-col gap-4 text-xs">
+          <div class="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-zinc-950 border border-zinc-800">
+            <div>
+              <span class="text-zinc-500 block text-[10px] uppercase font-bold">Action</span>
+              <span class="font-mono text-emerald-400 font-bold">{{ selectedAuditLog.action }}</span>
+            </div>
+            <div>
+              <span class="text-zinc-500 block text-[10px] uppercase font-bold">Target</span>
+              <span class="font-medium text-zinc-200 uppercase">{{ selectedAuditLog.target_type }}</span>
+            </div>
+            <div>
+              <span class="text-zinc-500 block text-[10px] uppercase font-bold">Performed By</span>
+              <span class="font-medium text-zinc-200">{{ selectedAuditLog.admin_name || 'System' }}</span>
+            </div>
+            <div>
+              <span class="text-zinc-500 block text-[10px] uppercase font-bold">IP Address</span>
+              <span class="font-mono text-zinc-400">{{ selectedAuditLog.ip_address || '—' }}</span>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <span class="text-zinc-400 font-semibold text-[11px]">Event Payload & Metadata</span>
+            <pre class="bg-zinc-950 p-4 rounded-xl border border-zinc-800 font-mono text-[11px] text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">{{ JSON.stringify(selectedAuditLog.details, null, 2) || '{}' }}</pre>
+          </div>
+
+          <div class="flex flex-col gap-1 text-[11px] text-zinc-500">
+            <span>Timestamp: {{ new Date(selectedAuditLog.created_at).toLocaleString() }}</span>
+            <span v-if="selectedAuditLog.target_id">Target ID: {{ selectedAuditLog.target_id }}</span>
+          </div>
         </div>
       </div>
     </div>
