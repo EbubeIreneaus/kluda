@@ -40,6 +40,7 @@ async def set_my_pin(
     if current_staff.staff_id == "OWNER" or getattr(current_staff, "role", None) == "owner":
         return {
             "status": "ok",
+            "success": True,
             "message": "PIN updated successfully",
             "has_pin": True,
             "pin_hash": pin_hash,
@@ -62,6 +63,7 @@ async def set_my_pin(
 
     return {
         "status": "ok",
+        "success": True,
         "message": "PIN updated successfully",
         "has_pin": True,
         "pin_hash": pin_hash,

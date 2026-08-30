@@ -72,39 +72,55 @@ export function usePinAuth() {
   }
 
   async function setPinOnline(pin: string): Promise<{ success: boolean; message?: string }> {
-    const storeId = auth.store_id || auth.staff?.store_id
+    const storeId = auth.store_id || auth.staff?.store_id || (import.meta.client ? localStorage.getItem('pos_store_id') : null)
     if (!storeId) return { success: false, message: 'No store ID found' }
     try {
-      const res = await api<{ status: string; message: string; pin_hash?: string; pin_salt?: string }>(`/${storeId}/staff/pin`, {
+      const res = await api<{ status?: string; success?: boolean; message?: string; pin_hash?: string; pin_salt?: string; has_pin?: boolean }>(`/${storeId}/staff/pin`, {
         method: 'POST',
         body: { pin },
       })
-      if (res?.status === 'ok' && auth.staff) {
-        auth.staff.has_pin = true
-        auth.staff.pin_hash = res.pin_hash || null
-        auth.staff.pin_salt = res.pin_salt || null
-        if (import.meta.client) {
-          localStorage.setItem('pos_staff', JSON.stringify(auth.staff))
+      if (res?.status === 'ok' || res?.success || res?.has_pin || res?.message) {
+        if (!auth.staff && import.meta.client) {
+          const cached = localStorage.getItem('pos_staff')
+          if (cached) {
+            try {
+              auth.staff = JSON.parse(cached)
+            } catch {
+              // ignore
+            }
+          }
         }
-        if (res.pin_hash && res.pin_salt) {
-          await db.staffMembers.put({
-            staff_id: auth.staff.staff_id,
-            first_name: auth.staff.first_name,
-            last_name: auth.staff.last_name,
-            role: auth.staff.role,
-            email: auth.staff.email,
-            permission: auth.staff.permission || [],
-            pin_hash: res.pin_hash,
-            pin_salt: res.pin_salt,
-            has_pin: true,
-            status: auth.staff.status,
-          })
+        if (auth.staff) {
+          auth.staff.has_pin = true
+          auth.staff.pin_hash = res.pin_hash || null
+          auth.staff.pin_salt = res.pin_salt || null
+          if (import.meta.client) {
+            localStorage.setItem('pos_staff', JSON.stringify(auth.staff))
+          }
+          if (res.pin_hash && res.pin_salt) {
+            try {
+              await db.staffMembers.put({
+                staff_id: auth.staff.staff_id,
+                first_name: auth.staff.first_name,
+                last_name: auth.staff.last_name,
+                role: auth.staff.role,
+                email: auth.staff.email,
+                permission: auth.staff.permission || [],
+                pin_hash: res.pin_hash,
+                pin_salt: res.pin_salt,
+                has_pin: true,
+                status: auth.staff.status,
+              })
+            } catch {
+              // ignore local database cache error
+            }
+          }
         }
-        return { success: true, message: res.message }
+        return { success: true, message: res.message || 'PIN updated successfully' }
       }
-      return { success: false, message: 'Failed to update PIN' }
+      return { success: false, message: res?.message || 'Failed to update PIN' }
     } catch (err: any) {
-      return { success: false, message: err?.data?.detail || 'Failed to update PIN' }
+      return { success: false, message: err?.data?.detail || err?.message || 'Failed to update PIN' }
     }
   }
 
