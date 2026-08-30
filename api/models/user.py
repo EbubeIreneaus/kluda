@@ -122,7 +122,7 @@ class Debt(Base):
 class StaffNotificationSubscription(Base):
     __tablename__ = "staff_notification_subscriptions"
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
-    staff_id: MappedColumn[str] = mapped_column(String(64), nullable=False, index=True)
+    staff_id: MappedColumn[str] = mapped_column(String(100), nullable=False, index=True)
     sub_info: MappedColumn[dict] = mapped_column(JSON)
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
