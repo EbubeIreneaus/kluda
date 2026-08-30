@@ -19,16 +19,47 @@ export function usePushNotification() {
     return outputArray
   }
 
+  async function getReadyRegistration(): Promise<ServiceWorkerRegistration | null> {
+    if (!('serviceWorker' in navigator)) return null
+    let reg = await navigator.serviceWorker.getRegistration()
+    if (!reg) {
+      reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    }
+
+    if (reg.active && reg.active.state === 'activated') {
+      return reg
+    }
+
+    const readyReg = await navigator.serviceWorker.ready
+    if (readyReg.active && readyReg.active.state === 'activated') {
+      return readyReg
+    }
+
+    const candidate = readyReg || reg
+    const worker = candidate.installing || candidate.waiting || candidate.active
+    if (worker && worker.state !== 'activated') {
+      await new Promise<void>((resolve) => {
+        const onState = () => {
+          if (worker.state === 'activated') {
+            worker.removeEventListener('statechange', onState)
+            resolve()
+          }
+        }
+        worker.addEventListener('statechange', onState)
+        setTimeout(resolve, 2500)
+      })
+    }
+
+    return (await navigator.serviceWorker.ready) || candidate
+  }
+
   async function checkSupportAndStatus() {
     if (!import.meta.client) return
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       isSupported.value = true
       try {
-        let registration = await navigator.serviceWorker.getRegistration()
-        if (!registration && 'ready' in navigator.serviceWorker) {
-          registration = await navigator.serviceWorker.ready
-        }
-        if (registration) {
+        const registration = await getReadyRegistration()
+        if (registration?.pushManager) {
           const subscription = await registration.pushManager.getSubscription()
           isSubscribed.value = !!subscription
         }
@@ -61,14 +92,14 @@ export function usePushNotification() {
         return { success: false, message: 'Could not fetch notification encryption key from server.' }
       }
 
-      let registration = await navigator.serviceWorker.getRegistration()
-      if (!registration) {
-        registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      }
-      const activeReg = registration || (await navigator.serviceWorker.ready)
-      if (!activeReg?.pushManager) {
+      const activeReg = await getReadyRegistration()
+      if (!activeReg || !activeReg.pushManager) {
         isLoading.value = false
-        return { success: false, message: 'Service worker push manager is initializing. Please try again.' }
+        return { success: false, message: 'Service worker is activating. Please tap again in a moment.' }
+      }
+
+      if (!activeReg.active) {
+        await new Promise(r => setTimeout(r, 600))
       }
 
       const convertedVapidKey = urlBase64ToUint8Array(keyRes.public_key)

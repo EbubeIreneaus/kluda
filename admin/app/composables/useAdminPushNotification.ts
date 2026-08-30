@@ -19,6 +19,40 @@ export function useAdminPushNotification() {
     return outputArray
   }
 
+  async function getReadyRegistration(): Promise<ServiceWorkerRegistration | null> {
+    if (!('serviceWorker' in navigator)) return null
+    let reg = await navigator.serviceWorker.getRegistration()
+    if (!reg) {
+      reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    }
+
+    if (reg.active && reg.active.state === 'activated') {
+      return reg
+    }
+
+    const readyReg = await navigator.serviceWorker.ready
+    if (readyReg.active && readyReg.active.state === 'activated') {
+      return readyReg
+    }
+
+    const candidate = readyReg || reg
+    const worker = candidate.installing || candidate.waiting || candidate.active
+    if (worker && worker.state !== 'activated') {
+      await new Promise<void>((resolve) => {
+        const onState = () => {
+          if (worker.state === 'activated') {
+            worker.removeEventListener('statechange', onState)
+            resolve()
+          }
+        }
+        worker.addEventListener('statechange', onState)
+        setTimeout(resolve, 2500)
+      })
+    }
+
+    return (await navigator.serviceWorker.ready) || candidate
+  }
+
   async function checkSupportAndStatus() {
     if (!import.meta.client) return
     if ('Notification' in window) {
@@ -27,8 +61,8 @@ export function useAdminPushNotification() {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       isSupported.value = true
       try {
-        const registration = await navigator.serviceWorker.ready
-        if (registration) {
+        const registration = await getReadyRegistration()
+        if (registration?.pushManager) {
           const subscription = await registration.pushManager.getSubscription()
           isSubscribed.value = !!subscription
         }
@@ -63,14 +97,14 @@ export function useAdminPushNotification() {
         }
       }
 
-      let reg = await navigator.serviceWorker.getRegistration()
-      if (!reg) {
-        reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      }
-      const registration = reg || (await navigator.serviceWorker.ready)
-      if (!registration?.pushManager) {
+      const activeReg = await getReadyRegistration()
+      if (!activeReg || !activeReg.pushManager) {
         isLoading.value = false
-        return { success: false, message: 'Push manager is not available on this browser.' }
+        return { success: false, message: 'Service worker is activating. Please try again in a moment.' }
+      }
+
+      if (!activeReg.active) {
+        await new Promise(r => setTimeout(r, 600))
       }
 
       const keyRes = await apiFetch<{ public_key: string }>('/admin/notifications/vapid-public-key')
@@ -80,7 +114,7 @@ export function useAdminPushNotification() {
       }
 
       const convertedVapidKey = urlBase64ToUint8Array(keyRes.public_key)
-      const subscription = await registration.pushManager.subscribe({
+      const subscription = await activeReg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey
       })

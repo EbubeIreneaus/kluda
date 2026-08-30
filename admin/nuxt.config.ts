@@ -65,6 +65,8 @@ export default defineNuxtConfig({
       navigateFallbackDenylist: [/^\/api/],
       globPatterns: ['**/*.{js,css,html,png,svg,ico,woff,woff2}'],
       cleanupOutdatedCaches: true,
+      skipWaiting: false,
+      clientsClaim: false,
       runtimeCaching: [
         {
           urlPattern: /\/_nuxt\/.*/i,
