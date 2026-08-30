@@ -157,7 +157,7 @@ async def unsubscribe_admin(
             AdminNotificationSubscription.admin_id == admin.admin_id
         )
     )
-    await db.commit()
+    await db.flush()
     return {"success": True, "message": "Admin unsubscribed successfully"}
 
 
