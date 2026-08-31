@@ -43,8 +43,6 @@ app.add_middleware(
 from routers.v1.admin.webhook import router as InboundWebhookRouter
 
 app.include_router(v1Router, prefix="/api", tags=['version 1.0.0'])
-app.include_router(InboundWebhookRouter, prefix="/api/admin")
-app.include_router(InboundWebhookRouter, prefix="/api")
 app.include_router(InboundWebhookRouter, prefix="")
 
 

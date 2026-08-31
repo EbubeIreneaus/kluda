@@ -153,10 +153,10 @@ async def cron_cleanup_expired_sessions(ctx: dict):
     now = datetime.now(timezone.utc)
     async with LocalSession() as db:
         await db.execute(
-            delete(StaffSession).where(StaffSession.expires_at < now)
+            delete(StaffSession).where(StaffSession.expired_at < now)
         )
         await db.execute(
-            delete(UserSession).where(UserSession.expires_at < now)
+            delete(UserSession).where(UserSession.expired_at < now)
         )
         await db.commit()
 
