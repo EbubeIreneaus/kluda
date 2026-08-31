@@ -43,12 +43,32 @@ async function fetchAdmins() {
   }
 }
 
+const isEditingSelf = computed(() => {
+  return !!(selectedAdmin.value && adminUser.value && selectedAdmin.value.admin_id === adminUser.value.admin_id)
+})
+
+const isSuperAdmin = computed(() => {
+  return adminUser.value?.role === 'SUPER_ADMIN'
+})
+
+const isTargetSuperAdmin = computed(() => {
+  return selectedAdmin.value?.role === 'SUPER_ADMIN'
+})
+
+const canEditPermissionsAndRole = computed(() => {
+  if (isSuperAdmin.value) return true
+  if (isEditingSelf.value) return false
+  if (isTargetSuperAdmin.value) return false
+  return canManageAdmins.value
+})
+
 function viewAdmin(a: any) {
   selectedAdmin.value = JSON.parse(JSON.stringify(a))
   isDetailOpen.value = true
 }
 
 function togglePermission(formObj: any, perm: string) {
+  if (!canEditPermissionsAndRole.value && formObj === selectedAdmin.value) return
   const index = formObj.permission.indexOf(perm)
   if (index > -1) {
     formObj.permission.splice(index, 1)
@@ -223,15 +243,32 @@ onMounted(() => {
           </div>
 
           <div class="flex flex-col gap-4">
+            <div
+              v-if="isEditingSelf && !isSuperAdmin"
+              class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 flex items-center gap-2"
+            >
+              <UIcon name="i-lucide-shield-alert" class="size-4 shrink-0" />
+              <span>You cannot modify your own role, status, or permissions.</span>
+            </div>
+
+            <div
+              v-else-if="isTargetSuperAdmin && !isSuperAdmin"
+              class="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 flex items-center gap-2"
+            >
+              <UIcon name="i-lucide-shield-check" class="size-4 shrink-0" />
+              <span>Only Super Admins can modify a Super Admin account.</span>
+            </div>
+
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-medium text-zinc-300">Role</label>
               <select
                 v-model="selectedAdmin.role"
-                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+                :disabled="!canEditPermissionsAndRole"
+                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="MODERATOR">Moderator</option>
                 <option value="ADMIN">Admin</option>
-                <option value="SUPER_ADMIN">Super Admin</option>
+                <option v-if="isSuperAdmin" value="SUPER_ADMIN">Super Admin</option>
               </select>
             </div>
 
@@ -239,7 +276,8 @@ onMounted(() => {
               <label class="text-xs font-medium text-zinc-300">Status</label>
               <select
                 v-model="selectedAdmin.status"
-                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+                :disabled="!canEditPermissionsAndRole"
+                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="ACTIVE">Active</option>
                 <option value="SUSPENDED">Suspended</option>
@@ -248,16 +286,21 @@ onMounted(() => {
 
             <div class="flex flex-col gap-2">
               <label class="text-xs font-medium text-zinc-300">Permissions Matrix</label>
-              <div class="grid grid-cols-1 gap-2 bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 max-h-60 overflow-y-auto">
+              <div
+                class="grid grid-cols-1 gap-2 bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 max-h-60 overflow-y-auto"
+                :class="{ 'opacity-60 pointer-events-none': !canEditPermissionsAndRole }"
+              >
                 <label
                   v-for="p in allPermissions"
                   :key="p.value"
-                  class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"
+                  class="flex items-center gap-2 text-xs text-zinc-300"
+                  :class="canEditPermissionsAndRole ? 'cursor-pointer' : 'cursor-not-allowed'"
                 >
                   <input
                     type="checkbox"
+                    :disabled="!canEditPermissionsAndRole"
                     :checked="selectedAdmin.permission?.includes(p.value)"
-                    class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0"
+                    class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0 disabled:opacity-50"
                     @change="togglePermission(selectedAdmin, p.value)"
                   >
                   <span>{{ p.label }}</span>
@@ -316,7 +359,7 @@ onMounted(() => {
             >
               <option value="MODERATOR">Moderator</option>
               <option value="ADMIN">Admin</option>
-              <option value="SUPER_ADMIN">Super Admin</option>
+              <option v-if="isSuperAdmin" value="SUPER_ADMIN">Super Admin</option>
             </select>
           </div>
 

@@ -33,6 +33,18 @@ async def invite_admin(
     db: AsyncSession = Depends(get_db),
     current_admin: Admin = Depends(require_admin_permission(AdminPermission.MANAGE_ADMINS)),
 ):
+    is_current_super_admin = (
+        current_admin.role == AdminRole.SUPER_ADMIN or
+        getattr(current_admin.role, "value", str(current_admin.role)) == AdminRole.SUPER_ADMIN.value or
+        str(current_admin.role) == "SUPER_ADMIN"
+    )
+
+    if (payload.role == AdminRole.SUPER_ADMIN or getattr(payload.role, "value", str(payload.role)) == AdminRole.SUPER_ADMIN.value) and not is_current_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only super admins can invite another super admin",
+        )
+
     existing = await db.scalar(
         select(Admin).where(Admin.personal_email == payload.personal_email.lower())
     )
@@ -66,7 +78,7 @@ async def invite_admin(
         action="ADMIN_INVITED",
         target_type="admin",
         target_id=new_admin.admin_id,
-        details={"company_email": company_email, "role": payload.role.value},
+        details={"company_email": company_email, "role": payload.role.value if hasattr(payload.role, 'value') else str(payload.role)},
     )
 
     arq_pool = await get_arq_pool()
@@ -106,14 +118,50 @@ async def update_admin(
     if not admin:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin not found")
 
+    is_current_super_admin = (
+        current_admin.role == AdminRole.SUPER_ADMIN or
+        getattr(current_admin.role, "value", str(current_admin.role)) == AdminRole.SUPER_ADMIN.value or
+        str(current_admin.role) == "SUPER_ADMIN"
+    )
+    is_self = (current_admin.admin_id == admin.admin_id)
+    is_target_super_admin = (
+        admin.role == AdminRole.SUPER_ADMIN or
+        getattr(admin.role, "value", str(admin.role)) == AdminRole.SUPER_ADMIN.value or
+        str(admin.role) == "SUPER_ADMIN"
+    )
+
+    if is_self and not is_current_super_admin:
+        if payload.permission is not None or payload.role is not None or payload.status is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admins are not allowed to modify their own permissions, role, or status",
+            )
+
+    if is_target_super_admin and not is_current_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only super admins can modify super admin accounts",
+        )
+
+    if payload.role is not None:
+        is_assigning_super_admin = (
+            payload.role == AdminRole.SUPER_ADMIN or
+            getattr(payload.role, "value", str(payload.role)) == AdminRole.SUPER_ADMIN.value or
+            str(payload.role) == "SUPER_ADMIN"
+        )
+        if is_assigning_super_admin and not is_current_super_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only super admins can assign the super admin role",
+            )
+        admin.role = payload.role
+
     if payload.fullname is not None:
         admin.fullname = payload.fullname
     if payload.personal_email is not None:
         admin.personal_email = payload.personal_email.lower()
     if payload.phone is not None:
         admin.phone = payload.phone
-    if payload.role is not None:
-        admin.role = payload.role
     if payload.permission is not None:
         admin.permission = [p.value if hasattr(p, 'value') else p for p in payload.permission]
     if payload.status is not None:
@@ -145,6 +193,23 @@ async def delete_admin(
     admin = await db.scalar(select(Admin).where(Admin.admin_id == admin_id))
     if not admin:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin not found")
+
+    is_current_super_admin = (
+        current_admin.role == AdminRole.SUPER_ADMIN or
+        getattr(current_admin.role, "value", str(current_admin.role)) == AdminRole.SUPER_ADMIN.value or
+        str(current_admin.role) == "SUPER_ADMIN"
+    )
+    is_target_super_admin = (
+        admin.role == AdminRole.SUPER_ADMIN or
+        getattr(admin.role, "value", str(admin.role)) == AdminRole.SUPER_ADMIN.value or
+        str(admin.role) == "SUPER_ADMIN"
+    )
+
+    if is_target_super_admin and not is_current_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only super admins can delete super admin accounts",
+        )
 
     await db.delete(admin)
     await db.flush()
