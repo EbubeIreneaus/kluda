@@ -101,9 +101,13 @@ async def get_staff(
                 permission=[StaffPermission.RECORD_SALES.value, StaffPermission.VIEW_PRODUCT.value, StaffPermission.MANAGE_PRODUCT.value, StaffPermission.MANAGE_STAFF.value, StaffPermission.MANAGE_USER.value, StaffPermission.VIEW_ANALYTICS.value, "manage:all"],
                 status=StaffStatus.ACTIVE,
                 store_id=None,
-                created_at=getattr(owner_user, "created_at", None)
+                created_at=getattr(owner_user, "created_at", None),
+                pin_hash=getattr(owner_user, "pin_hash", None),
+                pin_salt=getattr(owner_user, "pin_salt", None),
             )
             setattr(owner_staff, "user_id", owner_user.user_id)
+            setattr(owner_staff, "pin_hash", getattr(owner_user, "pin_hash", None))
+            setattr(owner_staff, "pin_salt", getattr(owner_user, "pin_salt", None))
             return owner_staff
 
         raise HTTPException(

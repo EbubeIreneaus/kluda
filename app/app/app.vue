@@ -23,10 +23,11 @@ useSeoMeta({
 
 const isAppReady = ref(true)
 const auth = useAuthStore()
-const { syncStaffCredentials, openSetPinModal } = usePinAuth()
+const { syncStaffCredentials, openSetPinModal, checkTerminalLock } = usePinAuth()
 
 onMounted(async () => {
   if (auth.isLoggedIn) {
+    checkTerminalLock()
     await syncStaffCredentials()
     checkPinStatus()
   }
@@ -34,6 +35,7 @@ onMounted(async () => {
 
 watch(() => auth.isLoggedIn, async (loggedIn) => {
   if (loggedIn) {
+    checkTerminalLock()
     await syncStaffCredentials()
     checkPinStatus()
   }
@@ -43,8 +45,6 @@ function checkPinStatus() {
   if (
     auth.isLoggedIn &&
     auth.staff &&
-    auth.staff.role !== 'owner' &&
-    auth.staff.staff_id !== 'OWNER' &&
     !auth.staff.has_pin &&
     !(auth.staff as any).pin_hash &&
     import.meta.client &&
@@ -61,6 +61,7 @@ function checkPinStatus() {
     <PwaUpdateBanner />
     <PwaInstallModal />
     <PwaStandaloneGatekeeper />
+    <TerminalLockScreen />
     <PinAuthModal />
     <SetPinModal />
     <NetworkStatusBar />

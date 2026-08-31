@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from models.config import get_db
-from models.user import Staff, StaffSession
+from models.user import Staff, StaffSession, User
+from models.business import Store
 from schemas.user import (
     StaffCreate,
     StaffUpdate,
@@ -38,6 +39,20 @@ async def set_my_pin(
     pin_hash = hashlib.sha256((payload.pin + salt).encode()).hexdigest()
 
     if current_staff.staff_id == "OWNER" or getattr(current_staff, "role", None) == "owner":
+        owner_user_id = getattr(current_staff, "user_id", None)
+        if not owner_user_id:
+            owner_user_id = await db.scalar(
+                select(Store.user_id).where(Store.store_id == store.store_id)
+            )
+        if owner_user_id:
+            owner_user = await db.scalar(
+                select(User).where(User.user_id == owner_user_id)
+            )
+            if owner_user:
+                owner_user.pin_salt = salt
+                owner_user.pin_hash = pin_hash
+                await db.flush()
+
         return {
             "status": "ok",
             "success": True,
@@ -50,10 +65,10 @@ async def set_my_pin(
     staff = await db.scalar(
         select(Staff).where(Staff.staff_id == current_staff.staff_id, Staff.store_id == store.store_id)
     )
-    if not staff:
-        staff = await db.scalar(
-            select(Staff).where(Staff.staff_id == current_staff.staff_id)
-        )
+    # if not staff:
+    #     staff = await db.scalar(
+    #         select(Staff).where(Staff.staff_id == current_staff.staff_id)
+    #     )
     if not staff:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff record not found")
 

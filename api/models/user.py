@@ -26,6 +26,8 @@ class User(Base):
     otp_token: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True)
     otp_expires_at: MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password: MappedColumn[str] = mapped_column(String(255), nullable=False)
+    pin_hash: MappedColumn[str | None] = mapped_column(String(255), nullable=True)
+    pin_salt: MappedColumn[str | None] = mapped_column(String(64), nullable=True)
     notification_subscription: MappedColumn[list['UserNotificationSubscription']] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

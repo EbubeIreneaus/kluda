@@ -24,6 +24,7 @@ const modalState = ref<PinModalState>({
 });
 
 const isSettingPinOpen = ref(false);
+const isTerminalLocked = ref(false);
 
 export function usePinAuth() {
   const auth = useAuthStore();
@@ -55,6 +56,23 @@ export function usePinAuth() {
 
   async function syncStaffCredentials(): Promise<void> {
     const storeId = auth.store_id || auth.staff?.store_id;
+    if (auth.staff && auth.staff.staff_id && (auth.staff as any).pin_hash) {
+      try {
+        await db.staffMembers.put({
+          staff_id: auth.staff.staff_id,
+          first_name: auth.staff.first_name,
+          last_name: auth.staff.last_name,
+          role: auth.staff.role,
+          email: auth.staff.email,
+          permission: auth.staff.permission || [],
+          pin_hash: (auth.staff as any).pin_hash || null,
+          pin_salt: (auth.staff as any).pin_salt || null,
+          has_pin: true,
+          status: auth.staff.status,
+        });
+      } catch {}
+    }
+
     if (!storeId || (typeof navigator !== "undefined" && !navigator.onLine))
       return;
     try {
@@ -78,9 +96,7 @@ export function usePinAuth() {
           await db.staffMembers.bulkPut(localMembers);
         }
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   async function setPinOnline(
@@ -114,9 +130,7 @@ export function usePinAuth() {
           if (cached) {
             try {
               auth.staff = JSON.parse(cached);
-            } catch {
-              // ignore
-            }
+            } catch {}
           }
         }
         if (auth.staff) {
@@ -141,9 +155,7 @@ export function usePinAuth() {
                 has_pin: true,
                 status: auth.staff.status,
               });
-            } catch {
-              // ignore
-            }
+            } catch {}
           }
         }
         if (import.meta.client) {
@@ -167,9 +179,16 @@ export function usePinAuth() {
   }
 
   function requirePinAuth(options?: PinAuthOptions): Promise<boolean> {
-    if (auth.staff?.role === "owner" && !(auth.staff as any)?.pin_hash) {
-      return Promise.resolve(true);
+    if (
+      auth.staff &&
+      !auth.staff.has_pin &&
+      !(auth.staff as any)?.pin_hash &&
+      localStorage.getItem("has_set_pin") !== "true"
+    ) {
+      openSetPinModal();
+      return Promise.resolve(false);
     }
+
     return new Promise((resolve) => {
       modalState.value = {
         isOpen: true,
@@ -184,6 +203,38 @@ export function usePinAuth() {
     });
   }
 
+  async function withPinAuth<T>(
+    action: () => T | Promise<T>,
+    options?: PinAuthOptions,
+  ): Promise<T | null> {
+    const isAuthorized = await requirePinAuth(options);
+    if (!isAuthorized) return null;
+    return await action();
+  }
+
+  function checkTerminalLock() {
+    if (import.meta.client && auth.isLoggedIn) {
+      const isUnlocked = sessionStorage.getItem("pos_unlocked") === "true";
+      if (!isUnlocked) {
+        isTerminalLocked.value = true;
+      }
+    }
+  }
+
+  function unlockTerminal() {
+    if (import.meta.client) {
+      sessionStorage.setItem("pos_unlocked", "true");
+    }
+    isTerminalLocked.value = false;
+  }
+
+  function lockTerminal() {
+    if (import.meta.client) {
+      sessionStorage.removeItem("pos_unlocked");
+    }
+    isTerminalLocked.value = true;
+  }
+
   function openSetPinModal() {
     isSettingPinOpen.value = true;
   }
@@ -195,11 +246,16 @@ export function usePinAuth() {
   return {
     modalState,
     isSettingPinOpen,
+    isTerminalLocked,
     computeSha256,
     verifyStaffPin,
     syncStaffCredentials,
     setPinOnline,
     requirePinAuth,
+    withPinAuth,
+    checkTerminalLock,
+    unlockTerminal,
+    lockTerminal,
     openSetPinModal,
     closeSetPinModal,
   };

@@ -10,7 +10,7 @@ const toast = useToast()
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase
 const auth = useAuthStore()
-const { requirePinAuth } = usePinAuth()
+const { withPinAuth } = usePinAuth()
 
 const productStore = useProductsStore()
 
@@ -123,58 +123,62 @@ async function handleApplyAdjustment() {
 
   showConfirmDialog.value = false
 
-  const authorized = await requirePinAuth({
+  await withPinAuth(async () => {
+    isSubmittingAdjustment.value = true
+    try {
+      await productStore.adjustStock({
+        stock_slug: adjustingProduct.value.slug,
+        quantity: Number(adjustForm.value.quantity),
+        action_type: adjustForm.value.action_type,
+        reason: adjustForm.value.reason,
+        note: adjustForm.value.note || undefined
+      })
+      toast.add({
+        title: 'Stock Updated',
+        description: `${adjustingProduct.value.name} quantity successfully updated`,
+        color: 'success'
+      })
+      showConfirmDialog.value = false
+      showAdjustModal.value = false
+    } catch (err: any) {
+      toast.add({
+        title: 'Adjustment Failed',
+        description: err?.data?.detail || 'Could not update stock',
+        color: 'error'
+      })
+    } finally {
+      isSubmittingAdjustment.value = false
+    }
+  }, {
     title: 'Authorize Stock Adjustment',
     description: `Enter your PIN to confirm adjusting ${adjustingProduct.value.name} by ${adjustForm.value.quantity} ${adjustingProduct.value.unit || 'units'}.`,
     requiredPermission: 'manage:product'
   })
-  if (!authorized) {
-    showConfirmDialog.value = true
-    return
-  }
-
-  isSubmittingAdjustment.value = true
-  try {
-    await productStore.adjustStock({
-      stock_slug: adjustingProduct.value.slug,
-      quantity: Number(adjustForm.value.quantity),
-      action_type: adjustForm.value.action_type,
-      reason: adjustForm.value.reason,
-      note: adjustForm.value.note || undefined
-    })
-    toast.add({
-      title: 'Stock Updated',
-      description: `${adjustingProduct.value.name} quantity successfully updated`,
-      color: 'success'
-    })
-    showConfirmDialog.value = false
-    showAdjustModal.value = false
-  } catch (err: any) {
-    toast.add({
-      title: 'Adjustment Failed',
-      description: err?.data?.detail || 'Could not update stock',
-      color: 'error'
-    })
-  } finally {
-    isSubmittingAdjustment.value = false
-  }
 }
 
 async function saveEdit() {
-  try {
-    const updateData = {
-      name: editingProduct.value.name,
-      barcode_id: editingProduct.value.barcode_id || '',
-      unit_price: Math.round(editingProduct.value.price * 100),
-      unit_in: editingProduct.value.unit,
-      description: editingProduct.value.description || ''
+  if (!editingProduct.value) return
+
+  await withPinAuth(async () => {
+    try {
+      const updateData = {
+        name: editingProduct.value.name,
+        barcode_id: editingProduct.value.barcode_id || '',
+        unit_price: Math.round(editingProduct.value.price * 100),
+        unit_in: editingProduct.value.unit,
+        description: editingProduct.value.description || ''
+      }
+      await productStore.updateProduct(editingProduct.value.slug, updateData)
+      toast.add({ title: 'Product updated', color: 'success' })
+      showEditSlideover.value = false
+    } catch (err) {
+      toast.add({ title: 'Error', description: 'Could not update product', color: 'error' })
     }
-    await productStore.updateProduct(editingProduct.value.slug, updateData)
-    toast.add({ title: 'Product updated', color: 'success' })
-    showEditSlideover.value = false
-  } catch (err) {
-    toast.add({ title: 'Error', description: 'Could not update product', color: 'error' })
-  }
+  }, {
+    title: 'Authorize Product Changes',
+    description: `Enter PIN to confirm changes to ${editingProduct.value.name}`,
+    requiredPermission: 'manage:product'
+  })
 }
 
 async function handleAddProduct() {
@@ -197,12 +201,18 @@ async function handleAddProduct() {
 }
 
 async function confirmDelete(product: any) {
-  try {
-    await productStore.deleteProduct(product.slug)
-    toast.add({ title: 'Product removed', description: product.name, color: 'warning' })
-  } catch (err) {
-    toast.add({ title: 'Error', description: 'Could not delete product', color: 'error' })
-  }
+  await withPinAuth(async () => {
+    try {
+      await productStore.deleteProduct(product.slug)
+      toast.add({ title: 'Product removed', description: product.name, color: 'warning' })
+    } catch (err) {
+      toast.add({ title: 'Error', description: 'Could not delete product', color: 'error' })
+    }
+  }, {
+    title: 'Authorize Product Deletion',
+    description: `Enter PIN to permanently delete ${product.name}`,
+    requiredPermission: 'manage:product'
+  })
 }
 
 const isCameraActive = ref(false)
