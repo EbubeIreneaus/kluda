@@ -9,12 +9,15 @@ from datetime import datetime, timezone, timedelta
 from typing import Any
 from sqlalchemy import select, delete, func
 from pywebpush import webpush, WebPushException
+import structlog
 from setting import settings
 from models.config import LocalSession
 from models.user import StaffNotificationSubscription, UserNotificationSubscription, Staff, User, StaffSession, UserSession
 from models.business import Store
 from models.stock import Sale
 from libs.resend import fetch_resend_email_details, download_raw_email
+
+logger = structlog.get_logger()
 
 
 def _execute_webpush(sub_info: dict, payload: dict) -> bool:
@@ -362,18 +365,69 @@ async def process_inbound_resend_email(ctx: dict, email_id: str):
         await db.commit()
 
 
-async def process_resend_event(ctx: dict, event_type: str, data: dict):
-    from models.admin.email import EmailCampaign, EmailCampaignStatus
-    email_id = data.get("email_id") or data.get("id")
-    if not email_id:
+async def sync_outgoing_email_message_id(ctx: dict, resend_id: str):
+    from models.admin.email import EmailMessages
+    import resend
+
+    if not resend_id:
         return
 
+    message_id = None
+    for _ in range(3):
+        try:
+            res = await asyncio.to_thread(resend.Emails.get, resend_id)
+            if isinstance(res, dict):
+                message_id = res.get("message_id")
+            elif hasattr(res, "message_id"):
+                message_id = getattr(res, "message_id")
+            if message_id:
+                break
+        except Exception:
+            pass
+        await asyncio.sleep(2)
+
+    if message_id:
+        async with LocalSession() as db:
+            msg = await db.scalar(
+                select(EmailMessages).where(EmailMessages.resend_id == resend_id)
+            )
+            if msg:
+                msg.mail_id = str(message_id).strip()
+                await db.commit()
+
+
+async def process_resend_event(ctx: dict, event_type: str, data: dict):
+    from models.admin.email import EmailMessages, EmailThread
+    email_id = data.get("email_id") or data.get("id")
+    if not email_id:
+        logger.warning("Resend event received without email_id", event_type=event_type, data=data)
+        return
+
+    logger.info("Processing Resend event", event_type=event_type, email_id=email_id)
+    message_id = data.get("message_id")
+
     async with LocalSession() as db:
-        if event_type == "email.bounced" or event_type == "email.failed":
-            pass
-        elif event_type == "email.delivered":
-            pass
-        await db.commit()
+        msg = await db.scalar(
+            select(EmailMessages).where(EmailMessages.resend_id == email_id)
+        )
+        if msg:
+            if message_id and not msg.mail_id:
+                msg.mail_id = str(message_id).strip()
+
+            if event_type in ("email.bounced", "email.failed"):
+                thread = await db.scalar(
+                    select(EmailThread).where(EmailThread.thread_id == msg.thread_id)
+                )
+                if thread:
+                    bounce_info = data.get("bounce", {})
+                    reason = bounce_info.get("message") or "Delivery failed / bounced"
+                    thread.snippet = f"[Failed: {reason[:100]}]"
+                    logger.warning("Email delivery failure recorded", event_type=event_type, email_id=email_id, thread_id=str(thread.thread_id), reason=reason)
+
+            await db.commit()
+            logger.info("Resend event processed successfully", event_type=event_type, email_id=email_id, message_id=msg.mail_id)
+        else:
+            logger.info("No matching EmailMessages found for Resend event", event_type=event_type, email_id=email_id)
 
 
 async def cron_generate_daily_metrics(ctx: dict):

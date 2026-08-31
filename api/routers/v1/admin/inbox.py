@@ -19,6 +19,7 @@ from schemas.admin.user import AdminPermission, AdminRole
 from libs.deps import get_admin
 from libs.resend import resend_client
 from setting import settings
+from worker.config import get_arq_pool
 
 
 router = APIRouter(prefix="/inbox", tags=["Admin Email Inbox"])
@@ -139,23 +140,22 @@ async def compose_new_email(
             )
 
     resend_id = None
-    if hasattr(settings, "RESEND_API_KEY") and settings.RESEND_API_KEY:
-        try:
-            send_res = resend_client.Emails.send(
-                {
-                    "from": f"{mailbox.name} <{mailbox.email}>",
-                    "to": [payload.to_email],
-                    "subject": payload.subject,
-                    "html": payload.body,
-                }
-            )
-            resend_id = (
-                send_res.get("id")
-                if isinstance(send_res, dict)
-                else getattr(send_res, "id", None)
-            )
-        except Exception:
-            pass
+    
+    try:
+        send_res = resend_client.Emails.send(
+            {
+                "from": f"{mailbox.name} <{mailbox.email}>",
+                "to": [payload.to_email],
+                "subject": payload.subject,
+                "html": payload.body,
+            }
+        )
+        resend_id =  send_res.get("id", None)
+    except Exception as e:
+        
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
 
     now = datetime.now(timezone.utc)
     new_thread = EmailThread(
@@ -175,7 +175,7 @@ async def compose_new_email(
 
     new_message = EmailMessages(
         thread_id=new_thread.thread_id,
-        mail_id=resend_id,
+        resend_id=resend_id,
         recipients=payload.to_email,
         sender=mailbox.email,
         body=payload.body,
@@ -184,6 +184,13 @@ async def compose_new_email(
     )
     db.add(new_message)
     await db.flush()
+
+    if resend_id:
+        try:
+            pool = await get_arq_pool()
+            await pool.enqueue_job("sync_outgoing_email_message_id", resend_id)
+        except Exception:
+            pass
 
     recipient_mailbox = await db.scalar(
         select(EmailMailbox).where(EmailMailbox.email == payload.to_email.lower())
@@ -208,7 +215,7 @@ async def compose_new_email(
 
         incoming_message = EmailMessages(
             thread_id=incoming_thread.thread_id,
-            mail_id=resend_id,
+            resend_id=resend_id,
             recipients=recipient_mailbox.email,
             sender=mailbox.email,
             body=payload.body,
@@ -269,7 +276,7 @@ async def reply_to_thread(
     now = datetime.now(timezone.utc)
     new_message = EmailMessages(
         thread_id=thread.thread_id,
-        mail_id=resend_id,
+        resend_id=resend_id,
         recipients=thread.customer_email,
         sender=sender_email,
         body=payload.body,
@@ -284,6 +291,13 @@ async def reply_to_thread(
     thread.last_message_at = now
     await db.flush()
     await db.refresh(new_message)
+
+    if resend_id:
+        try:
+            pool = await get_arq_pool()
+            await pool.enqueue_job("sync_outgoing_email_message_id", resend_id)
+        except Exception:
+            pass
 
     return new_message
 

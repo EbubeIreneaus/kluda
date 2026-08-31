@@ -13,6 +13,7 @@ from worker.tasks import (
     cron_cleanup_expired_sessions,
     process_inbound_resend_email,
     process_resend_event,
+    sync_outgoing_email_message_id,
 )
 
 REDIS_SETTINGS = RedisSettings.from_dsn(settings.REDIS_URL)
@@ -48,6 +49,7 @@ class WorkerSettings:
         cron_cleanup_expired_sessions,
         process_inbound_resend_email,
         process_resend_event,
+        sync_outgoing_email_message_id,
     ]
     poll_delay = 1
     cron_jobs = [
