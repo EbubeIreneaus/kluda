@@ -136,14 +136,15 @@ export const useAuthStore = defineStore('auth', {
               this.setAuth(refreshRes.access_token || '', refreshRes.staff, refreshRes.store_id)
               return
             }
-          } catch {
-            await this.logout(true)
-            return
+          } catch (refreshErr: any) {
+            const refreshStatus = refreshErr?.response?.status ?? refreshErr?.statusCode ?? refreshErr?.status
+            if (refreshStatus === 401 || refreshStatus === 403) {
+              await this.logout(true)
+              return
+            }
           }
         }
-        if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
-          await this.logout(true)
-        }
+        this.loadFromStorage()
       }
     },
 

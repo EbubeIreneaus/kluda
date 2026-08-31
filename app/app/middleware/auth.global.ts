@@ -1,17 +1,21 @@
 export default defineNuxtRouteMiddleware((to) => {
   const auth = useAuthStore()
-
-  // Load persisted session on every navigation (safe — reads localStorage)
-  auth.loadFromStorage()
-
   const isPublicRoute = to.path === '/login'
 
-  if (!auth.isLoggedIn && !isPublicRoute) {
+  if (import.meta.client) {
+    auth.loadFromStorage()
+  }
+
+  const staffAccessToken = useCookie('staff_access_token')
+  const staffRefreshToken = useCookie('staff_refresh_token')
+  const hasServerSession = !!(staffAccessToken.value || staffRefreshToken.value)
+  const isAuthenticated = auth.isLoggedIn || (import.meta.server && hasServerSession)
+
+  if (!isAuthenticated && !isPublicRoute) {
     return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
   }
 
-  // Redirect already-logged-in users away from login page
-  if (auth.isLoggedIn && to.path === '/login') {
+  if (isAuthenticated && to.path === '/login') {
     return navigateTo('/')
   }
 

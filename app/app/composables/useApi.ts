@@ -28,7 +28,8 @@ export const useApi = () => {
         error?.response?.status ?? error?.statusCode ?? error?.status;
       const isRefreshOrAuthUrl =
         fetchUrl.includes("/staff/auth/refresh-token") ||
-        fetchUrl.includes("/staff/auth/login");
+        fetchUrl.includes("/staff/auth/login") ||
+        fetchUrl.includes("/staff/auth/logout");
 
       if (statusCode === 401 && !isRefreshOrAuthUrl) {
         if (!isRefreshing) {
@@ -53,7 +54,11 @@ export const useApi = () => {
                 return true;
               }
               return false;
-            } catch {
+            } catch (err: any) {
+              const refreshStatus = err?.response?.status ?? err?.statusCode ?? err?.status;
+              if (refreshStatus === 401 || refreshStatus === 403) {
+                await auth.logout(true);
+              }
               return false;
             } finally {
               isRefreshing = false;
@@ -71,11 +76,7 @@ export const useApi = () => {
               ...(options.headers as Record<string, string>),
             },
           });
-        } else {
-          await auth.logout(true);
         }
-      } else if (statusCode === 403) {
-        await auth.logout(true);
       }
       throw error;
     }

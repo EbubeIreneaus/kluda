@@ -130,9 +130,8 @@ onUnmounted(() => {
 });
 
 function handleLogout() {
-  auth.logout();
   unlockTerminal();
-  navigateTo("/auth/login");
+  auth.logout(true);
 }
 </script>
 
