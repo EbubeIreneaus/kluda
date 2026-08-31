@@ -15,25 +15,36 @@ export default defineNuxtConfig({
   },
 
   colorMode: {
-    preference: 'system',
-    fallback: 'light',
-    classSuffix: ''
+    preference: "system",
+    fallback: "light",
+    classSuffix: "",
   },
 
   app: {
     head: {
       link: [
-        { rel: "icon", type: "image/jpeg", href: "/kluda_icon.jpg" }
-      ]
-    }
+        {
+          rel: "icon",
+          type: "image/x-icon",
+          href: "/kluda-icons/favicon.ico",
+        },
+        {
+          rel: "apple-touch-icon",
+          type: "image/png",
+          href: "/kluda-icons/apple-touch-icon.png",
+        },
+      ],
+    },
   },
 
   css: ["~/assets/css/main.css"],
 
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
-      webDashboardUrl: process.env.NUXT_PUBLIC_WEB_URL || "http://localhost:3001",
+      apiBase:
+        process.env.NUXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
+      webDashboardUrl:
+        process.env.NUXT_PUBLIC_WEB_URL || "http://localhost:3001",
     },
   },
 
@@ -59,7 +70,16 @@ export default defineNuxtConfig({
   },
   pwa: {
     registerType: "prompt",
-    includeAssets: ["favicon.svg", "splash.png", "robots.txt", "custom-sw.js"],
+    includeAssets: [
+      "kluda-icons/favicon-32x32.png",
+      "kluda-icons/apple-touch-icon.png",
+      "kluda-icons/favicon.ico",
+      "kluda-icons/64x64.png",
+      "kluda-icons/192x192.png",
+      "kluda-icons/512x512.png",
+      "robots.txt",
+      "custom-sw.js",
+    ],
     manifest: {
       name: "Kluda",
       short_name: "Kluda",
@@ -70,17 +90,17 @@ export default defineNuxtConfig({
       background_color: "#0f172a",
       icons: [
         {
-          src: "/pwa-64x64.png",
+          src: "/kluda-icons/64x64.png",
           sizes: "64x64",
           type: "image/png",
         },
         {
-          src: "/pwa-192x192.png",
+          src: "/kluda-icons/192x192.png",
           sizes: "192x192",
           type: "image/png",
         },
         {
-          src: "/pwa-512x512.png",
+          src: "/kluda-icons/512x512.png",
           sizes: "512x512",
           type: "image/png",
           purpose: "any maskable",

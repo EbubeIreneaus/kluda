@@ -84,7 +84,7 @@ function handleDismiss() {
       <template #body>
         <div class="p-6 flex flex-col items-center text-center space-y-5">
           <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-zinc-950 border border-emerald-500/40 overflow-hidden shadow-xl shadow-emerald-500/20">
-            <img src="/pwa-192x192.png" alt="Kluda Admin" class="w-full h-full object-cover" />
+            <img src="/kluda-icons/192x192.png" alt="Kluda Admin" class="w-full h-full object-cover" />
             <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-700">
               <UIcon name="i-lucide-shield-check" class="w-3.5 h-3.5 text-emerald-400" />
             </div>

@@ -75,7 +75,7 @@ function checkPinStatus() {
           <div class="absolute -inset-4 rounded-full bg-emerald-500/20 blur-2xl animate-pulse" />
 
           <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-[#090d16] border border-emerald-500/40 text-white font-extrabold text-3xl shadow-xl shadow-emerald-500/30 ring-1 ring-white/20 mb-5 overflow-hidden">
-            <img src="/kluda_icon.jpg" alt="Kluda" class="w-full h-full object-cover" />
+            <img src="/kluda-icons/192x192.png" alt="Kluda" class="w-full h-full object-cover" />
           </div>
 
           <h1 class="text-2xl font-bold tracking-tight text-white">Kluda</h1>
