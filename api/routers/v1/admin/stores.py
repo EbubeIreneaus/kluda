@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from models.config import get_db
 from models.business import Store
-from models.user import User, Staff
+from models.user import User, StoreMember
 from models.stock import Stock, Sale
 from models.admin.user import Admin
 from schemas.admin.store import AdminStoreListItem, AdminStoreDetailResponse, AdminStoreStatusUpdateRequest

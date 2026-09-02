@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from models.config import get_db
 from models.business import Store
 from models.stock import Sale, Stock
-from models.user import User, Staff
+from models.user import User, StoreMember
 from models.admin.ticket import SupportTicket, TicketStatus
 from models.admin.email import EmailThread, EmailThreadStatus
 from models.admin.metric import DailyPlatformMetric

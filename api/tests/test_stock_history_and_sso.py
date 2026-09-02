@@ -93,13 +93,8 @@ async def test_sso_ticket_lifecycle_and_exchange(client: AsyncClient, seed_data:
 @pytest.mark.asyncio
 async def test_universal_login_with_owner_email(client: AsyncClient, seed_data: dict):
     owner = seed_data["owner"]
-    login_payload = {
-        "staff_id": owner.email,
-        "password": "password123"
-    }
-    res = await client.post("/api/v1/staff/auth/login", json=login_payload)
+    res = await client.post("/api/v1/auth/login", json={"email": owner.email, "password": "password123"})
     assert res.status_code == 200
     data = res.json()
     assert data["success"] is True
-    assert data["staff"]["role"] == "owner"
     assert len(data["stores"]) >= 1

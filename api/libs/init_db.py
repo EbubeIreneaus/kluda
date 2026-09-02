@@ -1,31 +1,27 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from models.user import Staff
-from schemas.user import StaffPermission, StaffStatus
+from models.user import User
+from schemas.user import UserStatus
 from libs.security import hash_password
 from setting import settings
 
 
-async def create_super_staff(db: AsyncSession) -> Staff:
+async def create_super_user(db: AsyncSession) -> User:
     res = await db.execute(
-        select(Staff).where(Staff.email == settings.SUPER_STAFF_EMAIL)
+        select(User).where(User.email == settings.SUPER_STAFF_EMAIL)
     )
-    existing_staff = res.scalar_one_or_none()
+    existing_user = res.scalar_one_or_none()
 
-    if existing_staff:
-        return existing_staff
+    if existing_user:
+        return existing_user
 
-    super_staff = Staff(
-        staff_id="STF0001",
-        first_name=settings.SUPER_STAFF_NAME,
-        last_name="SuperAdmin",
+    super_user = User(
+        fullname=settings.SUPER_STAFF_NAME or "Super Admin",
         email=settings.SUPER_STAFF_EMAIL,
-        password=hash_password(settings.SUPER_STAFF_PASSWORD),
-        role="superadmin",
-        permission=[StaffPermission.MANAGE_ALL],
-        status=StaffStatus.ACTIVE,
+        password=hash_password(settings.SUPER_STAFF_PASSWORD or "Password123!"),
+        status=UserStatus.ACTIVE,
     )
 
-    db.add(super_staff)
+    db.add(super_user)
     await db.flush()
-    return super_staff
+    return super_user

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.pool import StaticPool
 
 from models.config import Base, get_db
-from models.user import User, Staff, UserSession, StaffSession, Customer
+from models.user import User, UserSession, Customer, StoreMember
 from models.business import Store
 from models.stock import Stock, Sale, SaleItem
 from libs.security import hash_password, create_access_token, hash_token
@@ -90,43 +90,54 @@ async def seed_data(db_session: AsyncSession):
     db_session.add_all([store_1, store_2])
     await db_session.flush()
 
-    staff_1 = Staff(
-        staff_id=f"STF{uid[:3]}1",
-        first_name="Alice",
-        last_name="Cashier",
-        role="cashier",
+    staff_user_1 = User(
+        user_id=uuid.uuid4(),
+        fullname="Alice Cashier",
         email=f"alice_{uid}@alpha.com",
         password=hash_password("staffpass1"),
-        permission=[StaffPermission.RECORD_SALES.value, StaffPermission.VIEW_PRODUCT.value],
-        status=StaffStatus.ACTIVE,
-        store_id=store_1.store_id
+        status=UserStatus.ACTIVE
     )
-    staff_2 = Staff(
-        staff_id=f"STF{uid[:3]}2",
-        first_name="Bob",
-        last_name="Manager",
-        role="manager",
+    staff_user_2 = User(
+        user_id=uuid.uuid4(),
+        fullname="Bob Manager",
         email=f"bob_{uid}@beta.com",
         password=hash_password("staffpass2"),
-        permission=[StaffPermission.RECORD_SALES.value, StaffPermission.MANAGE_PRODUCT.value, StaffPermission.MANAGE_STAFF.value],
-        status=StaffStatus.ACTIVE,
-        store_id=store_2.store_id
+        status=UserStatus.ACTIVE
     )
-    db_session.add_all([staff_1, staff_2])
+    db_session.add_all([staff_user_1, staff_user_2])
     await db_session.flush()
 
-    session_1 = StaffSession(
+    member_1 = StoreMember(
+        store_id=store_1.store_id,
+        user_id=staff_user_1.user_id,
+        role="cashier",
+        display_name="Alice",
+        permission=[StaffPermission.RECORD_SALES.value, StaffPermission.VIEW_PRODUCT.value],
+        status=StaffStatus.ACTIVE
+    )
+    member_2 = StoreMember(
+        store_id=store_2.store_id,
+        user_id=staff_user_2.user_id,
+        role="manager",
+        display_name="Bob",
+        permission=[StaffPermission.RECORD_SALES.value, StaffPermission.MANAGE_PRODUCT.value, StaffPermission.MANAGE_STAFF.value],
+        status=StaffStatus.ACTIVE
+    )
+    db_session.add_all([member_1, member_2])
+    await db_session.flush()
+
+    session_1 = UserSession(
         session_id=uuid.uuid4(),
-        staff_id=staff_1.staff_id,
+        user_id=staff_user_1.user_id,
         refresh_token_hash=hash_token(f"mock_ref_1_{uid}"),
         expired_at=datetime.now(timezone.utc) + timedelta(days=7),
         created_at=datetime.now(timezone.utc),
         ip_address="127.0.0.1",
         user_agent="pytest"
     )
-    session_2 = StaffSession(
+    session_2 = UserSession(
         session_id=uuid.uuid4(),
-        staff_id=staff_2.staff_id,
+        user_id=staff_user_2.user_id,
         refresh_token_hash=hash_token(f"mock_ref_2_{uid}"),
         expired_at=datetime.now(timezone.utc) + timedelta(days=7),
         created_at=datetime.now(timezone.utc),
@@ -136,10 +147,10 @@ async def seed_data(db_session: AsyncSession):
     db_session.add_all([session_1, session_2])
     await db_session.flush()
 
-    token_1 = create_access_token({"sub": staff_1.staff_id, "session_id": str(session_1.session_id)})
-    token_2 = create_access_token({"sub": staff_2.staff_id, "session_id": str(session_2.session_id)})
-    staff_1.access_token = token_1
-    staff_2.access_token = token_2
+    token_1 = create_access_token({"sub": str(staff_user_1.user_id), "session_id": str(session_1.session_id)})
+    token_2 = create_access_token({"sub": str(staff_user_2.user_id), "session_id": str(session_2.session_id)})
+    staff_user_1.access_token = token_1
+    staff_user_2.access_token = token_2
 
     product_1 = Stock(
         name="Milo 500g",
@@ -166,8 +177,10 @@ async def seed_data(db_session: AsyncSession):
         "owner": owner,
         "store_1": store_1,
         "store_2": store_2,
-        "staff_1": staff_1,
-        "staff_2": staff_2,
+        "staff_1": staff_user_1,
+        "staff_2": staff_user_2,
+        "member_1": member_1,
+        "member_2": member_2,
         "session_1": session_1,
         "session_2": session_2,
         "token_1": token_1,

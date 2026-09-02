@@ -82,11 +82,11 @@ function handleComplete(mode: 'staff' | 'merchant') {
 }
 
 function onTouchStart(e: TouchEvent) {
-  touchStartX = e.changedTouches[0].screenX
+  touchStartX = e.changedTouches?.[0]?.screenX ?? 0
 }
 
 function onTouchEnd(e: TouchEvent) {
-  touchEndX = e.changedTouches[0].screenX
+  touchEndX = e.changedTouches?.[0]?.screenX ?? 0
   handleSwipe()
 }
 
@@ -130,7 +130,7 @@ onUnmounted(() => {
   >
     <div
       class="absolute inset-0 pointer-events-none transition-all duration-700 ease-out"
-      :style="{ background: slides[currentSlide].bgGradient }"
+      :style="{ background: slides[currentSlide]?.bgGradient || '' }"
     />
 
     <div class="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-60" />
@@ -138,7 +138,7 @@ onUnmounted(() => {
     <div
       :class="[
         'absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl pointer-events-none transition-all duration-700 opacity-60',
-        slides[currentSlide].ambientGlow
+        slides[currentSlide]?.ambientGlow || ''
       ]"
     />
 

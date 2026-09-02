@@ -8,8 +8,8 @@ from models.config import get_db
 from models.stock import Stock, StockHistory
 from schemas.stock import StockCreate, StockUpdate, StockResponse, StockHistoryCreate, StockHistoryResponse
 from schemas.user import StaffPermission
-from models.user import Staff
-from libs.deps import require_permission, get_staff, get_staff_store
+from models.user import User
+from libs.deps import require_permission, get_staff_store, get_current_user
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from libs.ws_manager import manager as ws_manager
@@ -33,7 +33,7 @@ async def create_stock(
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
     staff_id: str = Query(default="unknown", description="Staff ID for WS broadcast exclusion"),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
 ):
     barcode = stock_data.barcode_id.strip() if stock_data.barcode_id and stock_data.barcode_id.strip() else None
     if barcode:
@@ -82,7 +82,7 @@ async def create_stock_history(
     history_data: StockHistoryCreate,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    staff: Staff = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+    user: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
 ):
     res = await db.execute(
         select(Stock).where(
@@ -112,17 +112,13 @@ async def create_stock_history(
 
     product.quantities = new_qty
 
-    staff_id_val = getattr(staff, "staff_id", None)
-    if staff_id_val == "OWNER":
-        staff_id_val = None
-
     history_record = StockHistory(
         stock_slug=history_data.stock_slug,
         quantity=history_data.quantity,
         action_type=history_data.action_type,
         reason=history_data.reason,
         note=history_data.note,
-        staff_id=staff_id_val,
+        user_id=user.user_id,
         store_id=store.store_id
     )
     db.add(history_record)
@@ -148,7 +144,7 @@ async def get_stock_histories(
     limit: int = Query(50, ge=1, le=200),
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
+    _: User = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
 ):
     stmt = select(StockHistory).where(StockHistory.store_id == store.store_id).order_by(StockHistory.created_at.desc()).limit(limit)
     if slug:
@@ -166,7 +162,7 @@ async def get_stocks(
         None, description="Search products by name, description, SKU or barcode"
     ),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
+    _: User = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
 ):
     stmt = select(Stock).where(Stock.deleted == False, Stock.store_id == store.store_id)
 
@@ -206,7 +202,7 @@ async def get_stock(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
+    _: User = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
 ):
     res = await db.execute(
         select(Stock).where(Stock.slug == slug, Stock.deleted == False, Stock.store_id == store.store_id)
@@ -230,7 +226,7 @@ async def update_stock(
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
     staff_id: str = Query(default="unknown", description="Staff ID for WS broadcast exclusion"),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
 ):
     res = await db.execute(select(Stock).where(Stock.slug == slug, Stock.store_id == store.store_id))
     stock = res.scalar_one_or_none()
@@ -279,7 +275,7 @@ async def delete_stock(
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
     staff_id: str = Query(default="unknown", description="Staff ID for WS broadcast exclusion"),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
 ):
     res = await db.execute(select(Stock).where(Stock.slug == slug, Stock.store_id==store.store_id))
     stock = res.scalar_one_or_none()

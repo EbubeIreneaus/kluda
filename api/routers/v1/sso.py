@@ -10,9 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from models.config import get_db
-from models.user import User, UserSession, Staff, StaffSession
+from models.user import User, UserSession
 from models.business import Store
-from schemas.user import UserResponseMini, StaffResponse
+from schemas.user import UserResponseMini
 from schemas.business import StoreResponseMini
 from libs.security import (
     create_access_token,
@@ -61,43 +61,14 @@ async def generate_sso_ticket(
     ticket = f"sso_{secrets.token_urlsafe(32)}"
     expires_at = time.time() + 60
 
-    try:
-        staff = await get_staff(request=request, token=token, db=db)
-        user_id = None
-        if hasattr(staff, "user_id") and staff.user_id:
-            user_id = str(staff.user_id)
-        elif staff.store_id:
-            store_res = await db.execute(select(Store).where(Store.store_id == staff.store_id))
-            store = store_res.scalar_one_or_none()
-            if store and store.user_id:
-                user_id = str(store.user_id)
-
-        sso_tickets[ticket] = {
-            "type": "staff",
-            "staff_id": staff.staff_id,
-            "user_id": user_id,
-            "store_id": str(staff.store_id) if staff.store_id else None,
-            "role": staff.role,
-            "expires_at": expires_at
-        }
-        return {"ticket": ticket, "expires_in": 60}
-    except Exception:
-        pass
-
-    try:
-        user = await get_user(request=request, token=token, db=db)
-        sso_tickets[ticket] = {
-            "type": "user",
-            "user_id": str(user.user_id),
-            "email": user.email,
-            "expires_at": expires_at
-        }
-        return {"ticket": ticket, "expires_in": 60}
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid session token for SSO ticket generation"
-        )
+    user = await get_user(request=request, token=token, db=db)
+    sso_tickets[ticket] = {
+        "type": "user",
+        "user_id": str(user.user_id),
+        "email": user.email,
+        "expires_at": expires_at
+    }
+    return {"ticket": ticket, "expires_in": 60}
 
 
 @router.post("/exchange")
@@ -171,7 +142,8 @@ async def exchange_sso_ticket(
         token_payload, expires_delta=timedelta(hours=1)
     )
     user_payload = UserResponseMini.model_validate(user).model_dump(mode="json")
-    stores_payload = [StoreResponseMini.model_validate(s).model_dump(mode="json") for s in (user.stores or [])]
+    from routers.v1.auth import get_user_stores
+    stores_payload = await get_user_stores(user.user_id, db)
 
     await db.commit()
 

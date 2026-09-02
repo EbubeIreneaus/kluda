@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from sqlalchemy.orm import joinedload
 from models.config import get_db
-from models.user import Customer, Debt, Staff
+from models.user import Customer, Debt, User
 from schemas.user import (
     CustomerCreate,
     CustomerUpdate,
@@ -18,9 +18,7 @@ from schemas.user import (
     CustomerStatus,
     StaffPermission,
 )
-from libs.deps import require_permission, get_staff, get_staff_store
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
+from libs.deps import require_permission, get_staff_store, get_current_user
 from libs.ws_manager import manager as ws_manager
 
 router = APIRouter(prefix="/{store_id}/customer", tags=["Customer"])
@@ -36,7 +34,7 @@ async def create_customer(
     staff_id: str = Query(
         default="unknown", description="Staff ID for WS broadcast exclusion"
     ),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_USER)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_USER)),
 ):
     existing = await db.execute(
         select(Customer).where(
@@ -82,7 +80,7 @@ async def get_customers(
         None, description="Search customers by fullname, email, phone or address"
     ),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(get_staff),
+    _: User = Depends(get_current_user),
 ):
     stmt = select(Customer).where(Customer.store_id == store.store_id, Customer.status == CustomerStatus.ACTIVE)
 
@@ -122,7 +120,7 @@ async def get_customer(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(get_staff),
+    _: User = Depends(get_current_user),
 ):
     res = await db.execute(
         select(Customer).where(
@@ -150,7 +148,7 @@ async def update_customer(
     staff_id: str = Query(
         default="unknown", description="Staff ID for WS broadcast exclusion"
     ),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_USER)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_USER)),
 ):
     res = await db.execute(
         select(Customer).where(
@@ -191,7 +189,7 @@ async def delete_customer(
     staff_id: str = Query(
         default="unknown", description="Staff ID for WS broadcast exclusion"
     ),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_USER)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_USER)),
 ):
     res = await db.execute(
         select(Customer).where(
@@ -215,12 +213,11 @@ async def delete_customer(
     return {"message": f"Customer '{customer_id}' deactivated successfully"}
 
 
+router_debt = APIRouter(prefix="/{store_id}/debt", tags=["Debt"])
 
-router2 = APIRouter(prefix="/{store_id}/debt", tags=["Debt"])
 
-
-@router2.post("", response_model=DebtResponse, status_code=status.HTTP_201_CREATED)
-@router2.post("/", response_model=DebtResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+@router_debt.post("", response_model=DebtResponse, status_code=status.HTTP_201_CREATED)
+@router_debt.post("/", response_model=DebtResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_debt(
     store_id: uuid.UUID,
     debt_data: DebtCreate,
@@ -229,7 +226,7 @@ async def create_debt(
     staff_id: str = Query(
         default="unknown", description="Staff ID for WS broadcast exclusion"
     ),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_USER)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_USER)),
 ):
     customer = None
     if debt_data.customer_id:
@@ -272,8 +269,8 @@ async def create_debt(
     return new_debt
 
 
-@router2.get("", response_model=list[DebtResponse])
-@router2.get("/", response_model=list[DebtResponse], include_in_schema=False)
+@router_debt.get("", response_model=list[DebtResponse])
+@router_debt.get("/", response_model=list[DebtResponse], include_in_schema=False)
 async def get_debts(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),
@@ -281,7 +278,7 @@ async def get_debts(
         None, description="Search debts by staff_note or status"
     ),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(get_staff),
+    _: User = Depends(get_current_user),
 ):
     stmt = (
         select(Debt)
@@ -315,13 +312,13 @@ async def get_debts(
     return results.all()
 
 
-@router2.get("/{debt_id}", response_model=DebtResponse)
+@router_debt.get("/{debt_id}", response_model=DebtResponse)
 async def get_debt(
     store_id: uuid.UUID,
     debt_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(get_staff),
+    _: User = Depends(get_current_user),
 ):
     res = await db.execute(
         select(Debt)
@@ -339,7 +336,7 @@ async def get_debt(
     return debt
 
 
-@router2.put("/{debt_id}")
+@router_debt.put("/{debt_id}")
 async def update_debt(
     debt_id: uuid.UUID,
     update_data: DebtUpdate,
@@ -349,7 +346,7 @@ async def update_debt(
     staff_id: str = Query(
         default="unknown", description="Staff ID for WS broadcast exclusion"
     ),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_USER)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_USER)),
 ):
     res = await db.execute(
         select(Debt)
@@ -379,7 +376,7 @@ async def update_debt(
     return {"success": True}
 
 
-@router2.delete("/{debt_id}")
+@router_debt.delete("/{debt_id}")
 async def delete_debt(
     store_id: uuid.UUID,
     debt_id: uuid.UUID,
@@ -388,7 +385,7 @@ async def delete_debt(
     staff_id: str = Query(
         default="unknown", description="Staff ID for WS broadcast exclusion"
     ),
-    _: Staff = Depends(require_permission(StaffPermission.MANAGE_USER)),
+    _: User = Depends(require_permission(StaffPermission.MANAGE_USER)),
 ):
     res = await db.execute(
         select(Debt)

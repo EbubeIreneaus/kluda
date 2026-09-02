@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .user import Customer, Staff
+    from .user import Customer, User
     from .business import Store
 
 
@@ -63,13 +63,13 @@ class StockHistory(Base):
     )
     stock: MappedColumn["Stock"] = relationship()
     quantity: MappedColumn[float] = mapped_column(Numeric(precision=8, scale=2), default=1) 
-    staff_id: MappedColumn[str] = mapped_column(ForeignKey("staffs.staff_id"), nullable=True)
+    user_id: MappedColumn[uuid.UUID | None] = mapped_column(ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True, index=True)
     store_id: MappedColumn[uuid.UUID] = mapped_column(
         ForeignKey("stores.store_id", ondelete="CASCADE"),
         index=True
     )
     store: MappedColumn["Store"] = relationship(back_populates="stock_histories")
-    staff: MappedColumn['Staff'] = relationship()
+    user: MappedColumn['User'] = relationship()
     reason: MappedColumn[
         Literal['restock', "damage", "adjustment", "return"]
     ] = mapped_column(String(20), default="restock")
@@ -109,6 +109,10 @@ class Sale(Base):
         index=True
     )
     store: MappedColumn["Store"] = relationship(back_populates="sales")
+    user_id: MappedColumn[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    user: MappedColumn["User"] = relationship()
     discount: MappedColumn[int] = mapped_column(Integer, default=0)
     customer_id: MappedColumn[str | None] = mapped_column(
         ForeignKey("customers.customer_id"), nullable=True

@@ -2,8 +2,6 @@
 import { ref, computed, nextTick, watch } from 'vue'
 import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library'
 
-definePageMeta({ layout: 'dashboard' })
-
 const { format } = useFormatCurrency()
 const toast = useToast()
 

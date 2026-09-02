@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-definePageMeta({ layout: 'dashboard' })
-
 const auth = useAuthStore()
 const toast = useToast()
 const config = useRuntimeConfig()

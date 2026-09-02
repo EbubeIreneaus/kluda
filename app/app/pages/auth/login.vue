@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'auth' })
 
 const staffId = ref('')
 const password = ref('')
@@ -28,30 +28,20 @@ onMounted(() => {
 function handleOnboardingComplete(mode: 'staff' | 'merchant') {
   showOnboarding.value = false
   if (mode === 'merchant') {
-    openMerchantRegister()
+    navigateTo('/register')
   }
-}
-
-function openMerchantRegister() {
-  let webUrl = (config.public.webDashboardUrl as string) || ''
-  if (!webUrl || (webUrl.includes('localhost') && window.location.hostname !== 'localhost')) {
-    const origin = window.location.origin
-    webUrl = origin.replace('app.', '').replace('pos.', '')
-  }
-  window.open(`${webUrl}/register`, '_blank')
 }
 
 async function handleLogin() {
   errorMsg.value = ''
   isLoading.value = true
   const identifier = staffId.value.trim()
-  const formattedId = identifier.includes('@') ? identifier : identifier.toUpperCase()
 
   try {
-    const data = await $fetch<{ access_token?: string, refresh_token?: string, staff: any, store_id?: string, stores?: any[], success: boolean }>(`${config.public.apiBase}/staff/auth/login`, {
+    const data = await $fetch<{ access_token?: string, refresh_token?: string, staff: any, store_id?: string, stores?: any[], success: boolean }>(`${config.public.apiBase}/auth/login`, {
       method: 'POST',
       credentials: 'include',
-      body: { staff_id: formattedId, password: password.value }
+      body: { email: identifier, password: password.value }
     })
 
     if (data.stores && data.stores.length > 1) {
@@ -68,7 +58,7 @@ async function handleLogin() {
     toast.add({ title: 'Welcome back!', description: `Logged in as ${data.staff?.first_name || 'User'}`, color: 'success' })
     await navigateTo('/')
   } catch (err: any) {
-    errorMsg.value = err?.data?.detail || 'Invalid login identifier or password'
+    errorMsg.value = err?.data?.detail || 'Invalid email or password'
     toast.add({ title: 'Login failed', description: errorMsg.value, color: 'error' })
   } finally {
     isLoading.value = false
@@ -127,19 +117,25 @@ async function selectStoreAndProceed(store: any) {
           </div>
 
           <form class="space-y-5" @submit.prevent="handleLogin">
-            <UFormField label="Staff ID or Owner Email" class="text-green-100">
+            <UFormField label="Account Email" class="text-green-100">
               <UInput
                 v-model="staffId"
-                type="text"
-                placeholder="e.g. STF1001 or owner@example.com"
-                icon="i-lucide-user"
+                type="email"
+                placeholder="e.g. user@example.com"
+                icon="i-lucide-mail"
                 size="lg"
                 required
-                autocomplete="username"
+                autocomplete="email"
               />
             </UFormField>
 
-            <UFormField label="Password" class="text-green-100">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="block text-sm font-medium text-green-100">Password</label>
+                <NuxtLink to="/auth/forgot-password" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+                  Forgot password?
+                </NuxtLink>
+              </div>
               <UInput
                 v-model="password"
                 type="password"
@@ -149,7 +145,7 @@ async function selectStoreAndProceed(store: any) {
                 required
                 autocomplete="current-password"
               />
-            </UFormField>
+            </div>
 
             <div v-if="errorMsg" class="text-red-400 text-sm flex items-center gap-2">
               <UIcon name="i-lucide-alert-circle" class="w-4 h-4 shrink-0" />
@@ -170,14 +166,15 @@ async function selectStoreAndProceed(store: any) {
 
           <div class="pt-2 border-t border-white/10 text-center space-y-2">
             <p class="text-xs text-zinc-400">Want to start a new retail store?</p>
-            <button
-              type="button"
-              class="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-all flex items-center justify-center gap-2"
-              @click="openMerchantRegister"
-            >
-              <UIcon name="i-lucide-store" class="w-4 h-4" />
-              Create Merchant Account &rarr;
-            </button>
+            <NuxtLink to="/auth/register" class="block w-full">
+              <button
+                type="button"
+                class="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <UIcon name="i-lucide-store" class="w-4 h-4" />
+                Create Free Store & Account &rarr;
+              </button>
+            </NuxtLink>
           </div>
         </div>
       </div>
@@ -185,7 +182,7 @@ async function selectStoreAndProceed(store: any) {
       <UModal v-model:open="showStorePicker" title="Select Store Terminal">
         <template #body>
           <div class="p-5 space-y-4">
-            <p class="text-sm text-(--ui-text-muted)">Your owner account has multiple stores. Select which store you want to open in this POS terminal:</p>
+            <p class="text-sm text-(--ui-text-muted)">Your account is connected to multiple stores. Select which store you want to open in this POS terminal:</p>
             <div class="space-y-2 max-h-60 overflow-y-auto">
               <button
                 v-for="store in availableStores"

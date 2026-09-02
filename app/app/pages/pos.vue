@@ -2,8 +2,6 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library'
 
-definePageMeta({ layout: 'dashboard' })
-
 const cart = useCartStore()
 const salesStore = useSalesStore()
 const { format } = useFormatCurrency()
@@ -30,6 +28,7 @@ const showCustomerSearch = ref(false)
 const customerSearch = ref('')
 
 const productStore = useProductsStore()
+const { playScanSound } = useAudioChime()
 
 const {customers:fetchedCustomers} = storeToRefs(useCustomerStore())
 
@@ -72,6 +71,8 @@ function handleScannedBarcode(code: string) {
     const existing = cart.items.find(item => item.slug === product.slug)
     cart.addItem(product)
     
+    playScanSound(true)
+
     try {
       vibrate()
     } catch (e) {
@@ -96,7 +97,8 @@ function handleScannedBarcode(code: string) {
       })
     }
   } else {
-    // Failure feedback (double pulse vibration)
+    playScanSound(false)
+
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([100, 50, 100])

@@ -12,7 +12,7 @@ from pywebpush import webpush, WebPushException
 import structlog
 from setting import settings
 from models.config import LocalSession
-from models.user import StaffNotificationSubscription, UserNotificationSubscription, Staff, User, StaffSession, UserSession
+from models.user import UserNotificationSubscription, User, UserSession, StoreMember
 from models.business import Store
 from models.stock import Sale
 from libs.resend import fetch_resend_email_details, download_raw_email
@@ -55,27 +55,19 @@ async def notify_staff_store(
     payload = {"title": title, "body": body, "data": data or {}}
     async with LocalSession() as db:
         target_store_id = uuid.UUID(str(store_id))
-        stmt = (
-            select(StaffNotificationSubscription, Staff)
-            .join(Staff, Staff.staff_id == StaffNotificationSubscription.staff_id)
-            .where(Staff.store_id == target_store_id)
-        )
-        res = await db.execute(stmt)
-        subs = res.all()
+        store_res = await db.execute(select(Store).where(Store.store_id == target_store_id))
+        store = store_res.scalar_one_or_none()
 
-        dead_subs = []
-        for sub_rec, _ in subs:
-            success = await send_push_notification(ctx, sub_rec.sub_info, payload)
-            if not success:
-                dead_subs.append(sub_rec.id)
+        user_ids = set()
+        if store and store.user_id:
+            user_ids.add(store.user_id)
 
-        if dead_subs:
-            await db.execute(
-                delete(StaffNotificationSubscription).where(
-                    StaffNotificationSubscription.id.in_(dead_subs)
-                )
-            )
-            await db.commit()
+        member_res = await db.execute(select(StoreMember.user_id).where(StoreMember.store_id == target_store_id))
+        for m_uid in member_res.scalars().all():
+            user_ids.add(m_uid)
+
+        for uid in user_ids:
+            await notify_user_personal(ctx, str(uid), title, body, data)
 
 
 async def notify_user_personal(
@@ -156,9 +148,6 @@ async def cron_cleanup_expired_sessions(ctx: dict):
     now = datetime.now(timezone.utc)
     async with LocalSession() as db:
         await db.execute(
-            delete(StaffSession).where(StaffSession.expired_at < now)
-        )
-        await db.execute(
             delete(UserSession).where(UserSession.expired_at < now)
         )
         await db.commit()
@@ -176,18 +165,22 @@ async def send_admin_email_campaign(ctx: dict, campaign_id_str: str):
         target = campaign.target_audience or "all_merchants"
         recipients_set = set()
 
-        if target in ["all_merchants", "all"]:
+        if target in ["all_merchants", "all", "all_users"]:
             users = (await db.scalars(select(User.email).where(User.status == "ACTIVE"))).all()
             for u in users:
                 if u:
                     recipients_set.add(u)
         elif target == "all_staff":
-            staffs = (await db.scalars(select(Staff.phone))).all()
-        elif target == "all_users":
-            users = (await db.scalars(select(User.email).where(User.status == "ACTIVE"))).all()
-            for u in users:
-                if u:
-                    recipients_set.add(u)
+            staff_emails = (
+                await db.scalars(
+                    select(User.email)
+                    .join(StoreMember, StoreMember.user_id == User.user_id)
+                    .where(StoreMember.status == "ACTIVE")
+                )
+            ).all()
+            for s in staff_emails:
+                if s:
+                    recipients_set.add(s)
         elif target.startswith("specific_store:"):
             store_id_str = target.split(":", 1)[1]
             try:
@@ -197,6 +190,16 @@ async def send_admin_email_campaign(ctx: dict, campaign_id_str: str):
                     owner = await db.scalar(select(User).where(User.user_id == st.user_id))
                     if owner and owner.email:
                         recipients_set.add(owner.email)
+                m_emails = (
+                    await db.scalars(
+                        select(User.email)
+                        .join(StoreMember, StoreMember.user_id == User.user_id)
+                        .where(StoreMember.store_id == sid, StoreMember.status == "ACTIVE")
+                    )
+                ).all()
+                for me in m_emails:
+                    if me:
+                        recipients_set.add(me)
             except Exception:
                 pass
         elif "@" in target:
