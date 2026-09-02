@@ -1,6 +1,3 @@
-let isRefreshing = false;
-let refreshPromise: Promise<boolean> | null = null;
-
 export const useApi = () => {
   async function api<T extends Record<string, any>>(
     url: string,
@@ -32,42 +29,7 @@ export const useApi = () => {
         fetchUrl.includes("/staff/auth/logout");
 
       if (statusCode === 401 && !isRefreshOrAuthUrl) {
-        if (!isRefreshing) {
-          isRefreshing = true;
-          refreshPromise = (async () => {
-            try {
-              const res = await $fetch<{
-                success: boolean;
-                staff?: any;
-                access_token?: string;
-                store_id?: string;
-              }>(`${config.public.apiBase}/staff/auth/refresh-token`, {
-                method: "POST",
-                credentials: "include",
-              });
-              if (res && res.success && res.staff) {
-                auth.setAuth(
-                  res.access_token || auth.token || "",
-                  res.staff,
-                  (res.store_id || auth.store_id) as string
-                );
-                return true;
-              }
-              return false;
-            } catch (err: any) {
-              const refreshStatus = err?.response?.status ?? err?.statusCode ?? err?.status;
-              if (refreshStatus === 401 || refreshStatus === 403) {
-                await auth.logout(true);
-              }
-              return false;
-            } finally {
-              isRefreshing = false;
-              refreshPromise = null;
-            }
-          })();
-        }
-
-        const refreshed = await refreshPromise;
+        const refreshed = await auth.refreshToken();
         if (refreshed) {
           return await $fetch<T>(fetchUrl, {
             ...requestOptions,

@@ -3,7 +3,8 @@ import secrets
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, status, Request, Response, Cookie, Header
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from pydantic import BaseModel
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from models.config import get_db
 from models.user import Staff, StaffSession, User, UserSession
@@ -32,6 +33,10 @@ from libs.deps import get_staff
 from libs.notification_manager import notification_manager
 
 router = APIRouter(prefix="/staff/auth", tags=["Auth"])
+
+
+class RefreshTokenPayload(BaseModel):
+    refresh_token: str | None = None
 
 
 @router.post("/login")
@@ -122,6 +127,7 @@ async def login(
         return {
             "success": True,
             "access_token": access_token,
+            "refresh_token": raw_refresh_token,
             "store_id": primary_store_id,
             "stores": store_list,
             "staff": {
@@ -213,6 +219,7 @@ async def login(
     return {
         "success": True,
         "access_token": access_token,
+        "refresh_token": raw_refresh_token,
         "store_id": staff_store_id,
         "staff": staff_payload
     }
@@ -222,20 +229,33 @@ async def login(
 async def refresh_token_endpoint(
     request: Request,
     response: Response,
+    body: RefreshTokenPayload | None = None,
     refresh_token: Annotated[str | None, Cookie(alias="staff_refresh_token")] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    if not refresh_token:
+    token_val = (
+        (body.refresh_token if body and body.refresh_token else None)
+        or refresh_token
+        or request.cookies.get("staff_refresh_token")
+        or request.cookies.get("user_refresh_token")
+        or request.cookies.get("refresh_token")
+    )
+    if not token_val:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing refresh token",
         )
 
-    r_hash = hash_token(refresh_token)
+    r_hash = hash_token(token_val)
     stmt = (
         select(StaffSession)
         .options(selectinload(StaffSession.staff))
-        .where(StaffSession.refresh_token_hash == r_hash)
+        .where(
+            or_(
+                StaffSession.refresh_token_hash == r_hash,
+                StaffSession.previous_refresh_token_hash == r_hash,
+            )
+        )
     )
     session_rec = await db.scalar(stmt)
 
@@ -245,7 +265,10 @@ async def refresh_token_endpoint(
             select(UserSession)
             .options(selectinload(UserSession.user).selectinload(User.stores))
             .where(
-                UserSession.refresh_token_hash == r_hash,
+                or_(
+                    UserSession.refresh_token_hash == r_hash,
+                    UserSession.previous_refresh_token_hash == r_hash,
+                ),
                 UserSession.active == True,
             )
         )
@@ -268,6 +291,7 @@ async def refresh_token_endpoint(
         access_token_expired_at = now + timedelta(hours=1)
         refresh_token_expired_at = now + timedelta(days=30)
 
+        user_sess.previous_refresh_token_hash = user_sess.refresh_token_hash
         user_sess.refresh_token_hash = new_r_hash
         user_sess.expired_at = refresh_token_expired_at
 
@@ -311,6 +335,7 @@ async def refresh_token_endpoint(
         return {
             "success": True,
             "access_token": access_token,
+            "refresh_token": new_raw_refresh,
             "store_id": primary_store_id,
             "staff": {
                 "staff_id": "OWNER",
@@ -361,6 +386,7 @@ async def refresh_token_endpoint(
     access_token_expired_at = now + timedelta(hours=1)
     refresh_token_expired_at = now + timedelta(days=30)
 
+    session_rec.previous_refresh_token_hash = session_rec.refresh_token_hash
     session_rec.refresh_token_hash = new_r_hash
     session_rec.expired_at = refresh_token_expired_at
 
@@ -392,6 +418,7 @@ async def refresh_token_endpoint(
     return {
         "success": True,
         "access_token": access_token,
+        "refresh_token": new_raw_refresh,
         "store_id": staff_store_id,
         "staff": staff_payload
     }

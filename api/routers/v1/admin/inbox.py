@@ -123,7 +123,7 @@ async def compose_new_email(
         )
 
     if mailbox.type == MailboxType.PERSONAL:
-        if mailbox.owner_admin_id != admin.admin_id:
+        if mailbox.owner_admin_id != admin.admin_id and mailbox.email.lower() != admin.company_email.lower():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You cannot send emails from another admin's personal mailbox",

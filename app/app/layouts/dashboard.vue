@@ -5,6 +5,51 @@ const toast = useToast()
 const isMobileMenuOpen = ref(false)
 const isGeneratingSSO = ref(false)
 const isNotificationsOpen = ref(false)
+const notifications = ref<any[]>([])
+const isLoadingNotifications = ref(false)
+
+const unreadCount = computed(() => notifications.value.filter(n => !n.is_read).length)
+
+async function fetchNotifications() {
+  if (!auth.store_id) return
+  isLoadingNotifications.value = true
+  try {
+    const { api } = useApi()
+    const res = await api<any[]>(`/${auth.store_id}/notifications`)
+    notifications.value = res || []
+  } catch {
+    notifications.value = []
+  } finally {
+    isLoadingNotifications.value = false
+  }
+}
+
+async function markNotificationAsRead(item: any) {
+  if (!auth.store_id || item.is_read) return
+  item.is_read = true
+  try {
+    const { api } = useApi()
+    await api(`/${auth.store_id}/notifications/${item.notification_id}/read`, {
+      method: 'POST'
+    })
+  } catch {}
+}
+
+function formatNotificationDate(isoString: string) {
+  if (!isoString) return ''
+  try {
+    const d = new Date(isoString)
+    return d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return isoString
+  }
+}
+
+watch(isNotificationsOpen, (isOpen) => {
+  if (isOpen) {
+    fetchNotifications()
+  }
+})
 
 usePosSocket()
 const isCollapsed = ref(false)
@@ -37,6 +82,7 @@ const navItems = computed(() => {
 
 onMounted(() => {
   auth.fetchMe()
+  fetchNotifications()
 })
 
 async function openManagementDashboard() {
@@ -172,14 +218,23 @@ watch(() => route.path, () => {
             Management
           </UButton>
 
-          <UButton
-            icon="i-lucide-bell"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            title="Terminal Notifications"
-            @click="isNotificationsOpen = true"
-          />
+          <div class="relative inline-flex">
+            <UButton
+              icon="i-lucide-bell"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              title="Terminal Notifications"
+              @click="isNotificationsOpen = true"
+            />
+            <span
+              v-if="unreadCount > 0"
+              class="absolute -top-0.5 -right-0.5 flex h-2 w-2"
+            >
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500" />
+            </span>
+          </div>
 
           <UColorModeButton />
 
@@ -213,45 +268,71 @@ watch(() => route.path, () => {
             :key="item.to"
             :to="item.to"
             :class="[
-              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition',
+              'flex items-center gap-3 px-3 py-4 rounded-lg text-base font-medium transition',
               isActive(item.to)
                 ? 'bg-primary-500/10 text-primary-500 font-semibold'
                 : 'text-(--ui-text-muted) hover:bg-(--ui-bg-accented)'
             ]"
           >
-            <UIcon :name="item.icon" class="w-5 h-5" />
+            <UIcon :name="item.icon" class="w-6 h-6" />
             {{ item.label }}
+
+            <UIcon name="i-lucide-chevron-right" class="w-6 h-6 ml-auto" />
           </NuxtLink>
         </nav>
       </template>
     </USlideover>
 
-    <USlideover v-model:open="isNotificationsOpen" side="right" title="Terminal Alerts & Notifications">
+    <USlideover v-model:open="isNotificationsOpen" side="right" title="Notifications & Alerts">
       <template #body>
         <div class="flex flex-col gap-4">
-          <div class="p-4 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-primary-500 uppercase tracking-wider">System Broadcast</span>
-              <span class="text-[10px] text-(--ui-text-dimmed)">Live</span>
+          <div v-if="isLoadingNotifications" class="space-y-3">
+            <div v-for="i in 3" :key="i" class="p-4 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) animate-pulse space-y-2">
+              <div class="h-3 bg-(--ui-bg-accented) rounded w-1/3" />
+              <div class="h-4 bg-(--ui-bg-accented) rounded w-3/4" />
+              <div class="h-3 bg-(--ui-bg-accented) rounded w-full" />
             </div>
-            <h4 class="text-sm font-bold text-(--ui-text-highlighted)">Offline Sync Active</h4>
-            <p class="text-xs text-(--ui-text-muted) leading-relaxed">
-              Your register terminal is operating with full local SQLite/IndexedDB caching. All sales transactions and inventory updates will synchronize automatically.
-            </p>
           </div>
 
-          <div class="p-4 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-emerald-500 uppercase tracking-wider">Hardware Status</span>
-              <span class="text-[10px] text-(--ui-text-dimmed)">Connected</span>
+          <div v-else-if="notifications.length === 0" class="p-8 text-center flex flex-col items-center justify-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-primary-500/10 text-primary-500 flex items-center justify-center">
+              <UIcon name="i-lucide-bell-off" class="size-6" />
             </div>
-            <h4 class="text-sm font-bold text-(--ui-text-highlighted)">Printer & Barcode Scanner</h4>
-            <p class="text-xs text-(--ui-text-muted) leading-relaxed">
-              Thermal receipt printer communication and USB/Bluetooth HID scanner listeners are active.
-            </p>
+            <div class="space-y-1">
+              <h4 class="text-sm font-semibold text-(--ui-text-highlighted)">All caught up!</h4>
+              <p class="text-xs text-(--ui-text-muted)">No notifications for your store at the moment.</p>
+            </div>
           </div>
 
-          <div class="pt-2 text-center">
+          <div v-else class="space-y-3">
+            <div
+              v-for="item in notifications"
+              :key="item.notification_id"
+              class="p-4 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) hover:bg-(--ui-bg-accented) transition-all space-y-2 cursor-pointer relative"
+              :class="{ 'border-primary-500/30': !item.is_read }"
+              @click="markNotificationAsRead(item)"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-semibold text-primary-500 uppercase tracking-wider">
+                  {{ item.scope || 'Alert' }}
+                </span>
+                <span class="text-[10px] text-(--ui-text-dimmed)">
+                  {{ formatNotificationDate(item.created_at) }}
+                </span>
+              </div>
+              <div class="flex items-start justify-between gap-2">
+                <h4 class="text-xs font-bold text-(--ui-text-highlighted)" :class="{ 'font-black': !item.is_read }">
+                  {{ item.title }}
+                </h4>
+                <span v-if="!item.is_read" class="size-2 rounded-full bg-primary-500 shrink-0 mt-1" />
+              </div>
+              <p class="text-xs text-(--ui-text-muted) leading-relaxed">
+                {{ item.message }}
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-2 text-center border-t border-(--ui-border)">
             <NuxtLink
               to="/settings"
               class="text-xs text-primary-500 hover:underline font-medium"

@@ -48,7 +48,7 @@ async function handleLogin() {
   const formattedId = identifier.includes('@') ? identifier : identifier.toUpperCase()
 
   try {
-    const data = await $fetch<{ access_token?: string, staff: any, store_id?: string, stores?: any[], success: boolean }>(`${config.public.apiBase}/staff/auth/login`, {
+    const data = await $fetch<{ access_token?: string, refresh_token?: string, staff: any, store_id?: string, stores?: any[], success: boolean }>(`${config.public.apiBase}/staff/auth/login`, {
       method: 'POST',
       credentials: 'include',
       body: { staff_id: formattedId, password: password.value }
@@ -61,7 +61,7 @@ async function handleLogin() {
       return
     }
 
-    auth.setAuth(data.access_token || '', data.staff, data.store_id)
+    auth.setAuth(data.access_token || '', data.staff, data.store_id, data.refresh_token)
     if (import.meta.client) {
       localStorage.setItem('has_completed_onboarding', 'true')
     }
@@ -80,7 +80,7 @@ async function selectStoreAndProceed(store: any) {
   auth.setAuth(pendingLoginData.value.access_token || '', {
     ...pendingLoginData.value.staff,
     store_id: store.store_id
-  }, store.store_id)
+  }, store.store_id, pendingLoginData.value.refresh_token)
   if (import.meta.client) {
     localStorage.setItem('has_completed_onboarding', 'true')
   }

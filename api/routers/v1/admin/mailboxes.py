@@ -19,6 +19,28 @@ async def list_mailboxes(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(get_admin),
 ):
+    if admin.company_email:
+        personal_mb = await db.scalar(
+            select(EmailMailbox).where(
+                (EmailMailbox.owner_admin_id == admin.admin_id)
+                | (EmailMailbox.email == admin.company_email.lower())
+            )
+        )
+        if not personal_mb:
+            personal_mb = EmailMailbox(
+                name=f"{admin.fullname} (Personal)",
+                email=admin.company_email.lower(),
+                type=MailboxType.PERSONAL,
+                owner_admin_id=admin.admin_id,
+                allowed_admin_ids=[str(admin.admin_id)],
+            )
+            db.add(personal_mb)
+            await db.flush()
+        elif personal_mb.owner_admin_id != admin.admin_id or personal_mb.type != MailboxType.PERSONAL:
+            personal_mb.owner_admin_id = admin.admin_id
+            personal_mb.type = MailboxType.PERSONAL
+            await db.flush()
+
     stmt = select(EmailMailbox).order_by(EmailMailbox.created_at.asc())
     result = await db.scalars(stmt)
     mailboxes = result.all()
@@ -29,7 +51,7 @@ async def list_mailboxes(
     filtered = []
     admin_id_str = str(admin.admin_id)
     for mb in mailboxes:
-        if mb.type == MailboxType.PERSONAL and mb.owner_admin_id == admin.admin_id:
+        if mb.type == MailboxType.PERSONAL and (mb.owner_admin_id == admin.admin_id or mb.email.lower() == admin.company_email.lower()):
             filtered.append(mb)
         elif mb.type == MailboxType.SHARED and (not mb.allowed_admin_ids or admin_id_str in [str(x) for x in mb.allowed_admin_ids]):
             filtered.append(mb)

@@ -24,6 +24,8 @@ interface AuthState {
   store_id: string | null
 }
 
+let refreshPromise: Promise<boolean> | null = null
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     token: null,
@@ -65,7 +67,7 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    setAuth(token: string, staff: Staff, storeId?: string) {
+    setAuth(token: string, staff: Staff, storeId?: string, refreshToken?: string) {
       this.token = token || 'cookie_session'
       if (this.staff?.has_pin && !staff.has_pin) {
         staff.has_pin = true
@@ -80,6 +82,9 @@ export const useAuthStore = defineStore('auth', {
         if (this.store_id) {
           localStorage.setItem('pos_store_id', this.store_id)
         }
+        if (refreshToken) {
+          localStorage.setItem('pos_refresh_token', refreshToken)
+        }
       }
     },
 
@@ -90,6 +95,53 @@ export const useAuthStore = defineStore('auth', {
         this.staff = (staffJson && staffJson != "undefined" && staffJson != "null") ? JSON.parse(staffJson) : null
         this.store_id = localStorage.getItem('pos_store_id') || this.staff?.store_id || null
       }
+    },
+
+    async refreshToken(): Promise<boolean> {
+      if (refreshPromise) {
+        return refreshPromise
+      }
+
+      const config = useRuntimeConfig()
+      const apiBase = config.public.apiBase
+
+      refreshPromise = (async () => {
+        try {
+          const storedRefresh = import.meta.client ? localStorage.getItem('pos_refresh_token') : null
+          const refreshRes = await $fetch<{
+            success: boolean
+            staff?: Staff
+            access_token?: string
+            refresh_token?: string
+            store_id?: string
+          }>(`${apiBase}/staff/auth/refresh-token`, {
+            method: 'POST',
+            credentials: 'include',
+            body: storedRefresh ? { refresh_token: storedRefresh } : undefined
+          })
+
+          if (refreshRes && refreshRes.success && refreshRes.staff) {
+            this.setAuth(
+              refreshRes.access_token || this.token || '',
+              refreshRes.staff,
+              refreshRes.store_id || this.store_id || undefined,
+              refreshRes.refresh_token
+            )
+            return true
+          }
+          return false
+        } catch (refreshErr: any) {
+          const refreshStatus = refreshErr?.response?.status ?? refreshErr?.statusCode ?? refreshErr?.status
+          if (refreshStatus === 401 || refreshStatus === 403) {
+            await this.logout(true)
+          }
+          return false
+        } finally {
+          refreshPromise = null
+        }
+      })()
+
+      return refreshPromise
     },
 
     async fetchMe() {
@@ -127,21 +179,22 @@ export const useAuthStore = defineStore('auth', {
           return
         }
         if (statusCode === 401) {
-          try {
-            const refreshRes = await $fetch<{ success: boolean; staff?: Staff; access_token?: string; store_id?: string }>(
-              `${apiBase}/staff/auth/refresh-token`,
-              { method: 'POST', credentials: 'include' }
-            )
-            if (refreshRes && refreshRes.success && refreshRes.staff) {
-              this.setAuth(refreshRes.access_token || '', refreshRes.staff, refreshRes.store_id)
-              return
-            }
-          } catch (refreshErr: any) {
-            const refreshStatus = refreshErr?.response?.status ?? refreshErr?.statusCode ?? refreshErr?.status
-            if (refreshStatus === 401 || refreshStatus === 403) {
-              await this.logout(true)
-              return
-            }
+          const ok = await this.refreshToken()
+          if (ok) {
+            try {
+              const meRes = await $fetch<Staff>(`${apiBase}/staff/auth/me`, {
+                credentials: 'include',
+                headers: this.token ? { Authorization: `Bearer ${this.token}` } : {}
+              })
+              if (meRes) {
+                this.staff = meRes
+                this.store_id = meRes.store_id || this.store_id
+                if (import.meta.client) {
+                  localStorage.setItem('pos_staff', JSON.stringify(meRes))
+                }
+                return
+              }
+            } catch {}
           }
         }
         this.loadFromStorage()
@@ -152,9 +205,11 @@ export const useAuthStore = defineStore('auth', {
       const config = useRuntimeConfig()
       const apiBase = config.public.apiBase
       try {
+        const storedRefresh = import.meta.client ? localStorage.getItem('pos_refresh_token') : null
         await $fetch(`${apiBase}/staff/auth/logout`, {
           method: 'POST',
-          credentials: 'include'
+          credentials: 'include',
+          body: storedRefresh ? { refresh_token: storedRefresh } : undefined
         })
       } catch {}
 
@@ -165,6 +220,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('pos_token')
         localStorage.removeItem('pos_staff')
         localStorage.removeItem('pos_store_id')
+        localStorage.removeItem('pos_refresh_token')
         if (redirectToLogin) {
           try {
             await navigateTo('/login', { replace: true })

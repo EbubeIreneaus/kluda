@@ -6,7 +6,7 @@ export default defineAppConfig({
     },
     button: {
       defaultVariants: {
-        size: 'xl'
+        size: '2xl'
       }
     },
 
@@ -16,7 +16,7 @@ export default defineAppConfig({
         base: "w-full min-h-10"
       },
       defaultVariants: {
-        size: 'lg'
+        size: 'xl'
       }
     },
     select: {
@@ -24,7 +24,7 @@ export default defineAppConfig({
         base: 'w-full min-h-10',
       },
       defaultVariants: {
-        size: 'lg'
+        size: 'xl'
       }
     },
     textarea: {
