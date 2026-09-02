@@ -20,6 +20,7 @@ export default defineNuxtRouteMiddleware((to) => {
   const routePermMap: Record<string, string[]> = {
     '/stores': ['manage:stores'],
     '/merchants': ['manage:users'],
+    '/plans': ['manage:billings'],
     '/campaigns': ['manage:emails'],
     '/inbox': ['manage:emails', 'manage:support'],
     '/support': ['manage:support'],

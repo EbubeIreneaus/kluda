@@ -8,6 +8,8 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from models.config import get_db
 from models.user import User, UserSession, StoreMember
+from models.subscription import UserSubscription
+from schemas.subscription import SubscriptionStatus, PaymentChannel
 from schemas.business import StoreStatus
 from models.business import Store
 from schemas.user import (
@@ -34,6 +36,24 @@ from libs.security import (
 )
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+@router.get("/contact-info")
+async def get_public_contact_info(db: AsyncSession = Depends(get_db)):
+    from models.admin.setting import SystemSetting
+    setting = await db.scalar(select(SystemSetting).where(SystemSetting.key == "platform_contact_info"))
+    if setting and setting.value:
+        return setting.value
+    return {
+        "email": "support@kluda.com",
+        "phone": "+234 800 000 5583",
+        "whatsapp": "2348000005583",
+        "address": "Lagos, Nigeria",
+        "twitter": "https://x.com/kluda_app",
+        "linkedin": "https://linkedin.com/company/kluda",
+        "instagram": "https://instagram.com/kluda.pos",
+        "hours": "Mon - Sat: 8:00 AM - 8:00 PM WAT"
+    }
 
 
 async def generate_user_id(db: AsyncSession) -> uuid.UUID:
@@ -141,6 +161,21 @@ async def create_user(
 
     db.add(new_user)
     await db.flush()
+
+    # Fresh users start with free tier
+    now = datetime.now(timezone.utc)
+    free_sub = UserSubscription(
+        user_id=new_user.user_id,
+        plan_id="free",
+        status=SubscriptionStatus.ACTIVE,
+        amount=0,
+        payment_channel=PaymentChannel.PAYSTACK,
+        next_renewal=now + timedelta(days=36500),
+        idempotency_key=f"init_free_{new_user.user_id}",
+    )
+    db.add(free_sub)
+    await db.flush()
+    new_user.current_subscription_id = free_sub.subscription_id
 
     store_obj = None
     if body.store_name:

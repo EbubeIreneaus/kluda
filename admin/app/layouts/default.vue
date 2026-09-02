@@ -8,6 +8,7 @@ const allNavLinks = [
   { label: 'Overview', to: '/', icon: 'i-lucide-layout-dashboard', permission: 'view:analytics' },
   { label: 'Stores', to: '/stores', icon: 'i-lucide-store', permission: 'manage:stores' },
   { label: 'Merchants', to: '/merchants', icon: 'i-lucide-users', permission: 'manage:users' },
+  { label: 'Plans & Billing', to: '/plans', icon: 'i-lucide-credit-card', permission: 'manage:billings' },
   { label: 'Campaigns', to: '/campaigns', icon: 'i-lucide-megaphone', permission: 'manage:emails' },
   { label: 'Support Inbox', to: '/inbox', icon: 'i-lucide-mail', permission: 'manage:emails' },
   { label: 'Support Tickets', to: '/support', icon: 'i-lucide-ticket', permission: 'manage:support' },

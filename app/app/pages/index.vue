@@ -1,10 +1,24 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 
 const auth = useAuthStore();
 const productStore = useProductsStore();
 const salesStore = useSalesStore();
 const { format } = useFormatCurrency();
+const {
+  plan,
+  status,
+  isDue,
+  isExpired,
+  usage,
+  isOwner,
+  daysRemaining,
+  fetchCurrentSubscription
+} = useSubscription();
+
+onMounted(() => {
+  fetchCurrentSubscription();
+});
 
 const isAmountVisible = ref(true);
 
@@ -44,6 +58,52 @@ const staffName = computed(() => {
 
 <template>
   <div class="space-y-6">
+    <!-- Urgent Overdue/Quota Alert Banner -->
+    <div
+      v-if="isDue || isExpired || usage.isAtSalesLimit"
+      class="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md"
+      :class="[
+        isExpired || isDue
+          ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+          : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+      ]"
+    >
+      <div class="flex items-center gap-3">
+        <div
+          class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          :class="isExpired || isDue ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'"
+        >
+          <UIcon
+            :name="isExpired || isDue ? 'i-lucide-alert-octagon' : 'i-lucide-alert-triangle'"
+            class="size-5"
+          />
+        </div>
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-white">
+            {{ isDue ? 'Subscription Renewal Due' : (isExpired ? 'Store Subscription Inactive' : 'Monthly Sales Limit Reached') }}
+          </h4>
+          <p class="text-xs opacity-90 mt-0.5">
+            {{ isDue
+              ? 'Payment failed on Paystack. Update payment details to keep multi-branch checkout active.'
+              : (isExpired
+                ? 'Your store subscription has expired. Renew your plan to continue recording sales.'
+                : `Your organization has reached the ${usage.monthlySalesLimit} sales quota for this month.`)
+            }}
+          </p>
+        </div>
+      </div>
+
+      <NuxtLink v-if="isOwner" to="/marchant/billing" class="shrink-0 self-start sm:self-auto">
+        <UButton
+          size="xs"
+          :color="isExpired || isDue ? 'error' : 'warning'"
+          class="font-bold px-3 py-1.5"
+        >
+          Resolve Billing
+        </UButton>
+      </NuxtLink>
+    </div>
+
     <div class="w-full">
       <div
         class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-emerald-950/80 to-zinc-950 p-6 text-white border border-emerald-500/30 shadow-2xl shadow-emerald-950/40 select-none"
@@ -93,11 +153,20 @@ const staffName = computed(() => {
                   class="size-4"
                 />
               </button>
-              <div
-                class="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[10px] font-bold text-emerald-300 uppercase tracking-wider"
+
+              <!-- Dynamic Store Owner Plan Badge -->
+              <NuxtLink
+                to="/marchant/billing"
+                class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-[10px] font-bold text-emerald-300 uppercase tracking-wider transition-all backdrop-blur-sm shadow-xs"
+                title="View Subscription & Organization Plan"
               >
-                Kluda POS
-              </div>
+                <span
+                  class="w-1.5 h-1.5 rounded-full"
+                  :class="status === 'ACTIVE' ? 'bg-emerald-400 animate-pulse' : (status === 'DUE' ? 'bg-amber-400' : 'bg-rose-400')"
+                />
+                <span>{{ plan.name }}</span>
+                <UIcon name="i-lucide-chevron-right" class="size-3 opacity-60" />
+              </NuxtLink>
             </div>
           </div>
 
@@ -133,11 +202,12 @@ const staffName = computed(() => {
             <div class="flex flex-col items-end text-right">
               <span
                 class="text-[10px] uppercase tracking-wider font-semibold text-zinc-400"
-                >Credit Balance</span
+                >Quota Status</span
               >
-              <span class="text-sm font-bold text-emerald-400 mt-0.5"
-                >Free</span
-              >
+              <span class="text-sm font-bold text-emerald-400 mt-0.5 flex items-center gap-1 font-mono">
+                <UIcon name="i-lucide-receipt" class="size-3.5 text-emerald-400" />
+                {{ usage.monthlySalesCount }}/{{ usage.monthlySalesLimit > 0 ? usage.monthlySalesLimit : '∞' }}
+              </span>
             </div>
           </div>
         </div>
@@ -199,6 +269,9 @@ const staffName = computed(() => {
         </div>
       </NuxtLink>
     </div>
+
+    <!-- Store Owner Subscription & Quota Usage Telemetry -->
+    <DashboardSubscriptionCard />
 
     <div class="">
       <DashboardPaymentMethodChart />

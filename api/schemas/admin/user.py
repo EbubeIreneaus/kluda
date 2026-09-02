@@ -22,6 +22,7 @@ class AdminPermission(str, TypeEnum):
     MANAGE_USERS = "manage:users"
     MANAGE_EMAILS = "manage:emails"
     MANAGE_SUPPORT = "manage:support"
+    MANAGE_BILLINGS = "manage:billings"
     VIEW_ANALYTICS = "view:analytics"
 
 

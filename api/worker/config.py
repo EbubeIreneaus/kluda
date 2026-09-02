@@ -14,6 +14,8 @@ from worker.tasks import (
     process_inbound_resend_email,
     process_resend_event,
     sync_outgoing_email_message_id,
+    process_paystack_webhook,
+    send_subscription_notification_email,
 )
 
 REDIS_SETTINGS = RedisSettings.from_dsn(settings.REDIS_URL)
@@ -50,6 +52,8 @@ class WorkerSettings:
         process_inbound_resend_email,
         process_resend_event,
         sync_outgoing_email_message_id,
+        process_paystack_webhook,
+        send_subscription_notification_email,
     ]
     poll_delay = 1
     cron_jobs = [

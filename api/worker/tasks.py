@@ -451,7 +451,7 @@ async def cron_generate_daily_metrics(ctx: dict):
         new_merchants = await db.scalar(select(func.count(User.id)).where(User.created_at >= today)) or 0
         total_stores = await db.scalar(select(func.count(Store.id))) or 0
         active_stores = await db.scalar(select(func.count(Store.id)).where(Store.status == StoreStatus.ACTIVE)) or 0
-        total_staff = await db.scalar(select(func.count(Staff.id))) or 0
+        total_staff = 0 #fix later
         total_products = await db.scalar(select(func.count(Stock.id))) or 0
 
         sales_stats = await db.execute(
@@ -554,3 +554,279 @@ async def send_admin_welcome_email(
         )
     except Exception:
         pass
+
+
+async def send_subscription_notification_email(
+    ctx,
+    recipient_email: str,
+    recipient_name: str,
+    event_type: str,
+    amount: int,
+    plan_name: str,
+    reference: str,
+    next_renewal: str | None = None,
+):
+    import resend
+    from libs.email_template import render_branded_email
+
+    if not (hasattr(settings, "RESEND_API_KEY") and settings.RESEND_API_KEY):
+        return
+
+    resend.api_key = settings.RESEND_API_KEY
+    # Paystack amounts are in subunit (kobo for NGN)
+    formatted_amount = f"{amount:,} kobo"
+    app_url = f"https://pos.{settings.DOMAIN_NAME}" if "localhost" not in settings.DOMAIN_NAME else "http://localhost:3000"
+
+    if event_type == "payment_success":
+        subject = f"Kluda - Payment Confirmed ({plan_name})"
+        body_content = f"""
+        <h2>Subscription Payment Confirmed</h2>
+        <p>Hello {recipient_name}, your subscription payment for <strong>{plan_name}</strong> was successful.</p>
+        <table class="data-table">
+          <tr><th>Plan</th><td>{plan_name}</td></tr>
+          <tr><th>Amount Paid</th><td>{formatted_amount}</td></tr>
+          <tr><th>Reference</th><td>{reference}</td></tr>
+          <tr><th>Next Renewal</th><td>{next_renewal or 'N/A'}</td></tr>
+        </table>
+        """
+        action_text = "View Merchant Hub"
+        action_url = f"{app_url}/marchant"
+    else:
+        subject = f"Kluda - Payment Failed ({plan_name})"
+        body_content = f"""
+        <h2>Subscription Payment Failed</h2>
+        <p>Hello {recipient_name}, we were unable to process your payment for <strong>{plan_name}</strong>.</p>
+        <table class="data-table">
+          <tr><th>Plan</th><td>{plan_name}</td></tr>
+          <tr><th>Attempted Amount</th><td>{formatted_amount}</td></tr>
+          <tr><th>Reference</th><td>{reference}</td></tr>
+        </table>
+        <blockquote>Please update your payment card or ensure sufficient balance to prevent service disruption.</blockquote>
+        """
+        action_text = "Update Payment Method"
+        action_url = f"{app_url}/settings"
+
+    html = render_branded_email(
+        subject=subject,
+        body_html=body_content,
+        recipient_email=recipient_email,
+        recipient_name=recipient_name,
+        action_text=action_text,
+        action_url=action_url,
+    )
+
+    sender = "Kluda Billing <onboarding@resend.dev>" if "localhost" in settings.DOMAIN_NAME else f"Kluda Billing <billing@{settings.DOMAIN_NAME}>"
+
+    try:
+        await asyncio.to_thread(
+            resend.Emails.send,
+            {
+                "from": sender,
+                "to": [recipient_email],
+                "subject": subject,
+                "html": html,
+            },
+        )
+    except Exception as exc:
+        logger.error("Failed to send subscription notification email", error=str(exc), recipient=recipient_email)
+
+
+async def process_paystack_webhook(ctx: dict, event_data: dict):
+    from worker.config import get_arq_pool
+    from models.subscription import UserSubscription
+    from models.admin.plan import Plan
+    from schemas.subscription import SubscriptionStatus, PaymentChannel, PlanStatus
+
+    event = event_data.get("event")
+    data = event_data.get("data", {})
+    if not event or not data:
+        return
+
+    customer_data = data.get("customer") or {}
+    metadata = data.get("metadata") or {}
+    cust_code = customer_data.get("customer_code")
+    email = customer_data.get("email")
+    user_id_str = metadata.get("user_id")
+
+    async with LocalSession() as db:
+        user = None
+        if user_id_str:
+            try:
+                uid = uuid.UUID(str(user_id_str))
+                user = (await db.execute(select(User).where(User.user_id == uid))).scalar_one_or_none()
+            except Exception:
+                user = None
+
+        if not user and cust_code:
+            user = (await db.execute(select(User).where(User.paystack_customer_code == cust_code))).scalar_one_or_none()
+
+        if not user and email:
+            user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+
+        if not user:
+            logger.warning("Paystack webhook received but no matching user found", paystack_event=event, email=email, customer_code=cust_code)
+            return
+
+        if cust_code and not user.paystack_customer_code:
+            user.paystack_customer_code = cust_code
+
+        auth_data = data.get("authorization")
+        if isinstance(auth_data, dict) and auth_data.get("authorization_code"):
+            user.paystack_authorization = auth_data
+
+        idempotency_key = None
+        if event == "charge.success":
+            idempotency_key = f"charge_{data.get('reference') or data.get('id')}"
+        elif event in ("invoice.payment_failed", "invoice.update"):
+            idempotency_key = f"invoice_{data.get('invoice_code') or data.get('id')}"
+        elif event == "subscription.create":
+            idempotency_key = f"sub_create_{data.get('subscription_code') or data.get('id')}"
+        elif event in ("subscription.disable", "subscription.not_renew"):
+            idempotency_key = f"sub_disable_{data.get('subscription_code') or data.get('id')}"
+        else:
+            idempotency_key = f"{event}_{data.get('id') or data.get('reference')}"
+
+        if idempotency_key:
+            existing = (await db.execute(
+                select(UserSubscription).where(UserSubscription.idempotency_key == idempotency_key)
+            )).scalar_one_or_none()
+            if existing:
+                logger.info("Paystack webhook event already processed", idempotency_key=idempotency_key, paystack_event=event)
+                return
+
+        plan_code = None
+        if isinstance(data.get("plan"), dict):
+            plan_code = data.get("plan", {}).get("plan_code")
+        elif isinstance(data.get("plan"), str):
+            plan_code = data.get("plan")
+
+        plan_slug = metadata.get("plan_slug")
+        plan = None
+        if plan_slug:
+            plan = (await db.execute(select(Plan).where(Plan.slug == plan_slug))).scalar_one_or_none()
+        if not plan and plan_code:
+            plan = (await db.execute(select(Plan).where(Plan.paystack_planid == plan_code))).scalar_one_or_none()
+        if not plan:
+            plan = (await db.execute(select(Plan).where(Plan.status == PlanStatus.AVAILABLE))).scalars().first()
+
+        sub_code = data.get("subscription_code")
+        if not sub_code and isinstance(data.get("subscription"), dict):
+            sub_code = data.get("subscription", {}).get("subscription_code")
+
+        pool = await get_arq_pool()
+
+        if event == "charge.success":
+            next_payment_date_str = data.get("next_payment_date")
+            next_renewal = None
+            if next_payment_date_str:
+                try:
+                    next_renewal = datetime.fromisoformat(next_payment_date_str.replace("Z", "+00:00"))
+                except Exception:
+                    next_renewal = None
+
+            if not next_renewal:
+                interval_days = 365 if getattr(plan, "interval", "") == "annually" else 30
+                next_renewal = datetime.now(timezone.utc) + timedelta(days=interval_days)
+
+            new_sub = UserSubscription(
+                user_id=user.user_id,
+                plan_id=plan.slug if plan else "starter",
+                status=SubscriptionStatus.ACTIVE,
+                amount=int(data.get("amount", 0)),
+                reference=data.get("reference"),
+                idempotency_key=idempotency_key,
+                paystack_subscription_code=sub_code,
+                payment_channel=PaymentChannel.PAYSTACK,
+                next_renewal=next_renewal,
+            )
+            db.add(new_sub)
+            await db.flush()
+            user.current_subscription_id = new_sub.subscription_id
+            await db.commit()
+
+            await pool.enqueue_job(
+                "send_subscription_notification_email",
+                recipient_email=user.email,
+                recipient_name=user.fullname,
+                event_type="payment_success",
+                # Paystack amounts are in subunit (kobo for NGN)
+                amount=int(data.get("amount", 0)),
+                plan_name=plan.name if plan else "Subscription Plan",
+                reference=data.get("reference") or "",
+                next_renewal=next_renewal.strftime("%B %d, %Y"),
+            )
+
+            await pool.enqueue_job(
+                "notify_user_personal",
+                str(user.user_id),
+                "Subscription Confirmed",
+                f"Your subscription to {plan.name if plan else 'Kluda'} is active.",
+                {
+                    "type": "subscription_success",
+                    "url": "/marchant",
+                    "amount": int(data.get("amount", 0)),
+                    "plan_slug": plan.slug if plan else "starter",
+                },
+            )
+
+        elif event in ("invoice.payment_failed",):
+            new_sub = UserSubscription(
+                user_id=user.user_id,
+                plan_id=plan.slug if plan else (user.current_subscription_id and str(user.current_subscription_id) or "starter"),
+                status=SubscriptionStatus.DUE,
+                amount=int(data.get("amount", 0)),
+                reference=data.get("invoice_code") or data.get("reference"),
+                idempotency_key=idempotency_key,
+                paystack_subscription_code=sub_code,
+                payment_channel=PaymentChannel.PAYSTACK,
+                next_renewal=datetime.now(timezone.utc),
+            )
+            db.add(new_sub)
+            await db.commit()
+
+            await pool.enqueue_job(
+                "send_subscription_notification_email",
+                recipient_email=user.email,
+                recipient_name=user.fullname,
+                event_type="payment_failed",
+                # Paystack amounts are in subunit (kobo for NGN)
+                amount=int(data.get("amount", 0)),
+                plan_name=plan.name if plan else "Subscription Plan",
+                reference=data.get("invoice_code") or data.get("reference") or "",
+                next_renewal=None,
+            )
+
+            await pool.enqueue_job(
+                "notify_user_personal",
+                str(user.user_id),
+                "Subscription Payment Failed",
+                f"Payment for your {plan.name if plan else 'Kluda'} subscription failed. Please update your payment method.",
+                {
+                    "type": "subscription_failed",
+                    "url": "/settings",
+                    "amount": int(data.get("amount", 0)),
+                    "plan_slug": plan.slug if plan else "starter",
+                },
+            )
+
+        elif event in ("subscription.disable", "subscription.not_renew"):
+            if user.current_subscription_id:
+                curr_sub = (await db.execute(
+                    select(UserSubscription).where(UserSubscription.subscription_id == user.current_subscription_id)
+                )).scalar_one_or_none()
+                if curr_sub:
+                    curr_sub.status = SubscriptionStatus.EXPIRED
+                    await db.commit()
+
+            await pool.enqueue_job(
+                "notify_user_personal",
+                str(user.user_id),
+                "Subscription Deactivated",
+                "Your subscription has been cancelled or deactivated.",
+                {
+                    "type": "subscription_disabled",
+                    "url": "/marchant",
+                },
+            )
+
+

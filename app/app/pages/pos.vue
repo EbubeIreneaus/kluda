@@ -11,6 +11,14 @@ const config = useRuntimeConfig()
 const apiBase = config.public.apiBase
 const auth = useAuthStore()
 
+const {
+  isQuotaBlocked,
+  quotaBlockReason,
+  isOfflineLeaseExpired,
+  offlineDisclaimer,
+  fetchCurrentSubscription
+} = useSubscription()
+
 const searchQuery = ref('')
 const barcodeRef = ref<any>()
 const isScanning = ref(true)
@@ -177,6 +185,14 @@ function selectCustomer(customer: any) {
 }
 
 function completeSale() {
+  if (isQuotaBlocked.value) {
+    toast.add({
+      title: isOfflineLeaseExpired.value ? 'Offline Sync Required' : 'Quota Limit Reached',
+      description: quotaBlockReason.value || 'Checkout is locked for this terminal.',
+      color: 'error'
+    })
+    return
+  }
   if (cart.isEmpty) {
     toast.add({ title: 'Cart is empty', description: 'Add products before completing sale', color: 'warning' })
     return
@@ -282,6 +298,7 @@ function toggleCameraScanner() {
 }
 
 onMounted(() => {
+  fetchCurrentSubscription()
   focusBarcode()
 })
 
@@ -551,10 +568,21 @@ function handleSearchBlur() {
           </div>
         </div>
 
+        <div v-if="isQuotaBlocked" class="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2.5 mb-3">
+          <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div class="space-y-1">
+            <p class="font-bold text-red-200">{{ isOfflineLeaseExpired ? 'Offline Lease Expired' : 'Sales Limit Reached' }}</p>
+            <p class="leading-relaxed opacity-90">{{ quotaBlockReason }}</p>
+            <p class="text-[11px] text-red-400 italic pt-1 border-t border-red-500/20">
+              Notice: {{ offlineDisclaimer }}
+            </p>
+          </div>
+        </div>
+
         <UButton
           block
           size="lg"
-          :disabled="cart.isEmpty"
+          :disabled="cart.isEmpty || isQuotaBlocked"
           @click="completeSale"
         >
           <UIcon name="i-lucide-check-circle" class="w-5 h-5 mr-2" />

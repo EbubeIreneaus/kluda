@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from sqlalchemy import Text
 from sqlalchemy import JSON
 from typing import Literal
@@ -13,6 +13,7 @@ import uuid
 
 if TYPE_CHECKING:
     from .business import Store
+    from .subscription import UserSubscription
 
 class User(Base):
     __tablename__ = "users"
@@ -26,6 +27,22 @@ class User(Base):
     otp_token: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True)
     otp_expires_at: MappedColumn[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password: MappedColumn[str] = mapped_column(String(255), nullable=False)
+    subscriptions: MappedColumn[list["UserSubscription"]] = relationship(
+        "UserSubscription",
+        back_populates="user",
+        foreign_keys="UserSubscription.user_id",
+        cascade="all, delete-orphan",
+    )
+    current_subscription_id: MappedColumn[uuid.UUID | None] = mapped_column(
+        ForeignKey("user_subscriptions.subscription_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    current_subscription: MappedColumn["UserSubscription | None"] = relationship(
+        "UserSubscription",
+        foreign_keys=[current_subscription_id],
+        post_update=True,
+    )
     pin_hash: MappedColumn[str | None] = mapped_column(String(255), nullable=True)
     pin_salt: MappedColumn[str | None] = mapped_column(String(64), nullable=True)
     notification_subscription: MappedColumn[list['NotificationSubscription']] = relationship(
@@ -35,9 +52,14 @@ class User(Base):
     memberships: MappedColumn[list['StoreMember']] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    
     status: MappedColumn[UserStatus] = mapped_column(Enum(UserStatus), default=UserStatus.ACTIVE)
     sessions: MappedColumn[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    paystack_customer_code: MappedColumn[str | None] = mapped_column(String(100), unique=True, index=True, nullable=True)
+    paystack_authorization: MappedColumn[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
 
 class StoreMember(Base):
     __tablename__ = "store_members"

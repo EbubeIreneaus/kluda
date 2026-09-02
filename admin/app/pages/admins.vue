@@ -22,6 +22,7 @@ const inviteForm = ref({
 const allPermissions = [
   { value: 'manage:all', label: 'Full Access (All Permissions)' },
   { value: 'manage:admins', label: 'Manage Team & Permissions' },
+  { value: 'manage:billings', label: 'Manage Plans & Billings' },
   { value: 'manage:stores', label: 'Moderate Stores' },
   { value: 'manage:users', label: 'Manage Merchants' },
   { value: 'manage:emails', label: 'Campaigns & Inboxes' },

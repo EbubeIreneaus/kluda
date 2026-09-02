@@ -1,73 +1,179 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 definePageMeta({ layout: 'marchant' })
 
-const auth = useAuthStore()
+const route = useRoute()
 const toast = useToast()
+const {
+  plan: currentPlan,
+  status,
+  priceFormatted,
+  nextRenewalFormatted,
+  daysRemaining,
+  usage,
+  availablePlans,
+  isLoading,
+  fetchCurrentSubscription,
+  fetchAvailablePlans,
+  subscribePlan,
+  cancelPlan,
+  isOwner
+} = useSubscription()
 
+const isProcessing = ref(false)
 const billingPeriod = ref<'monthly' | 'yearly'>('monthly')
 
-const plans = [
+// Fallback plans if backend plans not populated yet
+const defaultPlans = [
   {
+    slug: 'starter',
     name: 'Starter Tier',
+    price: 0,
     priceMonthly: 'Free',
     priceYearly: 'Free',
     badge: 'Basic',
     description: 'Essential POS counter for single-terminal retail operations.',
     features: [
       '1 Store Branch',
-      'Up to 2 Cashier Accounts',
+      'Up to 100 Products',
+      '500 Monthly Sales',
       'Offline Barcode Scanning & Sales',
-      'Standard Thermal Receipts',
-      'Local IndexedDB Caching'
-    ],
-    isCurrent: false,
-    color: 'neutral'
+      'Standard Thermal Receipts'
+    ]
   },
   {
+    slug: 'growth',
     name: 'Merchant Growth',
+    price: 1500000, // 15,000 NGN in kobo
     priceMonthly: '₦15,000 / mo',
     priceYearly: '₦150,000 / yr',
-    badge: 'Active Early Access',
+    badge: 'Popular',
     description: 'Full multi-branch retail suite with real-time cloud synchronization.',
     features: [
-      'Unlimited Store Branches',
-      'Unlimited Cashiers & Managers',
-      'Offline Multi-Store IndexedDB Isolation',
+      '3 Store Branches',
+      'Up to 2,000 Products',
+      '10,000 Monthly Sales',
       'Real-time Multi-Device WebSocket Sync',
       'Customer Debt & Credit Ledger',
       'Full Sales Analytics & Reports',
-      'Direct WhatsApp & Web Push Notifications'
-    ],
-    isCurrent: true,
-    color: 'amber'
+      'Web Push Notifications'
+    ]
   },
   {
+    slug: 'enterprise',
     name: 'Enterprise Mesh',
+    price: 4500000, // 45,000 NGN in kobo
     priceMonthly: '₦45,000 / mo',
     priceYearly: '₦450,000 / yr',
     badge: 'Custom',
     description: 'High-throughput retail chains with automated inventory reconciliation.',
     features: [
-      'Everything in Merchant Growth',
+      'Unlimited Store Branches',
+      'Unlimited Products',
+      'Unlimited Monthly Sales',
       'Dedicated Cloud Cluster & SLA',
       'Multi-Warehouse Inventory Transfers',
-      'Custom ERP & Accounting Connectors',
       'Priority 24/7 Support Escalation'
-    ],
-    isCurrent: false,
-    color: 'emerald'
+    ]
   }
 ]
 
-function handleUpgrade(planName: string) {
-  toast.add({
-    title: `${planName} Selected`,
-    description: 'Payment gateway integration is ready for deployment.',
-    color: 'success'
-  })
+const displayPlans = computed(() => {
+  if (availablePlans.value && availablePlans.value.length > 0) {
+    return availablePlans.value.map((p) => {
+      const isCurrent = currentPlan.value.slug === p.slug
+      const priceNaira = p.price / 100
+      return {
+        slug: p.slug,
+        name: p.name,
+        price: p.price,
+        priceMonthly: p.price === 0 ? 'Free' : `₦${priceNaira.toLocaleString()} / mo`,
+        priceYearly: p.price === 0 ? 'Free' : `₦${(priceNaira * 10).toLocaleString()} / yr`,
+        badge: isCurrent ? 'Active' : (p.price > 2000000 ? 'Enterprise' : 'Available'),
+        description: p.description || 'Retail point-of-sale tier with automated inventory sync.',
+        features: [
+          `${p.store_limit && p.store_limit > 0 ? p.store_limit : 'Unlimited'} Store ${p.store_limit === 1 ? 'Branch' : 'Branches'}`,
+          `${p.product_limit && p.product_limit > 0 ? p.product_limit.toLocaleString() : 'Unlimited'} Products`,
+          `${p.sales_limit_per_month && p.sales_limit_per_month > 0 ? p.sales_limit_per_month.toLocaleString() : 'Unlimited'} Monthly Sales`,
+          'Real-time Multi-Branch Sales Sync',
+          'Automated Thermal Receipts'
+        ],
+        isCurrent
+      }
+    })
+  }
+
+  return defaultPlans.map(p => ({
+    ...p,
+    isCurrent: currentPlan.value.slug === p.slug
+  }))
+})
+
+async function handleSubscribe(planSlug: string) {
+  isProcessing.value = true
+  try {
+    const res = await subscribePlan(planSlug)
+    if (res.redirect_url) {
+      toast.add({
+        title: 'Redirecting to Checkout',
+        description: 'Forwarding to Paystack secure payment gateway...',
+        color: 'info'
+      })
+      window.location.href = res.redirect_url
+    } else if (res.status === 'active') {
+      toast.add({
+        title: 'Subscription Updated',
+        description: res.message || 'Plan activated successfully.',
+        color: 'success'
+      })
+    }
+  } catch (err: any) {
+    toast.add({
+      title: 'Subscription Error',
+      description: err?.data?.detail || err?.message || 'Unable to initialize subscription.',
+      color: 'error'
+    })
+  } finally {
+    isProcessing.value = false
+  }
 }
+
+async function handleCancelSubscription() {
+  if (!confirm('Are you sure you want to cancel your subscription? Your current plan will expire at the end of this billing period.')) {
+    return
+  }
+
+  isProcessing.value = true
+  try {
+    const res = await cancelPlan()
+    toast.add({
+      title: 'Subscription Cancelled',
+      description: res.message || 'Your subscription has been cancelled.',
+      color: 'warning'
+    })
+  } catch (err: any) {
+    toast.add({
+      title: 'Cancellation Error',
+      description: err?.data?.detail || err?.message || 'Failed to cancel subscription.',
+      color: 'error'
+    })
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([fetchCurrentSubscription(), fetchAvailablePlans()])
+
+  if (route.query.reference) {
+    toast.add({
+      title: 'Payment Confirmed',
+      description: 'Your subscription status has been synced with Paystack.',
+      color: 'success'
+    })
+  }
+})
 </script>
 
 <template>
@@ -81,28 +187,57 @@ function handleUpgrade(planName: string) {
       </p>
     </div>
 
+    <!-- Active Subscription Overview Card -->
     <div class="p-6 rounded-3xl border border-amber-500/30 bg-amber-500/5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div class="space-y-1">
         <div class="flex items-center gap-2">
           <span class="text-sm font-bold text-amber-400">Current Subscription</span>
-          <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            Active Early Access
+          <span
+            :class="[
+              'text-[10px] px-2.5 py-0.5 rounded-full font-bold border',
+              status === 'ACTIVE'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                : (status === 'DUE' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-rose-500/20 text-rose-300 border-rose-500/30')
+            ]"
+          >
+            {{ status === 'ACTIVE' ? 'Active Plan' : (status === 'DUE' ? 'Payment Due' : 'Expired') }}
           </span>
         </div>
-        <h3 class="text-xl font-extrabold text-(--ui-text-highlighted)">Merchant Growth Plan</h3>
+        <h3 class="text-xl font-extrabold text-(--ui-text-highlighted)">{{ currentPlan.name }}</h3>
         <p class="text-xs text-(--ui-text-muted)">
-          Includes unlimited retail branches, staff cashier accounts, offline sync, and real-time ledger.
+          {{ currentPlan.description || 'Full multi-branch retail suite with real-time cloud synchronization.' }}
         </p>
+
+        <div class="pt-2 flex items-center gap-4 text-xs font-medium text-(--ui-text-dimmed)">
+          <span>Combined Sales: <strong class="text-(--ui-text-highlighted)">{{ usage.monthlySalesCount }} / {{ usage.monthlySalesLimit > 0 ? usage.monthlySalesLimit : '∞' }}</strong></span>
+          <span>Stores: <strong class="text-(--ui-text-highlighted)">{{ usage.storesCount }} / {{ usage.storesLimit > 0 ? usage.storesLimit : '∞' }}</strong></span>
+        </div>
       </div>
 
-      <div class="flex items-center gap-2 self-start sm:self-auto">
-        <div class="text-right hidden md:block pr-2">
+      <div class="flex flex-col sm:items-end gap-3 self-start sm:self-auto">
+        <div class="text-left sm:text-right">
           <p class="text-xs text-(--ui-text-dimmed)">Next Renewal</p>
-          <p class="text-xs font-bold text-(--ui-text-highlighted)">Standard Early Access</p>
+          <p class="text-xs font-bold text-(--ui-text-highlighted)">
+            {{ nextRenewalFormatted }} ({{ daysRemaining }}d left)
+          </p>
+        </div>
+
+        <div v-if="isOwner && status === 'ACTIVE' && currentPlan.slug !== 'free'" class="flex items-center gap-2">
+          <UButton
+            size="xs"
+            color="error"
+            variant="ghost"
+            icon="i-lucide-x-circle"
+            :loading="isProcessing"
+            @click="handleCancelSubscription"
+          >
+            Cancel Subscription
+          </UButton>
         </div>
       </div>
     </div>
 
+    <!-- Available Plans Section -->
     <div class="space-y-4 pt-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -130,32 +265,33 @@ function handleUpgrade(planName: string) {
         </div>
       </div>
 
+      <!-- Plan Cards Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
         <div
-          v-for="plan in plans"
-          :key="plan.name"
-          class="rounded-3xl p-6 border bg-(--ui-bg-elevated) flex flex-col justify-between shadow-xs transition"
-          :class="plan.isCurrent ? 'border-amber-500/60 shadow-lg shadow-amber-500/10' : 'border-(--ui-border)'"
+          v-for="p in displayPlans"
+          :key="p.slug"
+          class="rounded-3xl p-6 border bg-(--ui-bg-elevated) flex flex-col justify-between shadow-xs transition relative"
+          :class="p.isCurrent ? 'border-amber-500/60 shadow-lg shadow-amber-500/10' : 'border-(--ui-border)'"
         >
           <div class="space-y-4">
             <div class="flex items-center justify-between">
-              <h3 class="text-base font-bold text-(--ui-text-highlighted)">{{ plan.name }}</h3>
+              <h3 class="text-base font-bold text-(--ui-text-highlighted)">{{ p.name }}</h3>
               <span
                 class="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider"
-                :class="plan.isCurrent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-(--ui-bg-accented) text-(--ui-text-muted)'"
+                :class="p.isCurrent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-(--ui-bg-accented) text-(--ui-text-muted)'"
               >
-                {{ plan.badge }}
+                {{ p.badge }}
               </span>
             </div>
 
             <div class="text-2xl font-black text-(--ui-text-highlighted)">
-              {{ billingPeriod === 'monthly' ? plan.priceMonthly : plan.priceYearly }}
+              {{ billingPeriod === 'monthly' ? p.priceMonthly : p.priceYearly }}
             </div>
 
-            <p class="text-xs text-(--ui-text-muted)">{{ plan.description }}</p>
+            <p class="text-xs text-(--ui-text-muted) min-h-[32px]">{{ p.description }}</p>
 
             <div class="pt-3 border-t border-(--ui-border) space-y-2.5 text-xs">
-              <div v-for="feat in plan.features" :key="feat" class="flex items-center gap-2 text-(--ui-text-highlighted)">
+              <div v-for="feat in p.features" :key="feat" class="flex items-center gap-2 text-(--ui-text-highlighted)">
                 <UIcon name="i-lucide-check" class="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>{{ feat }}</span>
               </div>
@@ -164,7 +300,7 @@ function handleUpgrade(planName: string) {
 
           <div class="pt-6 mt-6 border-t border-(--ui-border)">
             <UButton
-              v-if="plan.isCurrent"
+              v-if="p.isCurrent"
               disabled
               variant="soft"
               color="neutral"
@@ -177,9 +313,10 @@ function handleUpgrade(planName: string) {
               variant="outline"
               color="primary"
               class="w-full font-bold justify-center"
-              @click="handleUpgrade(plan.name)"
+              :loading="isProcessing"
+              @click="handleSubscribe(p.slug)"
             >
-              Select {{ plan.name }}
+              {{ p.slug === 'trial' ? 'Start 30-Day Free Trial' : (p.price === 0 ? 'Switch to Free Tier' : `Select ${p.name}`) }}
             </UButton>
           </div>
         </div>

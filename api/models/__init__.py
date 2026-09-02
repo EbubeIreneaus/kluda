@@ -7,4 +7,6 @@ from .admin.audit import AdminAuditLog
 from .admin.setting import SystemSetting
 from .admin.ticket import SupportTicket
 from .admin.metric import DailyPlatformMetric
+from .admin.plan import Plan
+from .subscription import UserSubscription
 from .notification import Notification, NotificationRead

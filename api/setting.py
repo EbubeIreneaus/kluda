@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     SUPER_ADMIN_PASSWORD: str
     SUPER_ADMIN_PHONE: str
 
+    PAYSTACK_SECRET: str
+    PAYSTACK_PUBLIC: str
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

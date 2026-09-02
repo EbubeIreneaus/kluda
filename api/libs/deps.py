@@ -245,3 +245,18 @@ def require_admin_permission(permission: AdminPermission):
             detail=f"Permission denied: {permission.value} required",
         )
     return dependency
+
+
+def require_superadmin():
+    async def dependency(admin: Admin = Depends(get_admin)) -> Admin:
+        if (
+            admin.role in (AdminRole.SUPER_ADMIN, AdminRole.ADMIN)
+            or AdminPermission.MANAGE_ALL in admin.permission
+            or AdminPermission.MANAGE_ALL.value in admin.permission
+        ):
+            return admin
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superadmin privileges required for this action",
+        )
+    return dependency

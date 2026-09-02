@@ -1,20 +1,93 @@
 <script setup lang="ts">
 const config = useRuntimeConfig()
 const posUrl = config.public.posAppUrl || 'http://localhost:3000'
+const apiBase = config.public.apiBase || 'http://localhost:8000/api/v1'
+
+const contact = ref({
+  email: 'support@kluda.com',
+  phone: '+234 800 000 5583',
+  whatsapp: '2348000005583',
+  address: 'Lagos, Nigeria',
+  twitter: 'https://x.com/kluda_app',
+  linkedin: 'https://linkedin.com/company/kluda',
+  instagram: 'https://instagram.com/kluda.pos'
+})
+
+onMounted(async () => {
+  try {
+    const res = await $fetch<any>(`${apiBase}/auth/contact-info`)
+    if (res) {
+      contact.value = { ...contact.value, ...res }
+    }
+  } catch {
+    // fallback to defaults
+  }
+})
 </script>
 
 <template>
   <footer class="border-t border-(--ui-border) bg-(--ui-bg-elevated)/40 pt-16 pb-12 transition-colors">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-        <div class="space-y-4 md:col-span-1">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-10 mb-12">
+        <div class="space-y-4 md:col-span-2">
           <BrandLogo />
-          <p class="text-xs text-(--ui-text-muted) leading-relaxed">
-            Offline-first retail POS platform that turns any smartphone, tablet, or laptop into a full checkout register with zero hardware costs.
+          <p class="text-xs text-(--ui-text-muted) leading-relaxed max-w-sm">
+            Offline-first retail POS platform that turns any smartphone, tablet, or laptop into a full checkout register with zero expensive machines to buy.
           </p>
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[11px] font-bold">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Public Beta Testing</span>
+          
+          <div class="space-y-2 pt-1 text-xs text-(--ui-text-muted)">
+            <p class="flex items-center gap-2">
+              <UIcon name="i-lucide-mail" class="w-4 h-4 text-emerald-500 shrink-0" />
+              <a :href="`mailto:${contact.email}`" class="hover:text-emerald-400 transition">{{ contact.email }}</a>
+            </p>
+            <p class="flex items-center gap-2">
+              <UIcon name="i-lucide-phone" class="w-4 h-4 text-emerald-500 shrink-0" />
+              <a :href="`tel:${contact.phone}`" class="hover:text-emerald-400 transition">{{ contact.phone }}</a>
+            </p>
+            <p class="flex items-center gap-2">
+              <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>{{ contact.address }}</span>
+            </p>
+          </div>
+
+          <!-- Social Handles -->
+          <div class="flex items-center gap-3 pt-2">
+            <a
+              :href="`https://wa.me/${contact.whatsapp}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-black flex items-center justify-center transition"
+              title="Chat on WhatsApp"
+            >
+              <UIcon name="i-lucide-message-circle" class="w-4 h-4" />
+            </a>
+            <a
+              :href="contact.twitter"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-8 h-8 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition"
+              title="Follow on X"
+            >
+              <UIcon name="i-lucide-twitter" class="w-4 h-4" />
+            </a>
+            <a
+              :href="contact.linkedin"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-8 h-8 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition"
+              title="LinkedIn"
+            >
+              <UIcon name="i-lucide-linkedin" class="w-4 h-4" />
+            </a>
+            <a
+              :href="contact.instagram"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-8 h-8 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition"
+              title="Instagram"
+            >
+              <UIcon name="i-lucide-instagram" class="w-4 h-4" />
+            </a>
           </div>
         </div>
 

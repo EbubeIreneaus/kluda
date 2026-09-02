@@ -1,5 +1,39 @@
 import { defineStore } from 'pinia'
 
+export interface PlanDetails {
+  slug: string
+  name: string
+  description?: string
+  // Price in subunit (kobo for NGN)
+  price: number
+  store_limit?: number
+  product_limit?: number
+  sales_limit_per_month?: number
+  analytics_read_per_month?: number
+  status?: string
+}
+
+export interface SubscriptionUsage {
+  stores_count: number
+  stores_limit: number
+  products_count: number
+  products_limit: number
+  monthly_sales_count: number
+  monthly_sales_limit: number
+  monthly_analytics_count: number
+  monthly_analytics_limit: number
+}
+
+export interface StoreOwnerSubscription {
+  subscription_id?: string
+  plan_id?: string
+  status?: 'ACTIVE' | 'DUE' | 'EXPIRED' | string
+  amount?: number
+  next_renewal?: string
+  plan?: PlanDetails
+  usage?: SubscriptionUsage
+}
+
 export interface StoreItem {
   store_id: string
   name: string
@@ -11,6 +45,8 @@ export interface StoreItem {
   is_owner: boolean
   display_name?: string | null
   permission: string[]
+  owner_name?: string | null
+  owner_subscription?: StoreOwnerSubscription | null
 }
 
 export interface Staff {
@@ -42,6 +78,7 @@ export interface UserProfile {
   pin_salt?: string | null
   role?: string
   permission?: string[]
+  current_subscription?: StoreOwnerSubscription | null
 }
 
 interface AuthState {

@@ -145,6 +145,11 @@ export const useSalesStore = defineStore('sales', () => {
     idempotency_key?: string
     status?: string
   }) {
+    const sub = useSubscription()
+    if (sub.isQuotaBlocked.value) {
+      throw new Error(sub.quotaBlockReason.value || 'Sales limit reached or offline lease expired')
+    }
+
     const newSale: PendingSale = {
       idempotency_key: payload.idempotency_key || crypto.randomUUID(),
       items: payload.items,

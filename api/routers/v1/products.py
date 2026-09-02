@@ -6,6 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from models.config import get_db
 from models.stock import Stock, StockHistory
+from models.business import Store
+from models.subscription import UserSubscription
+from models.admin.plan import Plan
 from schemas.stock import StockCreate, StockUpdate, StockResponse, StockHistoryCreate, StockHistoryResponse
 from schemas.user import StaffPermission
 from models.user import User
@@ -35,6 +38,36 @@ async def create_stock(
     staff_id: str = Query(default="unknown", description="Staff ID for WS broadcast exclusion"),
     _: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
 ):
+    db_store = await db.scalar(select(Store).where(Store.store_id == store.store_id))
+    owner_user_id = db_store.user_id if db_store else None
+    owner = await db.scalar(select(User).where(User.user_id == owner_user_id)) if owner_user_id else None
+    current_sub = None
+    if owner and owner.current_subscription_id:
+        current_sub = await db.scalar(
+            select(UserSubscription).where(
+                UserSubscription.subscription_id == owner.current_subscription_id
+            )
+        )
+    plan = None
+    if current_sub and current_sub.plan_id:
+        plan = await db.scalar(select(Plan).where(Plan.slug == current_sub.plan_id))
+    if not plan:
+        plan = await db.scalar(select(Plan).where(Plan.slug == "free"))
+
+    product_limit = plan.product_limit if plan else 100
+    if product_limit and product_limit > 0 and owner_user_id:
+        total_products = (
+            await db.scalar(
+                select(func.count(Stock.id))
+                .join(Store, Stock.store_id == Store.store_id)
+                .where(Store.user_id == owner_user_id, Stock.deleted == False)
+            )
+        ) or 0
+        if total_products >= product_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Product catalog limit reached ({product_limit} products). Upgrade your subscription plan to add more items.",
+            )
     barcode = stock_data.barcode_id.strip() if stock_data.barcode_id and stock_data.barcode_id.strip() else None
     if barcode:
         existing_barcode = await db.execute(

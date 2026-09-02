@@ -9,6 +9,8 @@ from sqlalchemy.orm import selectinload
 from models.config import get_db
 from models.user import User, StoreMember
 from models.business import Store
+from models.subscription import UserSubscription
+from models.admin.plan import Plan
 from schemas.business import StoreResponseMini
 from schemas.user import (
     StaffCreate,
@@ -84,6 +86,43 @@ async def create_staff(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_permission(StaffPermission.MANAGE_STAFF)),
 ):
+    db_store = await db.scalar(select(Store).where(Store.store_id == store.store_id))
+    owner_user_id = db_store.user_id if db_store else None
+    owner = await db.scalar(select(User).where(User.user_id == owner_user_id)) if owner_user_id else None
+    current_sub = None
+    if owner and owner.current_subscription_id:
+        current_sub = await db.scalar(
+            select(UserSubscription).where(
+                UserSubscription.subscription_id == owner.current_subscription_id
+            )
+        )
+    plan = None
+    if current_sub and current_sub.plan_id:
+        plan = await db.scalar(select(Plan).where(Plan.slug == current_sub.plan_id))
+    if not plan:
+        plan = await db.scalar(select(Plan).where(Plan.slug == "free"))
+
+    staff_limits = {"free": 2, "trial": 5, "growth": 20, "enterprise": 0}
+    staff_limit = staff_limits.get(plan.slug, 2) if plan else 2
+
+    if staff_limit > 0 and owner_user_id:
+        total_staff = (
+            await db.scalar(
+                select(func.count(StoreMember.id))
+                .join(Store, StoreMember.store_id == Store.store_id)
+                .where(
+                    Store.user_id == owner_user_id,
+                    StoreMember.role != "owner",
+                    StoreMember.status == StaffStatus.ACTIVE,
+                )
+            )
+        ) or 0
+        if total_staff >= staff_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Staff limit reached ({staff_limit} cashiers/staff). Upgrade your subscription plan to add more staff members.",
+            )
+
     clean_email = staff_data.email.lower().strip()
     user_rec = await db.scalar(select(User).where(func.lower(User.email) == clean_email))
 

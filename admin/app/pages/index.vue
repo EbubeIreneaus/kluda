@@ -7,10 +7,11 @@ const overview = ref<any>({
   new_merchants_today: 0,
   total_stores: 0,
   active_stores: 0,
-  total_staff: 0,
-  total_products: 0,
-  total_transactions: 0,
-  total_gmv: 0,
+  active_paid_subscriptions: 0,
+  trial_subscriptions: 0,
+  free_subscriptions: 0,
+  monthly_recurring_revenue: 0,
+  subscription_distribution: [],
   open_tickets: 0,
   unread_threads: 0
 })
@@ -35,32 +36,32 @@ onMounted(() => {
 
 const kpiCards = computed(() => [
   {
-    title: 'Merchants & Owners',
-    value: `${overview.value.total_merchants || 0}`,
-    sub: `+${overview.value.new_merchants_today || 0} registered today`,
-    icon: 'i-lucide-users',
+    title: 'Monthly Recurring Revenue (MRR)',
+    value: `₦${Number(overview.value.monthly_recurring_revenue || 0).toLocaleString()}`,
+    sub: `${overview.value.active_paid_subscriptions || 0} active paying merchants`,
+    icon: 'i-lucide-banknote',
     color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
   },
   {
-    title: 'Retail Stores',
-    value: `${overview.value.active_stores || 0} / ${overview.value.total_stores || 0}`,
-    sub: `${overview.value.total_staff || 0} Active Staff / Cashiers`,
-    icon: 'i-lucide-store',
+    title: 'Merchants & Store Owners',
+    value: `${overview.value.total_merchants || 0}`,
+    sub: `+${overview.value.new_merchants_today || 0} registered today`,
+    icon: 'i-lucide-users',
     color: 'text-blue-400 bg-blue-500/10 border-blue-500/20'
   },
   {
-    title: 'Platform Gross Volume',
-    value: `₦${Number(overview.value.total_gmv || 0).toLocaleString()}`,
-    sub: `${overview.value.total_transactions || 0} Sales Processed`,
-    icon: 'i-lucide-bar-chart-3',
-    color: 'text-purple-400 bg-purple-500/10 border-purple-500/20'
+    title: 'Active Paid & Pro Trials',
+    value: `${(overview.value.active_paid_subscriptions || 0) + (overview.value.trial_subscriptions || 0)}`,
+    sub: `${overview.value.trial_subscriptions || 0} in active 30-day Pro Trial`,
+    icon: 'i-lucide-sparkles',
+    color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
   },
   {
-    title: 'Support & Action Items',
-    value: `${(overview.value.open_tickets || 0) + (overview.value.unread_threads || 0)}`,
-    sub: `${overview.value.open_tickets || 0} Tickets • ${overview.value.unread_threads || 0} Unread Inquiries`,
-    icon: 'i-lucide-bell',
-    color: 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+    title: 'Active Retail Branches',
+    value: `${overview.value.active_stores || 0}`,
+    sub: `${overview.value.total_stores || 0} total stores on platform`,
+    icon: 'i-lucide-store',
+    color: 'text-teal-400 bg-teal-500/10 border-teal-500/20'
   }
 ])
 </script>
@@ -182,30 +183,43 @@ const kpiCards = computed(() => [
 
       <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col justify-between gap-4">
         <div>
-          <h2 class="text-sm font-bold text-white">Platform Health Summary</h2>
-          <p class="text-xs text-zinc-400 mt-0.5">Live operational status</p>
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-bold text-white">Subscription Health</h2>
+              <p class="text-xs text-zinc-400 mt-0.5">Active tier distribution</p>
+            </div>
+            <NuxtLink to="/plans" class="text-[11px] text-emerald-400 hover:underline">
+              Manage Tiers
+            </NuxtLink>
+          </div>
 
-          <div class="flex flex-col gap-3 mt-4">
-            <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800">
-              <span class="text-zinc-400">Total Catalog Products</span>
-              <span class="font-mono font-semibold text-emerald-400">{{ overview.total_products || 0 }} items</span>
-            </div>
-            <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800">
-              <span class="text-zinc-400">Company Mailbox</span>
-              <span class="font-mono text-[11px] text-zinc-200">{{ adminUser?.company_email }}</span>
-            </div>
-            <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800">
-              <span class="text-zinc-400">Open Bug Reports</span>
-              <span class="font-mono font-semibold text-amber-400">{{ overview.open_tickets || 0 }} tickets</span>
+          <div class="flex flex-col gap-2.5 mt-4">
+            <div
+              v-for="item in overview.subscription_distribution || []"
+              :key="item.slug"
+              class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800"
+            >
+              <div class="flex items-center gap-2">
+                <div
+                  :class="[
+                    'w-2 h-2 rounded-full',
+                    item.slug === 'growth' ? 'bg-emerald-400' :
+                    item.slug === 'enterprise' ? 'bg-indigo-400' :
+                    item.slug === 'trial' ? 'bg-amber-400' : 'bg-zinc-500'
+                  ]"
+                />
+                <span class="text-zinc-300 font-medium">{{ item.plan }}</span>
+              </div>
+              <span class="font-mono font-bold text-white">{{ item.count }}</span>
             </div>
           </div>
         </div>
 
         <div class="flex gap-2">
           <UButton
-            to="/notifications"
-            label="Push Alerts"
-            icon="i-lucide-bell"
+            to="/plans"
+            label="View Plans"
+            icon="i-lucide-credit-card"
             color="primary"
             variant="solid"
             block

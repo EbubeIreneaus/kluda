@@ -3,7 +3,7 @@ from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone
 from schemas.business import StoreStatus
 from schemas.user import UserResponseMini, StaffStatus
-from sqlalchemy import update, select
+from sqlalchemy import update, select, func
 from schemas.business import StoreUpdate, StoreCreate, StoreResponseMini
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, status, HTTPException, Depends, Request
@@ -11,6 +11,8 @@ from libs.deps import get_current_user, get_staff_store
 from models.config import get_db
 from models.business import Store
 from models.user import User, StoreMember
+from models.subscription import UserSubscription
+from models.admin.plan import Plan
 from routers.v1.auth import get_user_stores
 import uuid
 
@@ -24,6 +26,34 @@ async def create_store(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> StoreResponseMini:
+    current_sub = None
+    if user.current_subscription_id:
+        current_sub = await db.scalar(
+            select(UserSubscription).where(
+                UserSubscription.subscription_id == user.current_subscription_id
+            )
+        )
+    plan = None
+    if current_sub and current_sub.plan_id:
+        plan = await db.scalar(select(Plan).where(Plan.slug == current_sub.plan_id))
+    if not plan:
+        plan = await db.scalar(select(Plan).where(Plan.slug == "free"))
+
+    store_limit = plan.store_limit if plan else 1
+    if store_limit and store_limit > 0:
+        existing_count = (
+            await db.scalar(
+                select(func.count(Store.id)).where(
+                    Store.user_id == user.user_id, Store.status == StoreStatus.ACTIVE
+                )
+            )
+        ) or 0
+        if existing_count >= store_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Store branch limit reached ({store_limit} store branches). Upgrade your subscription plan to create more branches.",
+            )
+
     store = Store(
         **body.model_dump(),
         user_id=user.user_id,

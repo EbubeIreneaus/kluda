@@ -6,6 +6,7 @@ from .products import router as ProductsRouter
 from .customers import router as CustomersRouter, router_debt as DebtorsRouter
 from .sales import router as SalesRouter
 from .notifications import router as NotificationsRouter
+from .subscriptions import router as SubscriptionsRouter
 from .sso import router as SSORouter
 from .admin.auth import router as AdminAuthRouter
 from .admin.admins import router as AdminTeamRouter
@@ -19,6 +20,8 @@ from .admin.settings import router as AdminSettingRouter
 from .admin.audit import router as AdminAuditRouter
 from .admin.analytics import router as AdminAnalyticsRouter
 from .admin.notifications import router as AdminNotificationRouter
+from .admin.plans import router as AdminPlanRouter
+from .admin.subscriptions import router as AdminSubscriptionRouter
 from .admin.webhook import router as InboundWebhookRouter
 
 
@@ -27,6 +30,8 @@ router = APIRouter(prefix="/v1")
 admin_router = APIRouter(prefix="/admin")
 admin_router.include_router(AdminAuthRouter)
 admin_router.include_router(AdminTeamRouter)
+admin_router.include_router(AdminPlanRouter)
+admin_router.include_router(AdminSubscriptionRouter)
 admin_router.include_router(AdminMailboxRouter)
 admin_router.include_router(AdminStoreRouter)
 admin_router.include_router(AdminMerchantRouter)
@@ -48,5 +53,6 @@ router.include_router(CustomersRouter, tags=["Customers"])
 router.include_router(DebtorsRouter, tags=["Debt Management"])
 router.include_router(SalesRouter, tags=["Sales & POS"])
 router.include_router(NotificationsRouter, tags=["Notifications"])
+router.include_router(SubscriptionsRouter, tags=["Subscriptions & Billing"])
 router.include_router(SSORouter, tags=["SSO"])
 router.include_router(InboundWebhookRouter)

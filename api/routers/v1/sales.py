@@ -9,6 +9,9 @@ from sqlalchemy.orm import joinedload
 from models.config import get_db
 from models.stock import Sale, SaleItem, Stock
 from models.user import Customer, Debt, User
+from models.business import Store
+from models.subscription import UserSubscription
+from models.admin.plan import Plan
 from schemas.stock import SaleCreate, SaleUpdate, SaleResponse
 from schemas.user import StaffPermission
 from fastapi_pagination import Page
@@ -59,6 +62,55 @@ async def create_sales_batch(
     failed = []
     low_stock_alerts = []
     debt_alerts = []
+
+    db_store = await db.scalar(select(Store).where(Store.store_id == store.store_id))
+    owner_user_id = db_store.user_id if db_store else None
+
+    owner = await db.scalar(select(User).where(User.user_id == owner_user_id)) if owner_user_id else None
+    current_sub = None
+    if owner and owner.current_subscription_id:
+        current_sub = await db.scalar(
+            select(UserSubscription).where(
+                UserSubscription.subscription_id == owner.current_subscription_id
+            )
+        )
+    plan = None
+    if current_sub and current_sub.plan_id:
+        plan = await db.scalar(select(Plan).where(Plan.slug == current_sub.plan_id))
+    if not plan:
+        plan = await db.scalar(select(Plan).where(Plan.slug == "free"))
+
+    sales_limit = plan.sales_limit_per_month if plan else 200
+    if sales_limit and sales_limit > 0 and owner_user_id:
+        now_utc = datetime.now(timezone.utc)
+        start_of_month = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        current_sales_count = (
+            await db.scalar(
+                select(func.count(Sale.id))
+                .join(Store, Sale.store_id == Store.store_id)
+                .where(
+                    Store.user_id == owner_user_id,
+                    Sale.status != "cancelled",
+                    Sale.created_at >= start_of_month,
+                )
+            )
+        ) or 0
+
+        if current_sales_count >= sales_limit:
+            # Check if all items in batch were already synced before (idempotency retry)
+            existing_count = (
+                await db.scalar(
+                    select(func.count(Sale.id)).where(
+                        Sale.store_id == store.store_id,
+                        Sale.idempotency_key.in_([s.idempotency_key for s in sales_data]),
+                    )
+                )
+            ) or 0
+            if existing_count < len(sales_data):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Monthly sales limit of {sales_limit} transactions reached. Upgrade your subscription plan to record more sales.",
+                )
 
     for sale_data in sales_data:
         try:
@@ -234,6 +286,34 @@ async def get_analytics(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_permission(StaffPermission.VIEW_ANALYTICS)),
 ):
+    db_store = await db.scalar(select(Store).where(Store.store_id == store.store_id))
+    owner_user_id = db_store.user_id if db_store else None
+    owner = await db.scalar(select(User).where(User.user_id == owner_user_id)) if owner_user_id else None
+    current_sub = None
+    if owner and owner.current_subscription_id:
+        current_sub = await db.scalar(
+            select(UserSubscription).where(
+                UserSubscription.subscription_id == owner.current_subscription_id
+            )
+        )
+    plan = None
+    if current_sub and current_sub.plan_id:
+        plan = await db.scalar(select(Plan).where(Plan.slug == current_sub.plan_id))
+    if not plan:
+        plan = await db.scalar(select(Plan).where(Plan.slug == "free"))
+
+    analytics_limit = plan.analytics_read_per_month if plan else 50
+    if analytics_limit and analytics_limit > 0:
+        if current_sub and current_sub.analytics_used >= analytics_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Monthly analytics read limit reached ({analytics_limit} reads). Upgrade your subscription plan to view analytics.",
+            )
+
+    if current_sub:
+        current_sub.analytics_used += 1
+        await db.commit()
+
     today = datetime.now(timezone.utc).date()
 
     if period == "custom":
