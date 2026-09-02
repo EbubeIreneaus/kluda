@@ -1,6 +1,6 @@
 export default defineNuxtRouteMiddleware((to) => {
   const auth = useAuthStore()
-  const publicRoutes = ['/login', '/register', '/forgot-password', '/auth/login', '/auth/register', '/auth/forgot-password']
+  const publicRoutes = ['/auth/login', '/auth/register', '/auth/forgot-password']
   const isPublicRoute = publicRoutes.includes(to.path) || to.path.startsWith('/auth/')
 
   if (import.meta.client) {
@@ -15,10 +15,10 @@ export default defineNuxtRouteMiddleware((to) => {
   const isAuthenticated = auth.isLoggedIn || (import.meta.server && hasServerSession)
 
   if (!isAuthenticated && !isPublicRoute) {
-    return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
+    return navigateTo(`/auth/login?redirect=${encodeURIComponent(to.fullPath)}`)
   }
 
-  if (isAuthenticated && (to.path === '/login' || to.path === '/auth/login' || to.path === '/register' || to.path === '/auth/register' || to.path === '/forgot-password' || to.path === '/auth/forgot-password')) {
+  if (isAuthenticated && (to.path.startsWith("/auth"))) {
     return navigateTo('/')
   }
 

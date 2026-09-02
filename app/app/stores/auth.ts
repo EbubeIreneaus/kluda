@@ -351,9 +351,9 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('pos_refresh_token')
         if (redirectToLogin) {
           try {
-            await navigateTo('/login', { replace: true })
+            await navigateTo('/auth/login', { replace: true })
           } catch {
-            window.location.href = '/login'
+            window.location.href = '/auth/login'
           }
         }
       }
