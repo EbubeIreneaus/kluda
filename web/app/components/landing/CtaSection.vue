@@ -11,19 +11,19 @@ const posUrl = config.public.posAppUrl || 'http://localhost:3000'
 
       <div class="relative z-10 max-w-3xl mx-auto space-y-6">
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-extrabold tracking-wide uppercase">
-          <UIcon name="i-lucide-sparkles" class="w-3.5 h-3.5" />
-          <span>Zero Hardware. 100% Offline Resilient.</span>
+          <UIcon name="i-lucide-shield-check" class="w-3.5 h-3.5" />
+          <span>Total Store Control</span>
         </div>
 
         <h2 class="text-3xl sm:text-5xl font-black text-(--ui-text-highlighted) tracking-tight leading-tight">
-          Keep selling. Keep tracking.<br />
+          Stop losing money in your shop.<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            Even when you're offline.
+            Take total control of your sales today.
           </span>
         </h2>
 
         <p class="text-sm sm:text-base text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          Join early retail merchants transforming their smartphones and tablets into full checkout registers without buying specialized POS hardware.
+          Join retail store owners who have eliminated cash theft, paper debt books, and stock guesswork — using just the phone in their pocket.
         </p>
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -48,15 +48,15 @@ const posUrl = config.public.posAppUrl || 'http://localhost:3000'
         <div class="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-(--ui-text-dimmed)">
           <div class="flex items-center gap-1.5">
             <UIcon name="i-lucide-check" class="w-4 h-4 text-emerald-500" />
-            <span>No POS hardware to buy</span>
+            <span>Stop sales staff theft</span>
           </div>
           <div class="flex items-center gap-1.5">
             <UIcon name="i-lucide-check" class="w-4 h-4 text-emerald-500" />
-            <span>Works offline on battery</span>
+            <span>Live stock deduction</span>
           </div>
           <div class="flex items-center gap-1.5">
             <UIcon name="i-lucide-check" class="w-4 h-4 text-emerald-500" />
-            <span>Syncs automatically</span>
+            <span>No ₦300k hardware needed</span>
           </div>
         </div>
       </div>

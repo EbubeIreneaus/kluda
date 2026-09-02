@@ -13,38 +13,38 @@ const config = useRuntimeConfig()
 const posUrl = config.public.posAppUrl || 'http://localhost:3000'
 
 useSeoMeta({
-  title: 'Kluda | Retail POS That Works Offline Without Dedicated Hardware',
-  description: 'Kluda lets small businesses and retailers sell, scan barcodes, and track every transaction even when the internet is down — using the phone or tablet you already own.'
+  title: 'Kluda | Retail POS & Store Management — Stop Money Theft & Track Every Item',
+  description: 'Kluda helps store owners eliminate cash theft, track stock in real time, and manage customer debts using the phone they already have — with zero expensive hardware.'
 })
 
 const outcomes = [
   {
-    title: 'Sell without interruption',
-    headline: 'Internet goes down? Keep selling.',
-    desc: 'Never stop ringing up customer carts or scanning barcodes when network drops. Transactions store locally and sync automatically when connection returns.',
-    icon: 'i-lucide-wifi-off',
+    title: 'Stop Staff Cash & Stock Theft',
+    headline: 'Every sale recorded. Every Naira accounted for.',
+    desc: 'Eliminate under-the-counter cash sales and pocketing. Every item that leaves the shelf is locked to a cashier shift and digital receipt.',
+    icon: 'i-lucide-shield-check',
     link: '/how-it-works'
   },
   {
-    title: 'Know what you sold',
-    headline: 'Every transaction recorded & tracked.',
-    desc: 'Real-time sales insights, inventory deductions, discount controls, and printed thermal receipts without manual book-keeping or lost paper slips.',
-    icon: 'i-lucide-receipt',
+    title: 'Live Stock & Inventory Keeping',
+    headline: 'Know what is on your shelf without manual counting.',
+    desc: 'Live stock deductions on every single sale. Know your fast-moving goods, remaining cartons, and low-stock alerts before items run out.',
+    icon: 'i-lucide-boxes',
     link: '/how-it-works'
   },
   {
-    title: 'Run your store from your phone',
-    headline: 'No dedicated POS machine required.',
-    desc: 'Turn any Android smartphone, iPhone, iPad, tablet, or existing laptop into a full checkout counter with instant camera barcode scanning.',
+    title: 'Digital Customer Debt Ledger',
+    headline: 'Never lose money to torn or forgotten paper books.',
+    desc: 'Record customer credit sales in two taps, track partial cash repayments, and view exact outstanding balances right at the counter.',
+    icon: 'i-lucide-book-open',
+    link: '/how-it-works'
+  },
+  {
+    title: 'Zero Supermarket Hardware Costs',
+    headline: 'Your phone is the counter. No ₦300k setup.',
+    desc: 'Turn any Android smartphone, iPhone, tablet, or laptop into a full checkout counter with camera barcode scanning and thermal receipts.',
     icon: 'i-lucide-smartphone',
     link: '/pricing'
-  },
-  {
-    title: 'Stay in sync across counters',
-    headline: 'Multiple registers and branches aligned.',
-    desc: 'Manage inventory across multiple cashiers and store branches in real-time to prevent overselling scarce items.',
-    icon: 'i-lucide-refresh-cw',
-    link: '/solutions'
   }
 ]
 
@@ -52,25 +52,25 @@ const storeUseCases = [
   {
     icon: 'i-lucide-shopping-bag',
     title: 'Supermarkets & Mini-Marts',
-    desc: 'Keep checking out long queues when internet cuts during peak hours.',
+    desc: 'Rapid camera barcode scanning, multi-cashier tracking, and synced shelf stock.',
     to: '/solutions/supermarkets'
   },
   {
     icon: 'i-lucide-pill',
     title: 'Pharmacies & Chemists',
-    desc: 'Track frequent customer credit balances and inventory without paper ledgers.',
+    desc: 'Track patient credit sales, medicine expiry, and unit vs carton stock.',
     to: '/solutions/pharmacies'
   },
   {
     icon: 'i-lucide-shirt',
     title: 'Fashion & Boutiques',
-    desc: 'Turn your sales staff smartphones into mobile checkout registers.',
+    desc: 'Turn sales staff phones into mobile registers for checkout anywhere on the floor.',
     to: '/solutions/boutiques'
   },
   {
     icon: 'i-lucide-store',
     title: 'Multi-Branch Retailers',
-    desc: 'Monitor live branch revenue and stock levels from a single owner portal.',
+    desc: 'Monitor live sales, cash balances, and branch stock from anywhere in the world.',
     to: '/solutions'
   }
 ]
@@ -86,19 +86,19 @@ const storeUseCases = [
 
       <div data-aos="fade-up" data-aos-duration="600" class="max-w-5xl mx-auto text-center space-y-8">
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-black tracking-wide uppercase">
-          <UIcon name="i-lucide-zap" class="w-3.5 h-3.5" />
-          <span>Offline-First Retail Platform</span>
+          <UIcon name="i-lucide-shield-check" class="w-3.5 h-3.5" />
+          <span>Store Management & Anti-Theft POS</span>
         </div>
 
         <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black text-(--ui-text-highlighted) tracking-tight leading-[1.08]">
-          SELL. TRACK.<br />
+          STOP LOSING MONEY IN YOUR SHOP.<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            EVEN WHEN YOU'RE OFFLINE.
+            TRACK SALES. CONTROL STOCK. STOP THEFT.
           </span>
         </h1>
 
         <p class="text-lg sm:text-2xl text-(--ui-text-muted) max-w-3xl mx-auto font-normal leading-relaxed">
-          Kluda keeps your retail business running when the internet doesn't — using the phone, tablet or PC you already have.
+          Run your store like a modern supermarket using just the phone in your pocket. Kluda eliminates missing cash, untracked inventory, and messy paper debt books — with zero expensive machines to buy.
         </p>
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
@@ -122,15 +122,19 @@ const storeUseCases = [
         <div class="pt-4 flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs font-semibold text-(--ui-text-muted)">
           <div class="flex items-center gap-1.5">
             <UIcon name="i-lucide-check-circle-2" class="w-4 h-4 text-emerald-500" />
-            <span>No expensive POS hardware</span>
+            <span>Stops sales staff theft</span>
           </div>
           <div class="flex items-center gap-1.5">
             <UIcon name="i-lucide-check-circle-2" class="w-4 h-4 text-emerald-500" />
-            <span>Works 100% offline</span>
+            <span>Live stock deduction</span>
           </div>
           <div class="flex items-center gap-1.5">
             <UIcon name="i-lucide-check-circle-2" class="w-4 h-4 text-emerald-500" />
-            <span>Syncs automatically when online</span>
+            <span>Customer debt & credit book</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <UIcon name="i-lucide-check-circle-2" class="w-4 h-4 text-emerald-500" />
+            <span>No ₦300k hardware needed</span>
           </div>
         </div>
       </div>
@@ -141,20 +145,16 @@ const storeUseCases = [
     </section>
 
     <section data-aos="fade-up" data-aos-duration="600" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <OfflineFlowDiagram />
-    </section>
-
-    <section data-aos="fade-up" data-aos-duration="600" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center max-w-2xl mx-auto mb-12">
         <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold mb-3">
           <UIcon name="i-lucide-target" class="w-3.5 h-3.5" />
-          <span>Merchant Outcomes</span>
+          <span>Real Store Protection</span>
         </div>
         <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Built around what your store needs
+          Built to protect your hard-earned profit
         </h2>
         <p class="text-sm text-(--ui-text-muted) mt-2">
-          Software designed to solve real operational retail challenges.
+          Designed specifically to eliminate the daily revenue leakages store owners face.
         </p>
       </div>
 
@@ -194,13 +194,13 @@ const storeUseCases = [
       <div class="text-center max-w-2xl mx-auto mb-10">
         <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold mb-3">
           <UIcon name="i-lucide-scan-barcode" class="w-3.5 h-3.5" />
-          <span>Try The Cashier Interface</span>
+          <span>Interactive Cashier Register</span>
         </div>
         <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
           Test the checkout register right now
         </h2>
         <p class="text-sm text-(--ui-text-muted) mt-2">
-          Toggle the offline switch below to see how carts checkout and queue transactions without internet.
+          Experience the high-speed barcode scanner, item checkout, and instant stock deduction.
         </p>
       </div>
 

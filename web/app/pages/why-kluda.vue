@@ -7,30 +7,30 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Why Kluda | Retail Shouldn’t Stop Because The Internet Did',
-  description: 'Kluda is built around the realities of retail in emerging markets. Discover our mission to eliminate expensive POS hardware and give every store continuous offline sales power.'
+  title: 'Why Kluda | Stop Money Theft & Take Control of Your Store',
+  description: 'Discover why Kluda was built: to eliminate employee cash theft, automate stock tracking, and manage customer debts without buying expensive supermarket POS machines.'
 })
 
 const manifestoPoints = [
   {
+    icon: 'i-lucide-shield-check',
+    title: 'Stop Staff Theft & Pocketed Cash',
+    desc: 'When sales are recorded only on paper, staff can easily under-report sales and pocket cash. Kluda locks every checkout to a cashier shift and digital receipt.'
+  },
+  {
+    icon: 'i-lucide-boxes',
+    title: 'Live Stock Control Without Manual Counts',
+    desc: 'Never wonder where your cartons or items disappeared to. Every sale automatically deducts shelf stock in real-time, giving you accurate inventory at all times.'
+  },
+  {
+    icon: 'i-lucide-book-open',
+    title: 'Zero Lost Customer Debts',
+    desc: 'Say goodbye to torn, coffee-stained exercise books. Log customer credit in two taps, track partial repayments, and keep your loyal customers happy without losing money.'
+  },
+  {
     icon: 'i-lucide-smartphone',
-    title: 'Your device becomes the terminal',
-    desc: 'You already carry a powerful computer with a high-resolution camera in your pocket. There is no reason to spend ₦250,000+ on dedicated plastic checkout hardware.'
-  },
-  {
-    icon: 'i-lucide-wifi-off',
-    title: 'Your store keeps selling offline',
-    desc: 'Network outages should never decide whether your retail store makes money today. Kluda writes every sale locally to your device browser so checkout queues never halt.'
-  },
-  {
-    icon: 'i-lucide-receipt',
-    title: 'Your sales stay tracked',
-    desc: 'Say goodbye to messy paper ledger books and unrecorded credit sales. Every transaction, discount, customer debt, and cashier shift is audited with crystal clarity.'
-  },
-  {
-    icon: 'i-lucide-refresh-cw',
-    title: 'Your data syncs when you’re online',
-    desc: 'The exact moment internet connectivity returns, your records back up silently to your secure cloud database without staff needing to touch a single button.'
+    title: 'No ₦300,000 Supermarket Machines Needed',
+    desc: 'You do not need to buy heavy computer towers or dedicated hardware. The phone, tablet, or laptop you already own has everything needed to run a world-class register.'
   }
 ]
 </script>
@@ -41,18 +41,18 @@ const manifestoPoints = [
       <div class="max-w-4xl mx-auto text-center space-y-6">
         <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold uppercase tracking-wider">
           <UIcon name="i-lucide-shield-alert" class="w-3.5 h-3.5" />
-          <span>Our Manifesto</span>
+          <span>Our Store Protection Mission</span>
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-black text-(--ui-text-highlighted) tracking-tight leading-tight">
-          Retail Shouldn't Stop<br />
+          Stop Leaving Your Store Revenue<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            Because The Internet Did.
+            To Paper Books & Guesswork.
           </span>
         </h1>
 
         <p class="text-base sm:text-xl text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          Traditional retail software was designed for countries with guaranteed 24/7 internet and stable power. Kluda is built around the real world.
+          Every day, retail store owners bleed profit through untracked cash sales, employee theft, missing inventory, and forgotten customer debts. Kluda puts an end to that.
         </p>
       </div>
     </section>
@@ -60,23 +60,23 @@ const manifestoPoints = [
     <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="p-8 sm:p-12 rounded-3xl border border-(--ui-border) bg-(--ui-bg-elevated)/40 space-y-8 leading-relaxed text-sm sm:text-base text-(--ui-text-muted)">
         <h2 class="text-2xl sm:text-3xl font-black text-(--ui-text-highlighted)">
-          Designed for reality, not assumptions
+          The Paper Exercise Book Is Where Profits Disappear
         </h2>
 
         <p>
-          In retail stores across Lagos, Abuja, Port Harcourt, and emerging markets worldwide, store managers face the same daily headaches: mobile network drops, internet line cuts, sudden power outages, and prohibitive hardware setup fees.
+          In retail shops, mini-marts, boutiques, and pharmacies across the country, store owners struggle with the same painful realities: sales girls and sales boys claiming "market was slow" while pocketing cash, cartons of stock disappearing without explanation, and customer credit scribbled in books that get lost or disputed.
         </p>
 
         <p>
-          When traditional cloud POS software loses internet connection, the screen freezes, cashier registers lock up, and customers leave items sitting on the counter.
+          Many store owners believe that the only way to stop this is to spend ₦300,000 to ₦500,000 on bulky supermarket computer towers, barcode scanners, and complicated enterprise software.
         </p>
 
         <div class="p-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-(--ui-text-highlighted) font-semibold text-base">
-          "We founded Kluda on a simple thesis: retail checkout software must be offline-first by default, operate on device battery power, and require zero proprietary hardware purchases."
+          "We built Kluda to give every retail store owner the exact same inventory control, theft protection, and sales auditing that giant supermarket chains enjoy — directly on the smartphone in their pocket."
         </div>
 
         <p>
-          By storing your store catalog in local browser persistence and utilizing your phone camera as a high-speed barcode reader, your cashiers can ring up 100 customers during a 2-hour internet outage without dropping a single sale.
+          With Kluda, your counter register is fast, accurate, and completely theft-proof. Even during power blackouts or network drops, your staff can ring up customers seamlessly while you track your store revenue from anywhere in the world.
         </p>
       </div>
     </section>
@@ -84,7 +84,7 @@ const manifestoPoints = [
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center max-w-2xl mx-auto mb-12">
         <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
-          The 4 Pillars of Kluda
+          The 4 Pillars of Kluda Store Management
         </h2>
       </div>
 
@@ -105,10 +105,6 @@ const manifestoPoints = [
           </p>
         </div>
       </div>
-    </section>
-
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <OfflineFlowDiagram />
     </section>
 
     <CtaSection />
