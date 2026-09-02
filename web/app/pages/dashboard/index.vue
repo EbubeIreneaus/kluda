@@ -61,14 +61,14 @@ function copy_txt(txt: string){
 
       <div class="flex items-center gap-3">
         <NuxtLink to="/dashboard/stores">
-          <UButton color="primary" size="sm" class="font-semibold">
+          <UButton color="primary" size="md" class="font-semibold px-4 py-2.5">
             <UIcon name="i-lucide-plus" class="w-4 h-4 mr-1.5" />
             Add New Store
           </UButton>
         </NuxtLink>
 
         <a :href="posUrl" target="_blank">
-          <UButton variant="outline" color="neutral" size="sm">
+          <UButton variant="outline" color="neutral" size="md" class="font-semibold px-4 py-2.5">
             <UIcon name="i-lucide-scan-barcode" class="w-4 h-4 mr-1.5 text-emerald-500" />
             Open Register
           </UButton>
@@ -112,9 +112,10 @@ function copy_txt(txt: string){
               <div class="font-mono text-sm font-bold text-emerald-500 select-all">{{ currentStore.store_id }}</div>
             </div>
             <UButton
-              size="xs"
+              size="sm"
               variant="soft"
               color="neutral"
+              class="font-semibold px-3 py-1.5"
               @click="copy_txt(currentStore.store_id)"
             >
               <UIcon name="i-lucide-copy" class="w-3.5 h-3.5 mr-1" />
@@ -138,7 +139,7 @@ function copy_txt(txt: string){
           <UIcon name="i-lucide-store" class="w-8 h-8 mx-auto mb-2 text-slate-500" />
           <p>No store created yet.</p>
           <NuxtLink to="/dashboard/stores" class="mt-2 inline-block">
-            <UButton size="sm" color="primary">Create Your First Store</UButton>
+            <UButton size="md" color="primary" class="font-semibold px-5 py-2.5">Create Your First Store</UButton>
           </NuxtLink>
         </div>
       </div>

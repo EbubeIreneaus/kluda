@@ -78,8 +78,8 @@ function copyToClipboard(text: string, label: string) {
 
       <UButton
         color="primary"
-        size="sm"
-        class="font-semibold"
+        size="md"
+        class="font-semibold px-4 py-2.5"
         @click="showCreateModal = true"
       >
         <UIcon name="i-lucide-plus" class="w-4 h-4 mr-1.5" />
@@ -101,9 +101,14 @@ function copyToClipboard(text: string, label: string) {
       <p class="text-sm text-(--ui-text-muted) mt-1 mb-4">
         You haven't created any stores yet.
       </p>
-      <UButton color="primary" size="sm" @click="showCreateModal = true"
-        >Create First Store</UButton
+      <UButton
+        color="primary"
+        size="md"
+        class="font-semibold px-5 py-2.5"
+        @click="showCreateModal = true"
       >
+        Create First Store
+      </UButton>
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -181,10 +186,10 @@ function copyToClipboard(text: string, label: string) {
         >
           <button
             @click="ownerStore.selectStore(store.store_id)"
-            class="text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer"
+            class="text-xs font-semibold px-3.5 py-2 rounded-xl transition cursor-pointer"
             :class="
               store.store_id === ownerStore.selectedStoreId
-                ? 'bg-emerald-500 text-slate-950'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
                 : 'bg-(--ui-bg-muted) text-(--ui-text-muted) hover:text-(--ui-text)'
             "
           >
@@ -197,9 +202,10 @@ function copyToClipboard(text: string, label: string) {
 
           <NuxtLink :to="`/dashboard/staff?store_id=${store.store_id}`">
             <UButton
-              size="xs"
+              size="sm"
               variant="ghost"
               color="neutral"
+              class="font-semibold px-3 py-1.5"
               trailing-icon="i-lucide-arrow-right"
             >
               View Staff
@@ -248,12 +254,21 @@ function copyToClipboard(text: string, label: string) {
             <UButton
               variant="ghost"
               color="neutral"
+              size="md"
+              class="font-semibold px-4 py-2.5"
               @click="showCreateModal = false"
-              >Cancel</UButton
             >
-            <UButton type="submit" color="primary" :loading="isSubmitting"
-              >Create Store</UButton
+              Cancel
+            </UButton>
+            <UButton
+              type="submit"
+              color="primary"
+              size="md"
+              class="font-semibold px-5 py-2.5"
+              :loading="isSubmitting"
             >
+              Create Store
+            </UButton>
           </div>
         </form>
       </template>

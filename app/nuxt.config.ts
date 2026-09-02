@@ -86,8 +86,8 @@ export default defineNuxtConfig({
       display: "standalone",
       start_url: "/",
       description: "Sell Faster, Track Everything",
-      theme_color: "#1e293b",
-      background_color: "#0f172a",
+      theme_color: "#09090b",
+      background_color: "#09090b",
       icons: [
         {
           src: "/kluda-icons/64x64.png",

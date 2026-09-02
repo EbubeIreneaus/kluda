@@ -124,7 +124,7 @@ function copyStaffId(id: string) {
         </p>
       </div>
 
-      <UButton color="primary" size="sm" class="font-semibold" @click="showAddModal = true">
+      <UButton color="primary" size="md" class="font-semibold px-4 py-2.5" @click="showAddModal = true">
         <UIcon name="i-lucide-user-plus" class="w-4 h-4 mr-1.5" />
         Add Cashier / Staff
       </UButton>
@@ -154,7 +154,7 @@ function copyStaffId(id: string) {
       <UIcon name="i-lucide-users" class="w-12 h-12 mx-auto mb-3 text-slate-500" />
       <h3 class="text-base font-bold text-(--ui-text-highlighted)">No Cashiers Yet</h3>
       <p class="text-sm text-(--ui-text-muted) mt-1 mb-4">Add your first cashier to give them POS terminal access.</p>
-      <UButton color="primary" size="sm" @click="showAddModal = true">Add Cashier</UButton>
+      <UButton color="primary" size="md" class="font-semibold px-5 py-2.5" @click="showAddModal = true">Add Cashier</UButton>
     </div>
 
     <div v-else class="overflow-hidden rounded-3xl border border-(--ui-border) glass-panel">
@@ -209,6 +209,7 @@ function copyStaffId(id: string) {
                   size="xs"
                   variant="ghost"
                   color="error"
+                  class="font-medium px-2.5 py-1"
                   @click="handleRevoke(staff.staff_id)"
                 >
                   Revoke Session
@@ -273,8 +274,24 @@ function copyStaffId(id: string) {
           </div>
 
           <div class="flex justify-end gap-2 pt-4">
-            <UButton variant="ghost" color="neutral" @click="showAddModal = false">Cancel</UButton>
-            <UButton type="submit" color="primary" :loading="isSubmitting">Create Cashier Account</UButton>
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="md"
+              class="font-semibold px-4 py-2.5"
+              @click="showAddModal = false"
+            >
+              Cancel
+            </UButton>
+            <UButton
+              type="submit"
+              color="primary"
+              size="md"
+              class="font-semibold px-5 py-2.5"
+              :loading="isSubmitting"
+            >
+              Create Cashier Account
+            </UButton>
           </div>
         </form>
       </template>
