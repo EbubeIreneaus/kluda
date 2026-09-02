@@ -2,17 +2,17 @@ import Dexie, { type Table } from 'dexie'
 
 export interface PendingSaleItem {
   stock_slug: string
-  amount: number      // in kobo (stored integer)
+  amount: number
   quantities: number
 }
 
 export interface PendingSale {
   idempotency_key: string
   items: PendingSaleItem[]
-  discount: number    // in kobo (stored integer)
+  discount: number
   customer_id: string | null
   payment_method: 'cash' | 'pos' | 'debt' | 'transfer' | 'online'
-  amount_recived: number // in kobo (stored integer)
+  amount_recived: number
   staff_note: string | null
   status: 'pending' | 'completed' | 'cancelled'
   created_at: string
@@ -21,8 +21,8 @@ export interface PendingSale {
 export interface LocalProduct {
   slug: string
   name: string
-  unit_price: number    // in kobo
-  max_discount: number  // in kobo
+  unit_price: number
+  max_discount: number
   barcode_id: string
   quantities: number
   unit_in: string
@@ -44,13 +44,12 @@ export interface LocalCustomer {
 export interface LocalDebtor {
   debtor_id: string
   customer_name: string
-  customer_id:string
+  customer_id: string
   amount: number
   note: string
   status: string
   created_at: string
 }
-
 
 export interface LocalStaffMember {
   staff_id: string
@@ -87,8 +86,8 @@ export class POSDatabase extends Dexie {
   debtors!: Table<LocalDebtor, string>
   staffMembers!: Table<LocalStaffMember, string>
 
-  constructor() {
-    super('RetailPOS_DB')
+  constructor(dbName = 'RetailPOS_DB') {
+    super(dbName)
     this.version(1).stores({
       pendingSales: 'idempotency_key, created_at',
       products:     'slug, name, barcode_id',
@@ -107,5 +106,41 @@ export class POSDatabase extends Dexie {
   }
 }
 
-export const db = new POSDatabase()
+const dbInstances = new Map<string, POSDatabase>()
 
+export function getStoreDb(storeId?: string | null): POSDatabase {
+  let resolvedId = storeId
+  if (!resolvedId && typeof window !== 'undefined' && window.localStorage) {
+    resolvedId = window.localStorage.getItem('pos_store_id') || 'default'
+  }
+  const safeId = resolvedId || 'default'
+  const dbName = `RetailPOS_DB_${safeId}`
+
+  let instance = dbInstances.get(dbName)
+  if (!instance) {
+    instance = new POSDatabase(dbName)
+    dbInstances.set(dbName, instance)
+  }
+  return instance
+}
+
+export async function deleteStoreDb(storeId: string): Promise<void> {
+  const dbName = `RetailPOS_DB_${storeId}`
+  const existing = dbInstances.get(dbName)
+  if (existing) {
+    existing.close()
+    dbInstances.delete(dbName)
+  }
+  await Dexie.delete(dbName)
+}
+
+export const db: POSDatabase = new Proxy({} as POSDatabase, {
+  get(_target, prop) {
+    const activeDb = getStoreDb()
+    const value = (activeDb as any)[prop]
+    if (typeof value === 'function') {
+      return value.bind(activeDb)
+    }
+    return value
+  }
+})

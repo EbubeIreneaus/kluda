@@ -1,6 +1,6 @@
 from sqlalchemy import Text, JSON, DateTime, String, Enum, Integer, func, UUID, ForeignKey
 from sqlalchemy.orm import MappedColumn, mapped_column
-from schemas.notification import NotificationScope, NotificationRecipientType
+from schemas.notification import NotificationScope
 from .config import Base
 from datetime import datetime
 import uuid
@@ -16,15 +16,6 @@ class Notification(Base):
     message: MappedColumn[str] = mapped_column(Text, nullable=False)
     data: MappedColumn[dict | None] = mapped_column(JSON, nullable=True)
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
-
-
-class NotificationSubscription(Base):
-    __tablename__ = "notification_subscriptions"
-    id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
-    user_type: MappedColumn[NotificationRecipientType] = mapped_column(Enum(NotificationRecipientType), default=NotificationRecipientType.STAFF, index=True)
-    user_id: MappedColumn[uuid.UUID] = mapped_column(UUID, nullable=False, index=True)
-    sub_info: MappedColumn[dict] = mapped_column(JSON, nullable=False)
-    created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class NotificationRead(Base):

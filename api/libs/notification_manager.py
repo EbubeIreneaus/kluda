@@ -5,12 +5,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from setting import settings
-from models.user import StaffNotificationSubscription, UserNotificationSubscription, Staff
+from models.user import UserNotificationSubscription, User, StoreMember
 from models.business import Store
 from models.config import LocalSession
 from pywebpush import webpush, WebPushException
 from worker.config import get_arq_pool
-
 
 import logging
 logger = logging.getLogger(__name__)
@@ -112,39 +111,7 @@ class NotificationManager:
         data: dict | None = None,
         db: AsyncSession | None = None
     ):
-        payload = {"title": title, "body": body, "data": data or {}}
-        should_close = False
-        if db is None:
-            session = LocalSession()
-            db = session
-            should_close = True
-
-        try:
-            target_store_id = uuid.UUID(str(store_id))
-            stmt = (
-                select(StaffNotificationSubscription, Staff)
-                .join(Staff, Staff.staff_id == StaffNotificationSubscription.staff_id)
-                .where(Staff.store_id == target_store_id)
-            )
-            res = await db.execute(stmt)
-            subs = res.all()
-
-            dead_subs = []
-            for sub_rec, _ in subs:
-                success = await self._send_push(sub_rec.sub_info, payload)
-                if not success:
-                    dead_subs.append(sub_rec.id)
-
-            if dead_subs:
-                await db.execute(
-                    delete(StaffNotificationSubscription).where(
-                        StaffNotificationSubscription.id.in_(dead_subs)
-                    )
-                )
-                await db.commit()
-        finally:
-            if should_close:
-                await db.close()
+        await self.send_to_store(store_id, title, body, data, db)
 
     async def send_to_owner(
         self,
@@ -205,9 +172,16 @@ class NotificationManager:
             store_res = await db.execute(select(Store).where(Store.store_id == target_store_id))
             store = store_res.scalar_one_or_none()
 
-            await self.send_to_staff(store_id, title, body, data, db=db)
+            user_ids = set()
             if store and store.user_id:
-                await self.send_to_owner(store.user_id, title, body, data, db=db)
+                user_ids.add(store.user_id)
+
+            member_res = await db.execute(select(StoreMember.user_id).where(StoreMember.store_id == target_store_id))
+            for m_uid in member_res.scalars().all():
+                user_ids.add(m_uid)
+
+            for uid in user_ids:
+                await self.send_to_owner(uid, title, body, data, db=db)
         finally:
             if should_close:
                 await db.close()
@@ -227,32 +201,19 @@ class NotificationManager:
             should_close = True
 
         try:
-            staff_subs = (await db.execute(select(StaffNotificationSubscription))).scalars().all()
             owner_subs = (await db.execute(select(UserNotificationSubscription))).scalars().all()
-
-            dead_staff = []
-            for sub in staff_subs:
-                if not await self._send_push(sub.sub_info, payload):
-                    dead_staff.append(sub.id)
 
             dead_owner = []
             for sub in owner_subs:
                 if not await self._send_push(sub.sub_info, payload):
                     dead_owner.append(sub.id)
 
-            if dead_staff:
-                await db.execute(
-                    delete(StaffNotificationSubscription).where(
-                        StaffNotificationSubscription.id.in_(dead_staff)
-                    )
-                )
             if dead_owner:
                 await db.execute(
                     delete(UserNotificationSubscription).where(
                         UserNotificationSubscription.id.in_(dead_owner)
                     )
                 )
-            if dead_staff or dead_owner:
                 await db.commit()
         finally:
             if should_close:

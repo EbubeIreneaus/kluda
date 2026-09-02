@@ -1,5 +1,4 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'dashboard' })
 
 import type { AnalyticsPeriod } from '@/stores/analytics'
 

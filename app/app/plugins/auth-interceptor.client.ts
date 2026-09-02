@@ -11,7 +11,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.hook('app:error', (err: any) => {
     const url = String(err?.url || '')
     const status = err?.statusCode || err?.status || err?.response?.status
-    const isRefreshEndpoint = url.includes('/staff/auth/refresh-token')
+    const isRefreshEndpoint = url.includes('/auth/refresh-token') || url.includes('/staff/auth/refresh-token')
     if (status === 401 && isRefreshEndpoint) {
       auth.logout(true)
     }

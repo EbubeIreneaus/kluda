@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-definePageMeta({ layout: "dashboard" });
-
 const auth = useAuthStore();
 const productStore = useProductsStore();
 const salesStore = useSalesStore();
@@ -46,7 +44,7 @@ const staffName = computed(() => {
 
 <template>
   <div class="space-y-6">
-    <div class="w-full max-w-lg">
+    <div class="w-full">
       <div
         class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-emerald-950/80 to-zinc-950 p-6 text-white border border-emerald-500/30 shadow-2xl shadow-emerald-950/40 select-none"
       >
@@ -212,11 +210,9 @@ const staffName = computed(() => {
       </div>
       <div class="space-y-4">
         <DashboardTopProductsChart />
-        <DashboardLowStockAlert />
-      </div>
-      <div class="">
-        <DashboardRevenueChart />
       </div>
     </div>
+      <DashboardLowStockAlert />
+      <DashboardRevenueChart />
   </div>
 </template>

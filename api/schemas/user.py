@@ -44,7 +44,7 @@ class StaffCreate(BaseModel):
     other_name: str | None = None
     role: str = "staff"
     email: EmailStr
-    password: str
+    password: str | None = None
     phone: str | None = None
     permission: list[StaffPermission] = [StaffPermission.MANAGE_USER]
     status: StaffStatus = StaffStatus.ACTIVE
@@ -95,9 +95,51 @@ class BaseUser(BaseModel):
 class UserCreate(BaseUser):
     password: str = Field(min_length=6)
 
-class UserLogin(BaseModel):
+class UserRegisterWithStore(BaseModel):
+    fullname: str
     email: EmailStr
     password: str = Field(min_length=6)
+    phone: str | None = None
+    store_name: str | None = None
+    store_category: str | None = None
+    store_address: str | None = None
+
+class StoreMemberCreate(BaseModel):
+    email: EmailStr
+    first_name: str
+    last_name: str
+    other_name: str | None = None
+    phone: str | None = None
+    display_name: str | None = None
+    role: str = "cashier"
+    permission: list[StaffPermission] = [StaffPermission.RECORD_SALES, StaffPermission.VIEW_PRODUCT]
+    status: StaffStatus = StaffStatus.ACTIVE
+
+class StoreMemberUpdate(BaseModel):
+    display_name: str | None = None
+    role: str | None = None
+    permission: list[StaffPermission] | None = None
+    status: StaffStatus | None = None
+
+class StoreMemberResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    store_id: uuid.UUID
+    user_id: uuid.UUID
+    role: str
+    display_name: str | None = None
+    fullname: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    permission: list[StaffPermission] = []
+    status: StaffStatus
+    created_at: datetime
+
+class UserLogin(BaseModel):
+    email: str | None = None
+    staff_id: str | None = None
+    password: str = Field(min_length=1)
 
 class UserResponseMini(BaseUser):
     model_config = ConfigDict(from_attributes=True)
@@ -117,12 +159,14 @@ class PasswordResetEmailRequest(BaseModel):
 
 class PasswordResetVerifyRequest(BaseModel):
     email: EmailStr
-    otp_token: str
+    code: str | None = None
+    otp_token: str | None = None
 
 
 class PasswordResetSubmitRequest(BaseModel):
     email: EmailStr
-    otp_token: str
+    code: str | None = None
+    otp_token: str | None = None
     new_password: str
 
 

@@ -8,15 +8,14 @@ from sqlalchemy import select, update, func, and_
 from sqlalchemy.orm import joinedload
 from models.config import get_db
 from models.stock import Sale, SaleItem, Stock
-from models.user import Customer, Debt, Staff
+from models.user import Customer, Debt, User
 from schemas.stock import SaleCreate, SaleUpdate, SaleResponse
 from schemas.user import StaffPermission
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from libs.ws_manager import manager as ws_manager
-from libs.deps import require_permission, get_staff, get_staff_store
+from libs.deps import require_permission, get_staff_store, get_current_user
 from libs.notification_manager import notification_manager
-import uuid
 
 router = APIRouter(prefix="/{store_id}/sales", tags=["Sales"])
 
@@ -53,7 +52,7 @@ async def create_sales_batch(
     staff_id: str = Query(
         default="unknown", description="Staff ID for WS broadcast exclusion"
     ),
-    _: Staff = Depends(require_permission(StaffPermission.RECORD_SALES)),
+    user: User = Depends(require_permission(StaffPermission.RECORD_SALES)),
 ):
     created_ids = []
     synced_keys = []
@@ -64,7 +63,6 @@ async def create_sales_batch(
     for sale_data in sales_data:
         try:
             async with db.begin_nested():
-                # 1. Check idempotency
                 stmt = select(Sale).where(
                     Sale.idempotency_key == sale_data.idempotency_key,
                     Sale.store_id == store.store_id
@@ -92,11 +90,11 @@ async def create_sales_batch(
                         else:
                             sale_data.customer_id = None
 
-   
                 new_sale = Sale(
                     discount=sale_data.discount,
                     customer_id=sale_data.customer_id,
                     store_id=store.store_id,
+                    user_id=user.user_id,
                     payment_method=sale_data.payment_method,
                     amount_recived=sale_data.amount_recived,
                     idempotency_key=sale_data.idempotency_key,
@@ -130,7 +128,6 @@ async def create_sales_batch(
                         db.add(stock_item)
                         await db.flush()
 
-                    # Format for debt note: e.g. "3 piece of Peak Milk Powder 400g"
                     qty_str = (
                         str(int(item_in.quantities))
                         if item_in.quantities.is_integer()
@@ -181,7 +178,7 @@ async def create_sales_batch(
                     db.add(new_debt)
                     await db.flush()
 
-                    debt_alerts.append((customer.name or "Customer", float(debt_amount), float((customer.total_debt or 0) + debt_amount)))
+                    debt_alerts.append((customer.fullname or "Customer", float(debt_amount), float(debt_amount)))
 
                 created_ids.append(sale_id)
                 synced_keys.append(str(sale_data.idempotency_key))
@@ -235,9 +232,8 @@ async def get_analytics(
         default=None, description="End date (YYYY-MM-DD) when period=custom"
     ),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(require_permission(StaffPermission.VIEW_ANALYTICS)),
+    _: User = Depends(require_permission(StaffPermission.VIEW_ANALYTICS)),
 ):
-    """Aggregate analytics for the given period."""
     today = datetime.now(timezone.utc).date()
 
     if period == "custom":
@@ -382,9 +378,8 @@ async def get_sales(
         description="Filter sales by date (YYYY-MM-DD). Defaults to today.",
     ),
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(get_staff),
+    _: User = Depends(get_current_user),
 ):
-    """Return paginated sales filtered to a single calendar day (default = today)."""
     target = sale_date or datetime.now(timezone.utc).date()
     day_start = datetime(target.year, target.month, target.day, tzinfo=timezone.utc)
     day_end = day_start + timedelta(days=1)
@@ -405,7 +400,7 @@ async def get_sales(
 async def get_sale(
     sale_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(get_staff),
+    _: User = Depends(get_current_user),
 ):
     res = await db.execute(
         select(Sale)
@@ -430,7 +425,7 @@ async def update_sale(
     sale_id: uuid.UUID,
     update_data: SaleUpdate,
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(require_permission(StaffPermission.RECORD_SALES)),
+    _: User = Depends(require_permission(StaffPermission.RECORD_SALES)),
 ):
     res = await db.execute(select(Sale).where(Sale.sale_id == sale_id))
     if not res.scalar_one_or_none():
@@ -450,7 +445,7 @@ async def update_sale(
 async def delete_sale(
     sale_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: Staff = Depends(require_permission(StaffPermission.RECORD_SALES)),
+    _: User = Depends(require_permission(StaffPermission.RECORD_SALES)),
 ):
     res = await db.execute(select(Sale).where(Sale.sale_id == sale_id))
     sale = res.scalar_one_or_none()

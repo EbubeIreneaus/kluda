@@ -62,20 +62,20 @@ const isActive = (path: string) => {
           <span>POS Terminal</span>
         </a>
 
-        <NuxtLink
-          to="/login"
+        <a
+          :href="`${posUrl}/auth/login`"
           class="text-xs font-bold text-(--ui-text-muted) hover:text-(--ui-text-highlighted) px-3 py-2 transition"
         >
           Sign In
-        </NuxtLink>
+        </a>
 
-        <NuxtLink
-          to="/register"
+        <a
+          :href="`${posUrl}/auth/register`"
           class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-xs shadow-lg shadow-emerald-500/25 transition active:scale-95"
         >
           <span>Start Selling Free</span>
           <UIcon name="i-lucide-arrow-right" class="w-3.5 h-3.5" />
-        </NuxtLink>
+        </a>
       </div>
 
       <div class="flex md:hidden items-center gap-2">
@@ -123,22 +123,20 @@ const isActive = (path: string) => {
         </a>
 
         <div class="grid grid-cols-2 gap-2">
-          <NuxtLink
-            to="/login"
-            @click="isMobileMenuOpen = false"
+          <a
+            :href="`${posUrl}/auth/login`"
             class="flex items-center justify-center py-2.5 rounded-xl text-xs font-bold border border-(--ui-border) text-(--ui-text-highlighted)"
           >
             Sign In
-          </NuxtLink>
+          </a>
 
-          <NuxtLink
-            to="/register"
-            @click="isMobileMenuOpen = false"
+          <a
+            :href="`${posUrl}/auth/register`"
             class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-extrabold text-xs shadow-md"
           >
             <span>Start Free</span>
             <UIcon name="i-lucide-arrow-right" class="w-3.5 h-3.5" />
-          </NuxtLink>
+          </a>
         </div>
       </div>
     </div>

@@ -24,9 +24,10 @@ export const useApi = () => {
       const statusCode =
         error?.response?.status ?? error?.statusCode ?? error?.status;
       const isRefreshOrAuthUrl =
-        fetchUrl.includes("/staff/auth/refresh-token") ||
-        fetchUrl.includes("/staff/auth/login") ||
-        fetchUrl.includes("/staff/auth/logout");
+        fetchUrl.includes("/auth/refresh-token") ||
+        fetchUrl.includes("/auth/login") ||
+        fetchUrl.includes("/auth/logout") ||
+        fetchUrl.includes("/staff/auth/");
 
       if (statusCode === 401 && !isRefreshOrAuthUrl) {
         const refreshed = await auth.refreshToken();

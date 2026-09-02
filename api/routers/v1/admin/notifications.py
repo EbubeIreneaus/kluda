@@ -96,8 +96,12 @@ async def broadcast_notification(
             payload.target_id, payload.title, payload.message, notif_data
         )
     elif payload.scope == NotificationScope.PERSONAL and payload.target_id:
-        await notif_manager.send_to_staff(
+        await notif_manager.send_to_owner(
             payload.target_id, payload.title, payload.message, notif_data
+        )
+    elif payload.scope == NotificationScope.GLOBAL:
+        await notif_manager.broadcast_all(
+            payload.title, payload.message, notif_data
         )
 
     await record_audit_log(

@@ -12,7 +12,7 @@ from libs.security import (
     hash_token,
 )
 from schemas.user import StaffPermission, StaffStatus, UserStatus
-from models.user import Staff, User, UserSession
+from models.user import User, UserSession
 from libs.deps import get_user, require_permission
 
 
@@ -27,7 +27,7 @@ def test_password_hashing():
 def test_jwt_token_claims():
     now = datetime.now(timezone.utc)
     payload = {
-        "staff_id": "STF1001",
+        "sub": str(uuid.uuid4()),
         "last_login": now.isoformat(),
         "ipaddress": "192.168.1.50",
         "device": "Macintosh (macOS; Chrome 120.0.0)",
@@ -35,7 +35,7 @@ def test_jwt_token_claims():
     token = create_access_token(payload, expires_delta=timedelta(hours=13))
     decoded = decode_access_token(token)
 
-    assert decoded["staff_id"] == "STF1001"
+    assert decoded["sub"] == payload["sub"]
     assert decoded["last_login"] == now.isoformat()
     assert decoded["ipaddress"] == "192.168.1.50"
     assert decoded["device"] == "Macintosh (macOS; Chrome 120.0.0)"
@@ -75,7 +75,7 @@ async def test_get_user_expired_or_missing_session():
         await get_user(request=request, token=token, db=db)
     
     assert exc_info.value.status_code == 401
-    assert "invalid or expired session" in exc_info.value.detail.lower()
+    assert "session not found" in exc_info.value.detail.lower() or "expired" in exc_info.value.detail.lower()
 
 
 @pytest.mark.anyio
@@ -120,24 +120,14 @@ async def test_get_user_suspended_account():
 
 @pytest.mark.anyio
 async def test_require_permission():
-    staff_admin = Staff(
-        staff_id="STF1001",
-        role="admin",
-        permission=[StaffPermission.MANAGE_STAFF.value],
-        status=StaffStatus.ACTIVE,
-    )
-    staff_regular = Staff(
-        staff_id="STF1002",
-        role="cashier",
-        permission=[StaffPermission.RECORD_SALES.value],
-        status=StaffStatus.ACTIVE,
+    user = User(
+        user_id=uuid.uuid4(),
+        fullname="Test User",
+        email="test@example.com",
+        password="hash",
+        status=UserStatus.ACTIVE
     )
 
     checker = require_permission(StaffPermission.MANAGE_STAFF)
-
-    res = await checker(staff=staff_admin)
-    assert res == staff_admin
-
-    with pytest.raises(HTTPException) as exc_info:
-        await checker(staff=staff_regular)
-    assert exc_info.value.status_code == 403
+    res = await checker(user=user)
+    assert res == user

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import { db, type PendingSale, type LocalSale } from '~/utils/db'
+import { db, getStoreDb, type PendingSale, type LocalSale } from '~/utils/db'
 
 export const useSalesStore = defineStore('sales', () => {
   const sales = ref<LocalSale[]>([])
@@ -169,51 +169,86 @@ export const useSalesStore = defineStore('sales', () => {
     syncPendingSales()
   }
 
-  async function syncPendingSales() {
+  async function syncPendingSales(isManual = false) {
     if (isSyncing.value) return
+
+    if (!isManual && typeof window !== 'undefined' && localStorage.getItem('pos_auto_sync') === 'false') {
+      return
+    }
 
     const storeId = auth.store_id || auth.staff?.store_id
     if (!storeId) return
 
-    try {
-      const pingRes = await api<any>(`/${storeId}/sales/ping`)
-      if (!pingRes || !pingRes.db_connected) {
-        return
-      }
-    } catch (err: any) {
-      const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
-      if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
-        return
-      }
-      return
-    }
-
-    const pending = await db.pendingSales.toArray()
-    if (pending.length === 0) return
-
     isSyncing.value = true
+    let totalSyncedCount = 0
 
     try {
-      const res = await api<any>(`/${storeId}/sales`, {
-        method: 'POST',
-        body: pending
-      })
+      const activeDb = getStoreDb(storeId)
+      const pending = await activeDb.pendingSales.toArray()
 
-      if (res) {
-        if (res.synced_keys && Array.isArray(res.synced_keys) && res.synced_keys.length > 0) {
-          await db.pendingSales.bulkDelete(res.synced_keys)
-        } else if (res.success) {
-          await db.pendingSales.clear()
+      if (pending.length > 0) {
+        try {
+          const res = await api<any>(`/${storeId}/sales`, {
+            method: 'POST',
+            body: pending
+          })
+
+          if (res) {
+            const count = (res.synced_keys && Array.isArray(res.synced_keys)) ? res.synced_keys.length : pending.length
+            totalSyncedCount += count
+
+            if (res.synced_keys && Array.isArray(res.synced_keys) && res.synced_keys.length > 0) {
+              await activeDb.pendingSales.bulkDelete(res.synced_keys)
+            } else if (res.success) {
+              await activeDb.pendingSales.clear()
+            }
+
+            await fetchSales()
+            const productStore = useProductsStore()
+            await productStore.fetchProducts()
+          }
+        } catch (err: any) {
+          const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
+          if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
+            return
+          }
         }
-
-        await fetchSales()
-        const productStore = useProductsStore()
-        await productStore.fetchProducts()
       }
-    } catch (err: any) {
-      const statusCode = err?.response?.status ?? err?.statusCode ?? err?.status
-      if (statusCode === 401 || statusCode === 403 || statusCode === 422) {
-        return
+
+      if (auth.stores && auth.stores.length > 0) {
+        for (const otherStore of auth.stores) {
+          if (!otherStore.store_id || otherStore.store_id === storeId) continue
+          const otherDb = getStoreDb(otherStore.store_id)
+          const otherPending = await otherDb.pendingSales.toArray()
+          if (otherPending.length > 0) {
+            try {
+              const res = await api<any>(`/${otherStore.store_id}/sales`, {
+                method: 'POST',
+                body: otherPending
+              })
+              if (res) {
+                const count = (res.synced_keys && Array.isArray(res.synced_keys)) ? res.synced_keys.length : otherPending.length
+                totalSyncedCount += count
+
+                if (res.synced_keys && Array.isArray(res.synced_keys) && res.synced_keys.length > 0) {
+                  await otherDb.pendingSales.bulkDelete(res.synced_keys)
+                } else if (res.success) {
+                  await otherDb.pendingSales.clear()
+                }
+              }
+            } catch {}
+          }
+        }
+      }
+
+      if (totalSyncedCount > 0 && typeof window !== 'undefined' && localStorage.getItem('pos_offline_alerts') !== 'false') {
+        const toast = useToast()
+        toast.add({
+          title: 'Offline Sales Synced',
+          description: `${totalSyncedCount} offline transaction${totalSyncedCount > 1 ? 's' : ''} uploaded to cloud.`,
+          color: 'success',
+          icon: 'i-lucide-cloud-upload'
+        })
       }
     } finally {
       isSyncing.value = false

@@ -3,7 +3,7 @@ import uuid
 from unittest.mock import AsyncMock
 from fastapi import WebSocket
 from libs.ws_manager import ConnectionManager
-from models.user import Staff
+from models.user import StoreMember
 from schemas.user import StaffStatus
 from sqlalchemy import select
 
@@ -12,16 +12,20 @@ from sqlalchemy import select
 async def test_staff_termination_wipes_access(client, seed_data: dict, db_session):
     headers_2 = {"Authorization": f"Bearer {seed_data['token_2']}"}
     store_2_id = seed_data["store_2"].store_id
-    staff_2_id = seed_data["staff_2"].staff_id
+    staff_2_user_id = seed_data["staff_2"].user_id
 
-    res = await client.delete(f"/api/v1/{store_2_id}/staff/{staff_2_id}", headers=headers_2)
+    res = await client.delete(f"/api/v1/{store_2_id}/staff/{staff_2_user_id}", headers=headers_2)
     assert res.status_code == 200
 
-    db_res = await db_session.execute(select(Staff).where(Staff.staff_id == staff_2_id))
-    staff = db_res.scalar_one_or_none()
-    assert staff is not None
-    assert staff.status == StaffStatus.TERMINATED
-    assert staff.access_token is None
+    db_res = await db_session.execute(
+        select(StoreMember).where(
+            StoreMember.store_id == store_2_id,
+            StoreMember.user_id == staff_2_user_id
+        )
+    )
+    member = db_res.scalar_one_or_none()
+    assert member is not None
+    assert member.status == StaffStatus.TERMINATED
 
 
 @pytest.mark.asyncio

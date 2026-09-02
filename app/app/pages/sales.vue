@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-definePageMeta({ layout: 'dashboard' })
-
 const { format } = useFormatCurrency()
 
 const search = ref('')

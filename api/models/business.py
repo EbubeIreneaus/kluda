@@ -14,7 +14,7 @@ from datetime import datetime
 import uuid
 
 if TYPE_CHECKING:
-    from .user import Staff, User, Customer
+    from .user import User, Customer, StoreMember
     from .stock import Stock, Sale, StockHistory
 
 
@@ -23,7 +23,7 @@ class Store(Base):
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
     store_id: MappedColumn[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, unique=True, index=True)
     name: MappedColumn[str] = mapped_column(String, nullable=False)
-    staffs: MappedColumn[list['Staff']] = relationship(back_populates="store", cascade="all, delete-orphan")
+    members: MappedColumn[list['StoreMember']] = relationship(back_populates="store", cascade="all, delete-orphan")
     user_id: MappedColumn[uuid.UUID] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
     user: MappedColumn['User'] = relationship(back_populates="stores")
     stocks: MappedColumn[list['Stock']]=relationship(back_populates="store", cascade="all, delete-orphan")
