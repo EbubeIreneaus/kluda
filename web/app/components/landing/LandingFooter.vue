@@ -42,8 +42,8 @@ const posUrl = config.public.posAppUrl || 'http://localhost:3000'
         <div>
           <h4 class="text-xs font-bold uppercase tracking-wider text-(--ui-text-highlighted) mb-4">Merchant Portal</h4>
           <ul class="space-y-2.5 text-xs text-(--ui-text-muted)">
-            <li><NuxtLink to="/register" class="hover:text-emerald-500 transition">Create Merchant Account</NuxtLink></li>
-            <li><NuxtLink to="/login" class="hover:text-emerald-500 transition">Owner Sign In</NuxtLink></li>
+            <li><a :href="`${posUrl}/auth/register`" class="hover:text-emerald-500 transition">Create Merchant Account</a></li>
+            <li><a :href="`${posUrl}/auth/login`" class="hover:text-emerald-500 transition">Owner Sign In</a></li>
             <li><NuxtLink to="/pricing#faq" class="hover:text-emerald-500 transition">Retailer FAQ</NuxtLink></li>
           </ul>
         </div>
@@ -54,7 +54,7 @@ const posUrl = config.public.posAppUrl || 'http://localhost:3000'
         <div class="flex items-center gap-6">
           <NuxtLink to="/pricing" class="hover:text-(--ui-text-muted) transition">Hardware & Pricing</NuxtLink>
           <NuxtLink to="/why-kluda" class="hover:text-(--ui-text-muted) transition">Manifesto</NuxtLink>
-          <NuxtLink to="/login" class="hover:text-(--ui-text-muted) transition">Portal Access</NuxtLink>
+          <a :href="`${posUrl}/auth/login`" class="hover:text-(--ui-text-muted) transition">Portal Access</a>
         </div>
       </div>
     </div>

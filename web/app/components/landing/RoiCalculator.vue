@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
+const config = useRuntimeConfig()
+const posUrl = config.public.posAppUrl || 'http://localhost:3000'
+
 const counters = ref(3)
 const dailyRevenue = ref(350000)
 const outageHoursPerWeek = ref(8)
@@ -179,12 +182,12 @@ function formatNgn(num: number) {
           </div>
         </div>
 
-        <NuxtLink to="/register" class="block mt-8">
+        <a :href="`${posUrl}/auth/register`" class="block mt-8">
           <button class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95">
             <span>Start Selling Free</span>
             <UIcon name="i-lucide-arrow-right" class="w-4 h-4" />
           </button>
-        </NuxtLink>
+        </a>
 
         <p class="text-[10px] text-slate-400 text-center mt-3 italic">
           * Estimates are based on the parameters provided and are illustrative.

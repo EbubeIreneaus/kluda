@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+const config = useRuntimeConfig()
+const posUrl = config.public.posAppUrl || 'http://localhost:3000'
+
 const activeIndustry = ref('supermarket')
 
 const industries = [
@@ -141,12 +144,12 @@ const industries = [
             </p>
           </div>
 
-          <NuxtLink to="/register" class="mt-6">
+          <a :href="`${posUrl}/auth/register`" class="mt-6">
             <button class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-500/20">
               <UIcon name="i-lucide-rocket" class="w-4 h-4" />
               Start Free for {{ ind.name }}
             </button>
-          </NuxtLink>
+          </a>
         </div>
       </div>
     </template>

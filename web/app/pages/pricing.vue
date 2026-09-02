@@ -8,6 +8,9 @@ definePageMeta({
   layout: 'marketing'
 })
 
+const config = useRuntimeConfig()
+const posUrl = config.public.posAppUrl || 'http://localhost:3000'
+
 useSeoMeta({
   title: 'Hardware Economics & Pricing | Kluda Retail POS',
   description: 'Zero upfront hardware investment. See how much your retail store saves by using smartphones and tablets with Kluda instead of ₦250,000+ dedicated POS terminal hardware.'
@@ -116,13 +119,13 @@ const faqs = [
           </div>
         </div>
 
-        <NuxtLink
-          to="/register"
+        <a
+          :href="`${posUrl}/auth/register`"
           class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm shadow-xl shadow-emerald-500/25 transition active:scale-95"
         >
           <span>Start Selling Free</span>
           <UIcon name="i-lucide-arrow-right" class="w-4 h-4" />
-        </NuxtLink>
+        </a>
       </div>
     </section>
 

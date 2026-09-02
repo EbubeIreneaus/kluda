@@ -6,6 +6,9 @@ definePageMeta({
   layout: 'marketing'
 })
 
+const config = useRuntimeConfig()
+const posUrl = config.public.posAppUrl || 'http://localhost:3000'
+
 useSeoMeta({
   title: 'POS for Fashion Boutiques & Apparel | Kluda',
   description: 'Turn smartphones into sleek mobile checkout registers for fashion boutiques, apparel stores, and retail pop-up kiosks.'
@@ -56,13 +59,13 @@ const boutiqueBenefits = [
         </p>
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-          <NuxtLink
-            to="/register"
+          <a
+            :href="`${posUrl}/auth/register`"
             class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm shadow-xl shadow-emerald-500/25 transition active:scale-95"
           >
             <span>Start Selling Free</span>
             <UIcon name="i-lucide-arrow-right" class="w-4 h-4" />
-          </NuxtLink>
+          </a>
         </div>
       </div>
     </section>
