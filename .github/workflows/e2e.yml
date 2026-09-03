@@ -73,6 +73,37 @@ jobs:
     name: E2E Tests (Playwright)
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    env:
+      # Core – real values required
+      DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/kluda
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci_test_jwt_secret_1234567890abcdef
+      APP_ENV: development
+      COOKIE_SECURE: "False"
+      DOMAIN_NAME: localhost
+      # Email – guarded by hasattr/check in code before use; dummy is safe
+      RESEND_API_KEY: re_dummy_key_not_used_in_e2e
+      RESEND_SIGNING_SECRET: dummy_resend_signing_secret
+      # Push notifications – guarded in worker; dummy keys are safe
+      VAPID_PUBLIC_KEY: BDummyVapidPublicKeyForCITesting1234567890abcdef
+      VAPID_PRIVATE_KEY: dummyVapidPrivateKeyForCITesting1234567890ab
+      VAPID_CLAIM_EMAIL: ci@example.com
+      # Media uploads – not triggered in E2E flows
+      CLOUDINARY_NAME: dummy_cloud
+      CLOUDINARY_KEY: "000000000000000"
+      CLOUDINARY_SECRET: dummy_cloudinary_secret
+      IMAGE_FOLDER: kluda
+      # Payments – not triggered in E2E flows
+      PAYSTACK_SECRET: sk_test_dummy_paystack_secret
+      PAYSTACK_PUBLIC: pk_test_dummy_paystack_public
+      # Super admin seed – used on startup init_db
+      SUPER_STAFF_EMAIL: admin@example.com
+      SUPER_STAFF_NAME: Admin
+      SUPER_STAFF_PASSWORD: Admin@123456
+      SUPER_ADMIN_NAME: Super Admin
+      SUPER_ADMIN_EMAIL: superadmin@example.com
+      SUPER_ADMIN_PASSWORD: SuperAdmin@123456
+      SUPER_ADMIN_PHONE: "08000000000"
 
     services:
       postgres:
@@ -132,37 +163,6 @@ jobs:
 
       - name: Start API server
         working-directory: ./api
-        env:
-          # Core – real values required
-          DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/kluda
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: ci_test_jwt_secret_1234567890abcdef
-          APP_ENV: development
-          COOKIE_SECURE: "False"
-          DOMAIN_NAME: localhost
-          # Email – guarded by hasattr/check in code before use; dummy is safe
-          RESEND_API_KEY: re_dummy_key_not_used_in_e2e
-          RESEND_SIGNING_SECRET: dummy_resend_signing_secret
-          # Push notifications – guarded in worker; dummy keys are safe
-          VAPID_PUBLIC_KEY: BDummyVapidPublicKeyForCITesting1234567890abcdef
-          VAPID_PRIVATE_KEY: dummyVapidPrivateKeyForCITesting1234567890ab
-          VAPID_CLAIM_EMAIL: ci@example.com
-          # Media uploads – not triggered in E2E flows
-          CLOUDINARY_NAME: dummy_cloud
-          CLOUDINARY_KEY: "000000000000000"
-          CLOUDINARY_SECRET: dummy_cloudinary_secret
-          IMAGE_FOLDER: kluda
-          # Payments – not triggered in E2E flows
-          PAYSTACK_SECRET: sk_test_dummy_paystack_secret
-          PAYSTACK_PUBLIC: pk_test_dummy_paystack_public
-          # Super admin seed – used on startup init_db
-          SUPER_STAFF_EMAIL: admin@example.com
-          SUPER_STAFF_NAME: Admin
-          SUPER_STAFF_PASSWORD: Admin@123456
-          SUPER_ADMIN_NAME: Super Admin
-          SUPER_ADMIN_EMAIL: superadmin@example.com
-          SUPER_ADMIN_PASSWORD: SuperAdmin@123456
-          SUPER_ADMIN_PHONE: "08000000000"
         run: |
           uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
           echo "Waiting for API to become ready..."
