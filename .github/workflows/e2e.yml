@@ -159,7 +159,9 @@ jobs:
       
       - name: Migrate Database
         working-directory: ./api
-        run: uv run alembic upgrade head
+        run: |
+          uv run alembic upgrade head
+          uv run python scripts/seed_subscriptions.py
 
       - name: Start API server
         working-directory: ./api
