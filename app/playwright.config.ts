@@ -5,6 +5,12 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  /* 90s timeout for complete user-journey tests */
+  timeout: 90000,
+  /* Allow 30s for expect assertions during Vite dev-mode on-demand compilation */
+  expect: {
+    timeout: 30000,
+  },
   /* Run tests sequentially for full user journey workflows */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

@@ -22,7 +22,12 @@ function toggleFaq(idx: number) {
   openFaqIndex.value = openFaqIndex.value === idx ? null : idx
 }
 
-const faqs = [
+interface PricingFaq {
+  q: string
+  a: string
+}
+
+const defaultFaqs: PricingFaq[] = [
   {
     q: 'Do I need to buy any dedicated POS hardware to use Kluda?',
     a: 'No. Kluda is designed to run directly in the modern web browser on Android phones, iPhones, iPads, Android tablets, and existing laptops/PCs. You use the camera you already own for barcode scanning.'
@@ -42,12 +47,21 @@ const faqs = [
   {
     q: 'How much does Kluda cost during the Public Beta?',
     a: 'Kluda is 100% free during our Public Beta while we build and refine features with early retailers. There are no credit card requirements and no hidden fees.'
-  },
-  {
-    q: 'Can I track customer debt and credit purchases?',
-    a: 'Yes. Kluda includes a built-in Customer Credit Ledger. You can record credit sales, monitor unpaid balances, accept partial repayments, and issue debt statement receipts directly at checkout.'
   }
 ]
+
+const { data: dynamicFaqs } = await useAsyncData<PricingFaq[]>('pricing-faqs', async () => {
+  try {
+    const apiBase = config.public.apiBase || 'http://localhost:8000/api/v1'
+    const res = await $fetch<any[]>(`${apiBase}/faqs`)
+    if (res && res.length) {
+      return res.map(f => ({ q: f.question, a: f.answer }))
+    }
+  } catch {}
+  return defaultFaqs
+})
+
+const displayFaqs = computed(() => dynamicFaqs.value || defaultFaqs)
 </script>
 
 <template>
@@ -150,13 +164,13 @@ const faqs = [
 
       <div class="space-y-4">
         <div
-          v-for="(faq, idx) in faqs"
+          v-for="(faq, idx) in displayFaqs"
           :key="faq.q"
           class="rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated)/40 overflow-hidden transition"
         >
           <button
             @click="toggleFaq(idx)"
-            class="w-full p-5 sm:p-6 text-left flex items-center justify-between gap-4 font-bold text-sm sm:text-base text-(--ui-text-highlighted)"
+            class="w-full p-5 sm:p-6 text-left flex items-center justify-between gap-4 font-bold text-sm sm:text-base text-(--ui-text-highlighted) cursor-pointer"
           >
             <span>{{ faq.q }}</span>
             <UIcon
@@ -170,6 +184,16 @@ const faqs = [
             {{ faq.a }}
           </div>
         </div>
+      </div>
+
+      <div class="text-center pt-8">
+        <NuxtLink
+          to="/faq"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) hover:bg-(--ui-bg-accented) text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-xs transition cursor-pointer"
+        >
+          <span>View All Frequently Asked Questions</span>
+          <UIcon name="i-lucide-arrow-right" class="w-3.5 h-3.5" />
+        </NuxtLink>
       </div>
     </section>
 

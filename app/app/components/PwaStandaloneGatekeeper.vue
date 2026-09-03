@@ -8,18 +8,29 @@ const deferredPrompt = ref<any>(null)
 const isInstalling = ref(false)
 const bypassGate = ref(false)
 
+const route = useRoute()
+const isAuthRoute = computed(() => route.path.startsWith('/auth'))
+
+const shouldShowGate = computed(() => {
+  if (isAuthRoute.value) return false
+  if (isStandalone.value) return false
+  if (bypassGate.value) return false
+  return true
+})
+
 onMounted(() => {
   if (import.meta.client) {
     const standaloneCheck =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true ||
-      window.location.search.includes('standalone=true')
+      window.location.search.includes('standalone=true') ||
+      route.query.standalone === 'true'
 
     isStandalone.value = standaloneCheck
     isIos.value = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
 
-    const bypassed = sessionStorage.getItem('bypass_pwa_gate') === 'true'
-    if (bypassed && isDev) {
+    const bypassed = sessionStorage.getItem('bypass_pwa_gate') === 'true' || localStorage.getItem('bypass_pwa_gate') === 'true'
+    if (bypassed) {
       bypassGate.value = true
     }
 
@@ -61,7 +72,7 @@ function handleBypass() {
 <template>
   <ClientOnly>
     <div
-      v-if="!isStandalone && (!isDev || !bypassGate)"
+      v-if="shouldShowGate"
       class="fixed inset-0 z-[999999] flex flex-col items-center justify-center bg-zinc-950 text-white p-6 sm:p-10 select-none overflow-y-auto"
     >
       <div class="w-full max-w-sm flex flex-col items-center text-center gap-6">

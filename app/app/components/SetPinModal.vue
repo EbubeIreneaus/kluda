@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const { isSettingPinOpen, setPinOnline, closeSetPinModal } = usePinAuth()
+const { isSettingPinOpen, setPinOnline, closeSetPinModal, unlockTerminal } = usePinAuth()
 const auth = useAuthStore()
 const toast = useToast()
 
@@ -74,6 +74,7 @@ async function submitNewPin() {
         color: 'success',
       })
       handleClear()
+      unlockTerminal()
       closeSetPinModal()
     } else {
       errorMessage.value = res.message || 'Failed to save PIN'
@@ -91,6 +92,7 @@ async function submitNewPin() {
       class="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 select-none touch-manipulation"
     >
       <div
+        data-testid="set-pin-modal"
         class="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-3xl p-6 flex flex-col items-center gap-6 shadow-2xl relative"
         @click.stop
       >

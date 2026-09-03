@@ -10,6 +10,8 @@ from libs.deps import require_admin_permission, get_admin
 from libs.audit import record_audit_log
 
 
+from libs.cache import delete_cache
+
 router = APIRouter(prefix="/settings", tags=["Admin System Settings"])
 
 
@@ -55,6 +57,10 @@ async def update_setting(
 
     await db.flush()
     await db.refresh(setting)
+
+    # Invalidate public caches when corresponding setting is updated
+    if key == "platform_contact_info":
+        await delete_cache("kluda:cache:public_contact_info")
 
     await record_audit_log(
         db=db,

@@ -21,10 +21,12 @@ from schemas.subscription import (
     SubscribeRequest,
     SubscribeResponse,
     CancelSubscriptionResponse,
+    SubscriptionHistoryItem,
 )
 from schemas.business import StoreStatus
 from libs.deps import get_current_user
 from libs.payment import payment_manager, PaymentException
+from libs.cache import get_cache, set_cache
 from setting import settings
 from worker.config import get_arq_pool
 import structlog
@@ -53,8 +55,15 @@ async def list_available_plans(
         has_used_trial = True
 
     # Standalone 'trial' plan is excluded
-    query = select(Plan).where(Plan.status == PlanStatus.AVAILABLE, Plan.slug != "trial")
-    plans = (await db.scalars(query.order_by(Plan.price.asc()))).all()
+    cached_plans = await get_cache("kluda:cache:public_plans")
+    if cached_plans is not None:
+        plans = [PlanResponse(**p) for p in cached_plans]
+    else:
+        query = select(Plan).where(Plan.status == PlanStatus.AVAILABLE, Plan.slug != "trial")
+        db_plans = (await db.scalars(query.order_by(Plan.price.asc()))).all()
+        serialized = [PlanResponse.model_validate(p).model_dump(mode="json") for p in db_plans]
+        await set_cache("kluda:cache:public_plans", serialized, expire_seconds=3600)
+        plans = [PlanResponse(**p) for p in serialized]
 
     if has_used_trial:
         # Trial option and text must NOT be available if user has ever used any trial
@@ -499,3 +508,41 @@ async def cancel_subscription(
         status="cancelled",
         message="Subscription cancelled. Account reverted to Free Tier.",
     )
+
+
+@router.get("/history", response_model=list[SubscriptionHistoryItem])
+async def list_subscription_history(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve billing, payment, and subscription history for the current merchant."""
+    query = (
+        select(UserSubscription)
+        .options(selectinload(UserSubscription.plan))
+        .where(UserSubscription.user_id == current_user.user_id)
+        .order_by(UserSubscription.created_at.desc())
+    )
+    result = await db.scalars(query)
+    subscriptions = result.all()
+
+    items = []
+    for sub in subscriptions:
+        plan_name = sub.plan.name if sub.plan else sub.plan_id.capitalize()
+        items.append(
+            SubscriptionHistoryItem(
+                id=sub.id,
+                subscription_id=sub.subscription_id,
+                plan_slug=sub.plan_id,
+                plan_name=plan_name,
+                status=sub.status,
+                amount=sub.amount,
+                is_trial=sub.is_trial,
+                reference=sub.reference,
+                payment_channel=sub.payment_channel,
+                created_at=sub.created_at,
+                next_renewal=sub.next_renewal,
+                description=sub.description,
+            )
+        )
+    return items
+

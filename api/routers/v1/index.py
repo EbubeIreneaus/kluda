@@ -23,6 +23,8 @@ from .admin.notifications import router as AdminNotificationRouter
 from .admin.plans import router as AdminPlanRouter
 from .admin.subscriptions import router as AdminSubscriptionRouter
 from .admin.webhook import router as InboundWebhookRouter
+from .admin.faqs import router as AdminFaqRouter
+from .faqs import router as FaqRouter
 
 
 router = APIRouter(prefix="/v1")
@@ -42,6 +44,7 @@ admin_router.include_router(AdminSettingRouter)
 admin_router.include_router(AdminAuditRouter)
 admin_router.include_router(AdminAnalyticsRouter)
 admin_router.include_router(AdminNotificationRouter)
+admin_router.include_router(AdminFaqRouter)
 admin_router.include_router(InboundWebhookRouter)
 router.include_router(admin_router)
 
@@ -55,4 +58,5 @@ router.include_router(SalesRouter, tags=["Sales & POS"])
 router.include_router(NotificationsRouter, tags=["Notifications"])
 router.include_router(SubscriptionsRouter, tags=["Subscriptions & Billing"])
 router.include_router(SSORouter, tags=["SSO"])
+router.include_router(FaqRouter, tags=["FAQs"])
 router.include_router(InboundWebhookRouter)

@@ -35,25 +35,24 @@ from libs.security import (
     get_client_ip,
 )
 
+from libs.cache import get_cache, set_cache
+
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+CACHE_KEY_CONTACT_INFO = "kluda:cache:public_contact_info"
 
 
 @router.get("/contact-info")
 async def get_public_contact_info(db: AsyncSession = Depends(get_db)):
+    cached = await get_cache(CACHE_KEY_CONTACT_INFO)
+    if cached is not None:
+        return cached
+
     from models.admin.setting import SystemSetting
     setting = await db.scalar(select(SystemSetting).where(SystemSetting.key == "platform_contact_info"))
-    if setting and setting.value:
-        return setting.value
-    return {
-        "email": "support@kluda.com",
-        "phone": "+234 800 000 5583",
-        "whatsapp": "2348000005583",
-        "address": "Lagos, Nigeria",
-        "twitter": "https://x.com/kluda_app",
-        "linkedin": "https://linkedin.com/company/kluda",
-        "instagram": "https://instagram.com/kluda.pos",
-        "hours": "Mon - Sat: 8:00 AM - 8:00 PM WAT"
-    }
+    result_val = setting.value if (setting and setting.value) else {}
+    await set_cache(CACHE_KEY_CONTACT_INFO, result_val, expire_seconds=86400)
+    return result_val
 
 
 async def generate_user_id(db: AsyncSession) -> uuid.UUID:
@@ -141,7 +140,7 @@ async def generate_user_referral_code(db: AsyncSession, fullname: str) -> str:
         exists = await db.scalar(select(func.count(User.id)).where(User.referral_code == code))
         if not exists:
             return code
-    return f"KLUDA-{uuid.uuid4().hex[:8].upper()}"
+    return f"KLUDA-{uuid.uuid4().hex[:6].upper()}"
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)

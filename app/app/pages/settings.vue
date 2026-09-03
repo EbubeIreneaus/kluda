@@ -213,23 +213,23 @@ onMounted(async () => {
         />
       </div>
 
-      <div v-if="!isSupported" class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
-        <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 shrink-0" />
+      <div v-if="!isSupported" class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-800/40 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2 shadow-xs">
+        <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <span>Notifications are not supported on this browser.</span>
       </div>
 
-      <div v-else-if="permissionState === 'denied'" class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 space-y-2">
-        <div class="flex items-center gap-2 text-xs font-semibold text-red-400">
-          <UIcon name="i-lucide-bell-off" class="w-4 h-4" />
+      <div v-else-if="permissionState === 'denied'" class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/25 border border-rose-200 dark:border-rose-800/40 space-y-2 shadow-xs">
+        <div class="flex items-center gap-2 text-xs font-bold text-rose-900 dark:text-rose-200">
+          <UIcon name="i-lucide-bell-off" class="w-4 h-4 text-rose-600 dark:text-rose-400" />
           <span>Notifications Blocked by Browser</span>
         </div>
-        <p class="text-xs text-red-300/80 leading-relaxed">
+        <p class="text-xs text-rose-900 dark:text-rose-200/90 leading-relaxed">
           Notifications are blocked on this device. To enable them, click the lock or settings icon in your browser address bar and set <strong>Notifications</strong> to <strong>Allow</strong>.
         </p>
       </div>
 
-      <div v-else-if="isSubscribed" class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
-        <UIcon name="i-lucide-check-circle" class="w-4 h-4 shrink-0" />
+      <div v-else-if="isSubscribed" class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-800/40 text-xs text-emerald-900 dark:text-emerald-200 flex items-center gap-2 shadow-xs">
+        <UIcon name="i-lucide-check-circle" class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
         <span>Notifications are active on this device.</span>
       </div>
     </div>

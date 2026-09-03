@@ -10,3 +10,4 @@ from .admin.metric import DailyPlatformMetric
 from .admin.plan import Plan
 from .subscription import UserSubscription
 from .notification import Notification, NotificationRead
+from .faq import FAQ

@@ -100,6 +100,16 @@ export function useSubscription() {
     }
   }
 
+  async function fetchSubscriptionHistory() {
+    try {
+      const data = await api<any[]>('/subscriptions/history')
+      return data || []
+    } catch {
+      return []
+    }
+  }
+
+
   const rawSub = computed(() => {
     return currentSubscriptionData.value || auth.current_store?.owner_subscription || auth.user?.current_subscription || null
   })
@@ -330,6 +340,7 @@ export function useSubscription() {
     fetchCurrentSubscription,
     fetchAvailablePlans,
     subscribePlan,
-    cancelPlan
+    cancelPlan,
+    fetchSubscriptionHistory
   }
 }

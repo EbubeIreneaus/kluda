@@ -115,10 +115,55 @@ async function fetchData() {
     if (posVer?.value) {
       minPosVersion.value = posVer.value.version || '1.0.0'
     }
+
+    const contactSetting = sets?.find(s => s.key === 'platform_contact_info')
+    if (contactSetting?.value) {
+      contactForm.value = { ...contactForm.value, ...contactSetting.value }
+    }
   } catch {
     // fallback
   } finally {
     isLoading.value = false
+  }
+}
+
+const isSavingContact = ref(false)
+const contactForm = ref({
+  email: '',
+  phone: '',
+  whatsapp: '',
+  address: '',
+  hours: '',
+  facebook: '',
+  twitter: '',
+  linkedin: '',
+  instagram: ''
+})
+
+async function saveContactSettings() {
+  isSavingContact.value = true
+  try {
+    await apiFetch('/admin/settings/platform_contact_info', {
+      method: 'PUT',
+      body: {
+        value: contactForm.value,
+        description: 'Public platform contact info and social links'
+      }
+    })
+    toast.add({
+      title: 'Contact Information Updated',
+      description: 'Platform contact details updated and public cache invalidated.',
+      color: 'success'
+    })
+    await fetchData()
+  } catch (err: any) {
+    toast.add({
+      title: 'Failed to Save',
+      description: err?.data?.detail || 'Could not update contact settings',
+      color: 'error'
+    })
+  } finally {
+    isSavingContact.value = false
   }
 }
 
@@ -141,10 +186,18 @@ async function saveSettings() {
         }
       })
     ])
-    alert('System settings updated successfully')
+    toast.add({
+      title: 'Settings Updated',
+      description: 'System settings updated successfully.',
+      color: 'success'
+    })
     await fetchData()
   } catch (err: any) {
-    alert(err?.data?.detail || 'Failed to save settings')
+    toast.add({
+      title: 'Error Saving Settings',
+      description: err?.data?.detail || 'Failed to save settings',
+      color: 'error'
+    })
   } finally {
     isSaving.value = false
   }
@@ -287,6 +340,65 @@ onMounted(() => {
               :disabled="!canManageSettings"
               :loading="isSaving"
               @click="saveSettings"
+            />
+          </div>
+        </div>
+
+        <!-- Platform Contact Information Card -->
+        <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col gap-5 backdrop-blur-sm">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <UIcon name="i-lucide-contact" class="w-4 h-4 text-emerald-400" />
+              Platform Contact & Support Info
+            </h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Displayed publicly on website footer, legal docs, and app support</p>
+          </div>
+
+          <div class="flex flex-col gap-3.5">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-zinc-300">Support Email</label>
+              <UInput v-model="contactForm.email" placeholder="support@kluda.com" size="sm" icon="i-lucide-mail" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-zinc-300">Phone</label>
+                <UInput v-model="contactForm.phone" placeholder="+234..." size="sm" icon="i-lucide-phone" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-zinc-300">WhatsApp</label>
+                <UInput v-model="contactForm.whatsapp" placeholder="234..." size="sm" icon="i-lucide-message-circle" />
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-zinc-300">Physical Address</label>
+              <UInput v-model="contactForm.address" placeholder="Lagos, Nigeria" size="sm" icon="i-lucide-map-pin" />
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-zinc-300">Operating Hours</label>
+              <UInput v-model="contactForm.hours" placeholder="Mon - Sat: 8:00 AM - 8:00 PM WAT" size="sm" icon="i-lucide-clock" />
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-zinc-300">Social Handles / Links</label>
+              <div class="space-y-1.5">
+                <UInput v-model="contactForm.facebook" placeholder="https://facebook.com/kluda.pos" size="xs" icon="i-lucide-facebook" />
+                <UInput v-model="contactForm.twitter" placeholder="https://x.com/kluda_app" size="xs" icon="i-lucide-twitter" />
+                <UInput v-model="contactForm.instagram" placeholder="https://instagram.com/kluda.pos" size="xs" icon="i-lucide-instagram" />
+                <UInput v-model="contactForm.linkedin" placeholder="https://linkedin.com/company/kluda" size="xs" icon="i-lucide-linkedin" />
+              </div>
+            </div>
+
+            <UButton
+              label="Save Contact Information"
+              icon="i-lucide-save"
+              color="primary"
+              size="sm"
+              :disabled="!canManageSettings"
+              :loading="isSavingContact"
+              @click="saveContactSettings"
             />
           </div>
         </div>

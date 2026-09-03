@@ -3,24 +3,16 @@ const config = useRuntimeConfig()
 const posUrl = config.public.posAppUrl || 'http://localhost:3000'
 const apiBase = config.public.apiBase || 'http://localhost:8000/api/v1'
 
-const contact = ref({
-  email: 'support@kluda.com',
-  phone: '+234 800 000 5583',
-  whatsapp: '2348000005583',
-  address: 'Lagos, Nigeria',
-  twitter: 'https://x.com/kluda_app',
-  linkedin: 'https://linkedin.com/company/kluda',
-  instagram: 'https://instagram.com/kluda.pos'
-})
+const contact = ref<Record<string, any>>({})
 
 onMounted(async () => {
   try {
     const res = await $fetch<any>(`${apiBase}/auth/contact-info`)
-    if (res) {
-      contact.value = { ...contact.value, ...res }
+    if (res && typeof res === 'object') {
+      contact.value = res
     }
   } catch {
-    // fallback to defaults
+    // keep empty if fetch fails
   }
 })
 </script>
@@ -35,24 +27,32 @@ onMounted(async () => {
             Offline-first retail POS platform that turns any smartphone, tablet, or laptop into a full checkout register with zero expensive machines to buy.
           </p>
           
-          <div class="space-y-2 pt-1 text-xs text-(--ui-text-muted)">
-            <p class="flex items-center gap-2">
+          <div v-if="contact.email || contact.phone || contact.address || contact.hours" class="space-y-2 pt-1 text-xs text-(--ui-text-muted)">
+            <p v-if="contact.email" class="flex items-center gap-2">
               <UIcon name="i-lucide-mail" class="w-4 h-4 text-emerald-500 shrink-0" />
               <a :href="`mailto:${contact.email}`" class="hover:text-emerald-400 transition">{{ contact.email }}</a>
             </p>
-            <p class="flex items-center gap-2">
+            <p v-if="contact.phone" class="flex items-center gap-2">
               <UIcon name="i-lucide-phone" class="w-4 h-4 text-emerald-500 shrink-0" />
               <a :href="`tel:${contact.phone}`" class="hover:text-emerald-400 transition">{{ contact.phone }}</a>
             </p>
-            <p class="flex items-center gap-2">
+            <p v-if="contact.address" class="flex items-center gap-2">
               <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-emerald-500 shrink-0" />
               <span>{{ contact.address }}</span>
+            </p>
+            <p v-if="contact.hours" class="flex items-center gap-2">
+              <UIcon name="i-lucide-clock" class="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>{{ contact.hours }}</span>
             </p>
           </div>
 
           <!-- Social Handles -->
-          <div class="flex items-center gap-3 pt-2">
+          <div
+            v-if="contact.whatsapp || contact.facebook || contact.twitter || contact.linkedin || contact.instagram"
+            class="flex items-center gap-3 pt-2"
+          >
             <a
+              v-if="contact.whatsapp"
               :href="`https://wa.me/${contact.whatsapp}`"
               target="_blank"
               rel="noopener noreferrer"
@@ -62,31 +62,44 @@ onMounted(async () => {
               <UIcon name="i-lucide-message-circle" class="w-4 h-4" />
             </a>
             <a
+              v-if="contact.facebook"
+              :href="contact.facebook"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-8 h-8 rounded-xl bg-(--ui-bg) border border-(--ui-border) text-(--ui-text-muted) hover:text-(--ui-text-highlighted) hover:bg-(--ui-bg-accented) flex items-center justify-center transition shadow-xs"
+              title="Follow on Facebook"
+            >
+              <UIcon name="i-lucide-facebook" class="w-4 h-4" />
+            </a>
+            <a
+              v-if="contact.twitter"
               :href="contact.twitter"
               target="_blank"
               rel="noopener noreferrer"
-              class="w-8 h-8 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition"
+              class="w-8 h-8 rounded-xl bg-(--ui-bg) border border-(--ui-border) text-(--ui-text-muted) hover:text-(--ui-text-highlighted) hover:bg-(--ui-bg-accented) flex items-center justify-center transition shadow-xs"
               title="Follow on X"
             >
               <UIcon name="i-lucide-twitter" class="w-4 h-4" />
             </a>
             <a
-              :href="contact.linkedin"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-8 h-8 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition"
-              title="LinkedIn"
-            >
-              <UIcon name="i-lucide-linkedin" class="w-4 h-4" />
-            </a>
-            <a
+              v-if="contact.instagram"
               :href="contact.instagram"
               target="_blank"
               rel="noopener noreferrer"
-              class="w-8 h-8 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-zinc-300 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition"
+              class="w-8 h-8 rounded-xl bg-(--ui-bg) border border-(--ui-border) text-(--ui-text-muted) hover:text-(--ui-text-highlighted) hover:bg-(--ui-bg-accented) flex items-center justify-center transition shadow-xs"
               title="Instagram"
             >
               <UIcon name="i-lucide-instagram" class="w-4 h-4" />
+            </a>
+            <a
+              v-if="contact.linkedin"
+              :href="contact.linkedin"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-8 h-8 rounded-xl bg-(--ui-bg) border border-(--ui-border) text-(--ui-text-muted) hover:text-(--ui-text-highlighted) hover:bg-(--ui-bg-accented) flex items-center justify-center transition shadow-xs"
+              title="LinkedIn"
+            >
+              <UIcon name="i-lucide-linkedin" class="w-4 h-4" />
             </a>
           </div>
         </div>
@@ -117,17 +130,20 @@ onMounted(async () => {
           <ul class="space-y-2.5 text-xs text-(--ui-text-muted)">
             <li><a :href="`${posUrl}/auth/register`" class="hover:text-emerald-500 transition">Create Merchant Account</a></li>
             <li><a :href="`${posUrl}/auth/login`" class="hover:text-emerald-500 transition">Owner Sign In</a></li>
-            <li><NuxtLink to="/pricing#faq" class="hover:text-emerald-500 transition">Retailer FAQ</NuxtLink></li>
+            <li><NuxtLink to="/faq" class="hover:text-emerald-500 transition">Retailer FAQ & Help</NuxtLink></li>
+            <li><NuxtLink to="/terms" class="hover:text-emerald-500 transition">Terms of Service</NuxtLink></li>
+            <li><NuxtLink to="/privacy" class="hover:text-emerald-500 transition">Privacy Policy</NuxtLink></li>
           </ul>
         </div>
       </div>
 
       <div class="pt-8 border-t border-(--ui-border) flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-(--ui-text-dimmed)">
         <p>© {{ new Date().getFullYear() }} Kluda Retail Platform. Built for retailers where internet isn't guaranteed.</p>
-        <div class="flex items-center gap-6">
-          <NuxtLink to="/pricing" class="hover:text-(--ui-text-muted) transition">Hardware & Pricing</NuxtLink>
-          <NuxtLink to="/why-kluda" class="hover:text-(--ui-text-muted) transition">Manifesto</NuxtLink>
-          <a :href="`${posUrl}/auth/login`" class="hover:text-(--ui-text-muted) transition">Portal Access</a>
+        <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+          <NuxtLink to="/faq" class="hover:text-emerald-400 transition">FAQ</NuxtLink>
+          <NuxtLink to="/terms" class="hover:text-emerald-400 transition">Terms of Service</NuxtLink>
+          <NuxtLink to="/privacy" class="hover:text-emerald-400 transition">Privacy Policy</NuxtLink>
+          <NuxtLink to="/pricing" class="hover:text-emerald-400 transition">Hardware & Pricing</NuxtLink>
         </div>
       </div>
     </div>

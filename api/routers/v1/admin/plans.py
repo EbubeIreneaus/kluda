@@ -10,6 +10,7 @@ from schemas.subscription import PlanStatus
 from libs.deps import require_admin_permission
 from libs.audit import record_audit_log
 from libs.payment import payment_manager, PaymentException
+from libs.cache import delete_cache
 import structlog
 
 logger = structlog.get_logger()
@@ -108,6 +109,7 @@ async def create_plan(
         details={"slug": plan.slug, "name": plan.name, "price": plan.price, "interval": plan.interval, "has_trial": plan.has_trial, "trial_duration_days": plan.trial_duration_days},
     )
     await db.commit()
+    await delete_cache("kluda:cache:public_plans")
     return plan
 
 
@@ -182,6 +184,7 @@ async def update_plan(
         details={"slug": plan.slug, "old": old_values, "new": {"name": plan.name, "price": plan.price}},
     )
     await db.commit()
+    await delete_cache("kluda:cache:public_plans")
     return plan
 
 
@@ -211,4 +214,5 @@ async def deactivate_plan(
         details={"slug": plan.slug, "name": plan.name},
     )
     await db.commit()
+    await delete_cache("kluda:cache:public_plans")
     return plan

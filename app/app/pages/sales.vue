@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import type { ReceiptData } from '~/utils/escpos'
 
 const { format } = useFormatCurrency()
+const auth = useAuthStore()
+const { isConnected: isPrinterConnected, printReceipt, isPrinting } = usePrinter()
+const showPrinterModal = ref(false)
 
 const search = ref('')
 const dateFilter = ref('')
@@ -48,9 +52,41 @@ watch([search, methodFilter, statusFilter], () => {
   currentPage.value = 1
 })
 
-function openDetail(sale: any) {
+function viewSale(sale: any) {
   selectedSale.value = sale
   showDetailModal.value = true
+}
+
+async function reprintSale(sale: any) {
+  if (!sale) return
+  if (!isPrinterConnected.value) {
+    showPrinterModal.value = true
+    return
+  }
+
+  const currentStore = auth.stores?.find((s: any) => s.store_id === auth.store_id) || auth.stores?.[0]
+
+  const receiptData: ReceiptData = {
+    storeName: currentStore?.name || 'KLUDA RETAIL',
+    storeAddress: currentStore?.address || undefined,
+    storePhone: currentStore?.phone || undefined,
+    receiptNumber: sale.sale_id?.slice(0, 12).toUpperCase() || 'REC-' + Date.now().toString().slice(-6),
+    date: sale.date || new Date().toLocaleString(),
+    cashierName: sale.staff || 'Staff',
+    customerName: sale.customer !== 'Walk-in' ? sale.customer : undefined,
+    paymentMethod: sale.method,
+    items: (sale.items || []).map((item: any) => ({
+      name: item.name,
+      quantity: item.qty,
+      unit_price: item.price / 100,
+      total: (item.price * item.qty) / 100
+    })),
+    subtotal: sale.total / 100,
+    total: sale.total / 100,
+    footerNote: 'Customer Copy (Reprint)'
+  }
+
+  await printReceipt(receiptData)
 }
 
 const methodColors: Record<string, string> = {
@@ -66,6 +102,14 @@ const statusColors: Record<string, string> = {
   pending: 'warning',
   cancelled: 'error'
 }
+
+function openDetail(sale: any) {
+  viewSale(sale)
+}
+
+onMounted(async () => {
+  await salesStore.fetchSales()
+})
 </script>
 
 <template>
@@ -305,8 +349,24 @@ const statusColors: Record<string, string> = {
             <p class="text-xs text-(--ui-text-dimmed) mb-1">Staff Note</p>
             <p class="text-(--ui-text-muted)">{{ selectedSale.note }}</p>
           </div>
+
+          <div class="pt-3 border-t border-(--ui-border)">
+            <UButton
+              block
+              color="primary"
+              variant="outline"
+              :loading="isPrinting"
+              @click="reprintSale(selectedSale)"
+            >
+              <UIcon name="i-lucide-printer" class="w-4 h-4 mr-1 text-emerald-400" />
+              Print Thermal Receipt
+            </UButton>
+          </div>
         </div>
       </template>
     </UModal>
+
+    <!-- Printer Hardware Pairing Modal -->
+    <PosPrinterSettingsModal v-model:open="showPrinterModal" />
   </div>
 </template>

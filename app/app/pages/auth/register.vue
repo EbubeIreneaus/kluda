@@ -7,10 +7,15 @@ const auth = useAuthStore()
 const config = useRuntimeConfig()
 const toast = useToast()
 const route = useRoute()
+const { getSavedReferralCode, getSavedPlan, getSavedTrial, clearSavedOnboardingParams } = useOnboardingParams()
+const marketingWebUrl = computed(() => (config.public as any).webDashboardUrl || 'https://kluda.app')
 
 const step = ref<1 | 2>(1)
 const isLoading = ref(false)
 const errorMsg = ref('')
+const agreeTerms = ref(false)
+const selectedPlan = ref('')
+const hasTrialIntent = ref(false)
 
 const form = ref({
   fullname: '',
@@ -20,7 +25,13 @@ const form = ref({
   store_name: '',
   store_category: 'Supermarket & Grocery',
   store_address: '',
-  referral_code: (route.query.ref as string) || ''
+  referral_code: ''
+})
+
+onMounted(() => {
+  form.value.referral_code = getSavedReferralCode()
+  selectedPlan.value = getSavedPlan()
+  hasTrialIntent.value = getSavedTrial()
 })
 
 const categories = [
@@ -54,6 +65,11 @@ async function handleRegister() {
     return
   }
 
+  if (!agreeTerms.value) {
+    errorMsg.value = 'You must agree to the Terms of Service and Privacy Policy to continue.'
+    return
+  }
+
   isLoading.value = true
   try {
     const data = await $fetch<any>(`${config.public.apiBase}/auth/register`, {
@@ -83,20 +99,27 @@ async function handleRegister() {
         localStorage.setItem('has_completed_onboarding', 'true')
       }
 
+      const planToNavigate = selectedPlan.value || getSavedPlan()
+      clearSavedOnboardingParams()
+
       toast.add({
         title: 'Account & Store Created!',
         description: `Welcome to Kluda. Your store "${form.value.store_name}" is ready.`,
         color: 'success'
       })
 
-      await navigateTo('/')
+      if (planToNavigate && planToNavigate !== 'free') {
+        await navigateTo(`/marchant/billing#${planToNavigate}`)
+      } else {
+        await navigateTo('/')
+      }
     } else {
       toast.add({
         title: 'Registration Successful',
         description: 'Please sign in to access your terminal.',
         color: 'success'
       })
-      await navigateTo('/login')
+      await navigateTo('/auth/login')
     }
   } catch (err: any) {
     errorMsg.value = err?.data?.detail || 'Failed to complete registration. Please try again.'
@@ -229,6 +252,24 @@ async function handleRegister() {
             />
           </UFormField>
 
+          <!-- Terms & Privacy Agreement Checkbox -->
+          <div class="pt-2">
+            <label class="flex items-start gap-2.5 text-xs text-(--ui-text-muted) cursor-pointer select-none">
+              <input
+                v-model="agreeTerms"
+                type="checkbox"
+                required
+                class="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-0 cursor-pointer mt-0.5"
+              />
+              <span class="leading-relaxed">
+                I agree to Kluda's
+                <a :href="`${marketingWebUrl}/terms`" target="_blank" rel="noopener noreferrer" class="text-emerald-400 font-semibold underline hover:text-emerald-300">Terms of Service</a>
+                and
+                <a :href="`${marketingWebUrl}/privacy`" target="_blank" rel="noopener noreferrer" class="text-emerald-400 font-semibold underline hover:text-emerald-300">Privacy Policy</a>.
+              </span>
+            </label>
+          </div>
+
           <div class="flex items-center gap-3 pt-4">
             <UButton
               type="button"
@@ -246,8 +287,9 @@ async function handleRegister() {
               block
               size="md"
               color="primary"
+              :disabled="!agreeTerms || isLoading"
               :loading="isLoading"
-              class="font-bold flex-1 py-2.5 shadow-lg shadow-emerald-500/20 cursor-pointer"
+              class="font-bold flex-1 py-2.5 shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <UIcon name="i-lucide-check-circle" class="w-4 h-4 mr-1.5" />
               Launch Store & Register
@@ -257,7 +299,7 @@ async function handleRegister() {
 
         <div class="mt-6 pt-5 border-t border-(--ui-border) text-center text-xs text-(--ui-text-muted)">
           <span>Already have an account?</span>
-          <NuxtLink to="/login" class="text-emerald-500 font-semibold ml-1.5 hover:underline">
+          <NuxtLink to="/auth/login" class="text-emerald-500 font-semibold ml-1.5 hover:underline">
             Sign In
           </NuxtLink>
         </div>

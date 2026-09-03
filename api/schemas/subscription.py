@@ -86,3 +86,20 @@ class SubscribeResponse(BaseModel):
 class CancelSubscriptionResponse(BaseModel):
     status: str
     message: str
+
+
+class SubscriptionHistoryItem(BaseModel):
+    id: int
+    subscription_id: uuid.UUID
+    plan_slug: str
+    plan_name: str
+    status: SubscriptionStatus
+    amount: int  # in kobo
+    is_trial: bool
+    reference: str | None = None
+    payment_channel: PaymentChannel
+    created_at: datetime
+    next_renewal: datetime | None = None
+    description: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)

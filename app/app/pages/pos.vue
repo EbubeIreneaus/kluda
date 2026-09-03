@@ -1,325 +1,420 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
-import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
+import {
+  BrowserMultiFormatReader,
+  BarcodeFormat,
+  DecodeHintType,
+} from "@zxing/library";
 
-const cart = useCartStore()
-const salesStore = useSalesStore()
-const { format } = useFormatCurrency()
-const toast = useToast()
+const cart = useCartStore();
+const salesStore = useSalesStore();
+const { format } = useFormatCurrency();
+const toast = useToast();
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
-const auth = useAuthStore()
+const config = useRuntimeConfig();
+const apiBase = config.public.apiBase;
+const auth = useAuthStore();
 
 const {
   isQuotaBlocked,
   quotaBlockReason,
   isOfflineLeaseExpired,
   offlineDisclaimer,
-  fetchCurrentSubscription
-} = useSubscription()
+  fetchCurrentSubscription,
+} = useSubscription();
 
-const searchQuery = ref('')
-const barcodeRef = ref<any>()
-const isScanning = ref(true)
+const searchQuery = ref("");
+const barcodeRef = ref<any>();
+const isScanning = ref(true);
 
-const isCameraActive = ref(false)
-const videoRef = ref<HTMLVideoElement>()
-let lastScannedCode = ''
-let lastScanTime = 0
+const isCameraActive = ref(false);
+const videoRef = ref<HTMLVideoElement>();
+let lastScannedCode = "";
+let lastScanTime = 0;
 
-const { vibrate } = useVibrate({ pattern: [200], interval: 100 })
-const showSearchResults = ref(false)
+const { vibrate } = useVibrate({ pattern: [200], interval: 100 });
+const showSearchResults = ref(false);
 
-const showReceipt = ref(false)
-const showCustomerSearch = ref(false)
-const customerSearch = ref('')
+const showReceipt = ref(false);
+const showCustomerSearch = ref(false);
+const customerSearch = ref("");
 
-const productStore = useProductsStore()
-const { playScanSound } = useAudioChime()
+const {
+  isConnected: isPrinterConnected,
+  deviceName: printerName,
+  autoPrint,
+  isPrinting,
+  printReceipt,
+} = usePrinter();
 
-const {customers:fetchedCustomers} = storeToRefs(useCustomerStore())
+const showPrinterModal = ref(false);
+
+const currentStore = computed(() => {
+  return (
+    auth.stores?.find((s: any) => s.store_id === auth.store_id) ||
+    auth.stores?.[0] ||
+    null
+  );
+});
+
+const productStore = useProductsStore();
+const { playScanSound } = useAudioChime();
+
+const { customers: fetchedCustomers } = storeToRefs(useCustomerStore());
 
 const activeProducts = computed(() => {
-  return productStore.products.filter((p: any) => !p.deleted)
-})
+  return productStore.products.filter((p: any) => !p.deleted);
+});
 
 const searchResults = computed(() => {
-  if (!searchQuery.value || searchQuery.value.length < 2) return []
-  const q = searchQuery.value.toLowerCase()
-  return activeProducts.value.filter((p: any) =>
-    p.name.toLowerCase().includes(q) || p.barcode_id.includes(q)
-  ).slice(0, 6)
-})
+  if (!searchQuery.value || searchQuery.value.length < 2) return [];
+  const q = searchQuery.value.toLowerCase();
+  return activeProducts.value
+    .filter(
+      (p: any) => p.name.toLowerCase().includes(q) || p.barcode_id.includes(q),
+    )
+    .slice(0, 6);
+});
 
 const activeCustomers = computed(() => {
-  return fetchedCustomers.value
-})
+  return fetchedCustomers.value;
+});
 
 const customerResults = computed(() => {
-  if (!customerSearch.value) return activeCustomers.value
-  const q = customerSearch.value.toLowerCase()
-  return activeCustomers.value.filter(c =>
-    c.fullname.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q)
-  )
-})
+  if (!customerSearch.value) return activeCustomers.value;
+  const q = customerSearch.value.toLowerCase();
+  return activeCustomers.value.filter(
+    (c) =>
+      c.fullname.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      c.phone.includes(q),
+  );
+});
 
 function focusBarcode() {
   nextTick(() => {
-    const inputEl = barcodeRef.value?.$el?.querySelector('input') || barcodeRef.value?.$el
-    if (inputEl && typeof inputEl.focus === 'function') {
-      inputEl.focus()
+    const inputEl =
+      barcodeRef.value?.$el?.querySelector("input") || barcodeRef.value?.$el;
+    if (inputEl && typeof inputEl.focus === "function") {
+      inputEl.focus();
     }
-  })
+  });
 }
 
 function handleScannedBarcode(code: string) {
-  const product = activeProducts.value.find((p: any) => p.barcode_id === code)
+  const product = activeProducts.value.find((p: any) => p.barcode_id === code);
   if (product) {
-    const existing = cart.items.find(item => item.slug === product.slug)
-    cart.addItem(product)
-    
-    playScanSound(true)
+    const existing = cart.items.find((item) => item.slug === product.slug);
+    cart.addItem(product);
+
+    playScanSound(true);
 
     try {
-      vibrate()
+      vibrate();
     } catch (e) {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(200)
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(200);
       }
     }
 
     if (existing) {
       toast.add({
-        title: 'Quantity Incremented',
+        title: "Quantity Incremented",
         description: `${product.name} quantity increased to ${existing.quantity + 1}`,
-        color: 'success',
-        icon: 'i-lucide-plus-circle'
-      })
+        color: "success",
+        icon: "i-lucide-plus-circle",
+      });
     } else {
       toast.add({
-        title: 'Product Added Successfully',
+        title: "Product Added Successfully",
         description: `${product.name} has been added to cart`,
-        color: 'success',
-        icon: 'i-lucide-check-circle'
-      })
+        color: "success",
+        icon: "i-lucide-check-circle",
+      });
     }
   } else {
-    playScanSound(false)
+    playScanSound(false);
 
     try {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([100, 50, 100])
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
       }
     } catch (e) {}
 
     toast.add({
-      title: 'Barcode Not Found',
+      title: "Barcode Not Found",
       description: `No product matches barcode: ${code}`,
-      color: 'error',
-      icon: 'i-lucide-alert-circle'
-    })
+      color: "error",
+      icon: "i-lucide-alert-circle",
+    });
   }
 }
 
 function handleBarcodeScan() {
-  const query = searchQuery.value.trim()
-  if (!query) return
+  const query = searchQuery.value.trim();
+  if (!query) return;
 
-  let product = activeProducts.value.find((p: any) => p.barcode_id === query)
-  
+  let product = activeProducts.value.find((p: any) => p.barcode_id === query);
+
   if (!product) {
-    product = activeProducts.value.find((p: any) => p.name.toLowerCase() === query.toLowerCase())
+    product = activeProducts.value.find(
+      (p: any) => p.name.toLowerCase() === query.toLowerCase(),
+    );
   }
-  
+
   if (!product && searchResults.value.length === 1 && searchResults.value[0]) {
-    product = searchResults.value[0]
+    product = searchResults.value[0];
   }
 
   if (product) {
-    handleScannedBarcode(product.barcode_id)
+    handleScannedBarcode(product.barcode_id);
   } else {
     // If not found, show toast
     toast.add({
-      title: 'Not Found',
+      title: "Not Found",
       description: `No product matches "${query}"`,
-      color: 'error',
-      icon: 'i-lucide-alert-circle'
-    })
+      color: "error",
+      icon: "i-lucide-alert-circle",
+    });
   }
-  
-  searchQuery.value = ''
-  showSearchResults.value = false
-  focusBarcode()
+
+  searchQuery.value = "";
+  showSearchResults.value = false;
+  focusBarcode();
 }
 
 function addFromSearch(product: any) {
-  const existing = cart.items.find(item => item.slug === product.slug)
-  cart.addItem(product)
-  searchQuery.value = ''
-  showSearchResults.value = false
+  const existing = cart.items.find((item) => item.slug === product.slug);
+  cart.addItem(product);
+  searchQuery.value = "";
+  showSearchResults.value = false;
 
   if (existing) {
     toast.add({
-      title: 'Quantity Incremented',
+      title: "Quantity Incremented",
       description: `${product.name} quantity increased to ${existing.quantity + 1}`,
-      color: 'success',
-      icon: 'i-lucide-plus-circle'
-    })
+      color: "success",
+      icon: "i-lucide-plus-circle",
+    });
   } else {
     toast.add({
-      title: 'Added to cart',
+      title: "Added to cart",
       description: product.name,
-      color: 'success',
-      icon: 'i-lucide-check-circle'
-    })
+      color: "success",
+      icon: "i-lucide-check-circle",
+    });
   }
-  focusBarcode()
+  focusBarcode();
 }
 
 function selectCustomer(customer: any) {
-  cart.customerId = customer.customer_id
-  showCustomerSearch.value = false
-  toast.add({ title: 'Customer linked', description: customer.fullname, color: 'info' })
-  focusBarcode()
+  cart.customerId = customer.customer_id;
+  showCustomerSearch.value = false;
+  toast.add({
+    title: "Customer linked",
+    description: customer.fullname,
+    color: "info",
+  });
+  focusBarcode();
 }
 
 function completeSale() {
   if (isQuotaBlocked.value) {
     toast.add({
-      title: isOfflineLeaseExpired.value ? 'Offline Sync Required' : 'Quota Limit Reached',
-      description: quotaBlockReason.value || 'Checkout is locked for this terminal.',
-      color: 'error'
-    })
-    return
+      title: isOfflineLeaseExpired.value
+        ? "Offline Sync Required"
+        : "Quota Limit Reached",
+      description:
+        quotaBlockReason.value || "Checkout is locked for this terminal.",
+      color: "error",
+    });
+    return;
   }
   if (cart.isEmpty) {
-    toast.add({ title: 'Cart is empty', description: 'Add products before completing sale', color: 'warning' })
-    return
+    toast.add({
+      title: "Cart is empty",
+      description: "Add products before completing sale",
+      color: "warning",
+    });
+    return;
   }
-  if (cart.paymentMethod === 'debt' && !cart.customerId) {
-    toast.add({ title: 'Customer Required', description: 'Debt payment requires a linked customer', color: 'error' })
-    return
+  if (cart.paymentMethod === "debt" && !cart.customerId) {
+    toast.add({
+      title: "Customer Required",
+      description: "Debt payment requires a linked customer",
+      color: "error",
+    });
+    return;
   }
-  cart.amountReceived = cart.grandTotal
-  showReceipt.value = true
+  cart.amountReceived = cart.grandTotal;
+  showReceipt.value = true;
 }
 
-async function finalizeAndReset() {
-  const key = (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        const r = Math.random() * 16 | 0
-        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
-      })
+async function finalizeAndReset(shouldPrint = false) {
+  const key =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+        });
+
+  const receiptNumber = "REC-" + key.slice(0, 8).toUpperCase();
+  const receiptPayload = {
+    storeName: currentStore.value?.name || "KLUDA RETAIL",
+    storeAddress: currentStore.value?.address || undefined,
+    storePhone: currentStore.value?.phone || undefined,
+    receiptNumber,
+    date: new Date().toLocaleString(),
+    cashierName: auth.fullName || auth.user?.fullname || "Cashier",
+    customerName: selectedCustomerName.value || undefined,
+    paymentMethod: cart.paymentMethod,
+    items: cart.items.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      unit_price: item.unit_price / 100,
+      total: (item.unit_price * item.quantity) / 100,
+    })),
+    subtotal: cart.subtotal / 100,
+    discount: cart.discount > 0 ? cart.discount / 100 : undefined,
+    total: cart.grandTotal / 100,
+  };
 
   const saleData = {
     idempotency_key: key,
-    items: cart.items.map(item => ({
+    items: cart.items.map((item) => ({
       stock_slug: item.slug,
       amount: item.unit_price, // already in kobo
-      quantities: item.quantity
+      quantities: item.quantity,
     })),
     discount: cart.discount, // already in kobo
     customer_id: cart.customerId,
     payment_method: cart.paymentMethod,
     amount_recived: cart.amountReceived, // already in kobo
     staff_note: cart.staffNote || null,
-    status: 'completed' as const
+    status: "completed" as const,
+  };
+
+  await salesStore.addSale(saleData);
+
+  // Dispatch to thermal printer if requested or auto-print is enabled
+  if ((shouldPrint || autoPrint.value) && isPrinterConnected.value) {
+    printReceipt(receiptPayload);
   }
 
-  await salesStore.addSale(saleData)
+  showReceipt.value = false;
+  toast.add({
+    title: "Sale completed!",
+    description: "Transaction recorded successfully",
+    color: "success",
+    icon: "i-lucide-check-circle",
+  });
+  cart.clearCart();
+  focusBarcode();
+}
 
-  showReceipt.value = false
-  toast.add({ title: 'Sale completed!', description: 'Transaction recorded successfully', color: 'success', icon: 'i-lucide-check-circle' })
-  cart.clearCart()
-  focusBarcode()
+async function handlePrintAndClose() {
+  if (!isPrinterConnected.value) {
+    showPrinterModal.value = true;
+    return;
+  }
+  await finalizeAndReset(true);
 }
 
 const selectedCustomerName = computed(() => {
-  if (!cart.customerId) return null
-  return activeCustomers.value.find(c => c.customer_id === cart.customerId)?.fullname || null
-})
+  if (!cart.customerId) return null;
+  return (
+    activeCustomers.value.find((c) => c.customer_id === cart.customerId)
+      ?.fullname || null
+  );
+});
 
-let codeReader: any = null
+let codeReader: any = null;
 
 async function startCameraScanner() {
-  isCameraActive.value = true
+  isCameraActive.value = true;
   try {
-    await nextTick()
+    await nextTick();
     if (!codeReader) {
-      const hints = new Map()
+      const hints = new Map();
       const formats = [
         BarcodeFormat.EAN_13,
         BarcodeFormat.EAN_8,
         BarcodeFormat.CODE_128,
         BarcodeFormat.CODE_39,
         BarcodeFormat.UPC_A,
-        BarcodeFormat.UPC_E
-      ]
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, formats)
-      codeReader = new BrowserMultiFormatReader(hints)
+        BarcodeFormat.UPC_E,
+      ];
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+      codeReader = new BrowserMultiFormatReader(hints);
     }
-    const videoEl = videoRef.value
+    const videoEl = videoRef.value;
     if (videoEl) {
-      codeReader.decodeFromVideoDevice(undefined, videoEl, (result: any, err: any) => {
-        if (result) {
-          const code = result.getText()
-          const now = Date.now()
-          // 1.5 second cooldown for same barcode scanning
-          if (code !== lastScannedCode || now - lastScanTime > 1500) {
-            lastScannedCode = code
-            lastScanTime = now
-            handleScannedBarcode(code)
+      codeReader.decodeFromVideoDevice(
+        undefined,
+        videoEl,
+        (result: any, err: any) => {
+          if (result) {
+            const code = result.getText();
+            const now = Date.now();
+            // 1.5 second cooldown for same barcode scanning
+            if (code !== lastScannedCode || now - lastScanTime > 1500) {
+              lastScannedCode = code;
+              lastScanTime = now;
+              handleScannedBarcode(code);
+            }
           }
-        }
-      })
+        },
+      );
     }
   } catch (err) {
-    console.error('Camera access failed:', err)
-    toast.add({ title: 'Camera access failed', description: 'Please check camera permissions', color: 'error' })
-    isCameraActive.value = false
+    console.error("Camera access failed:", err);
+    toast.add({
+      title: "Camera access failed",
+      description: "Please check camera permissions",
+      color: "error",
+    });
+    isCameraActive.value = false;
   }
 }
 
 function stopCameraScanner() {
-  isCameraActive.value = false
+  isCameraActive.value = false;
   if (codeReader) {
-    codeReader.reset()
+    codeReader.reset();
   }
 }
 
 function toggleCameraScanner() {
   if (isCameraActive.value) {
-    stopCameraScanner()
+    stopCameraScanner();
   } else {
-    startCameraScanner()
+    startCameraScanner();
   }
 }
 
 onMounted(() => {
-  fetchCurrentSubscription()
-  focusBarcode()
-})
+  fetchCurrentSubscription();
+  focusBarcode();
+});
 
 onUnmounted(() => {
-  stopCameraScanner()
-})
+  stopCameraScanner();
+});
 
 const paymentMethods = [
-  { label: 'Cash', value: 'cash', icon: 'i-lucide-banknote' },
-  { label: 'POS', value: 'pos', icon: 'i-lucide-credit-card' },
-  { label: 'Transfer', value: 'transfer', icon: 'i-lucide-send' },
-  { label: 'Online', value: 'online', icon: 'i-lucide-globe' },
-  { label: 'Debt', value: 'debt', icon: 'i-lucide-clock' }
-]
+  { label: "Cash", value: "cash", icon: "i-lucide-banknote" },
+  { label: "POS", value: "pos", icon: "i-lucide-credit-card" },
+  { label: "Transfer", value: "transfer", icon: "i-lucide-send" },
+  { label: "Online", value: "online", icon: "i-lucide-globe" },
+  { label: "Debt", value: "debt", icon: "i-lucide-clock" },
+];
 
 function handleSearchBlur() {
   setTimeout(() => {
-    showSearchResults.value = false
-  }, 200)
+    showSearchResults.value = false;
+  }, 200);
 }
-
 </script>
 
 <template>
@@ -327,14 +422,42 @@ function handleSearchBlur() {
     <div class="flex-1 flex flex-col min-h-0 space-y-4">
       <div class="space-y-3">
         <div class="relative">
-          <div class="flex items-center gap-2 mb-1.5">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
             <div class="flex items-center gap-1.5">
               <span class="relative flex h-2.5 w-2.5">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
+                />
+                <span
+                  class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"
+                />
               </span>
-              <span class="text-xs font-medium text-green-600 dark:text-green-400">Scanner Active</span>
+              <span
+                class="text-xs font-medium text-green-600 dark:text-green-400"
+                >Scanner Active</span
+              >
             </div>
+
+            <!-- Thermal Printer Hardware Status Indicator -->
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer"
+              :class="[
+                isPrinterConnected
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                  : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:text-neutral-200',
+              ]"
+              @click="showPrinterModal = true"
+            >
+              <UIcon name="i-lucide-printer" class="w-3.5 h-3.5" />
+              <span>{{
+                isPrinterConnected ? printerName : "Connect Printer"
+              }}</span>
+              <span
+                v-if="isPrinterConnected"
+                class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
+              />
+            </button>
           </div>
           <div class="flex items-center gap-2">
             <UButton
@@ -362,8 +485,7 @@ function handleSearchBlur() {
 
           <div
             v-show="isCameraActive"
-            class="overflow-hidden bg-black flex items-center justify-center mt-2.5
-                   fixed inset-0 z-[60] p-4 flex flex-col xl:relative xl:inset-auto xl:z-10 xl:aspect-video xl:max-h-64 xl:rounded-xl xl:border xl:border-(--ui-border) xl:p-0 xl:mt-2.5"
+            class="overflow-hidden bg-black flex items-center justify-center mt-2.5 fixed inset-0 z-[60] p-4 flex flex-col xl:relative xl:inset-auto xl:z-10 xl:aspect-video xl:max-h-64 xl:rounded-xl xl:border xl:border-(--ui-border) xl:p-0 xl:mt-2.5"
           >
             <div class="absolute top-4 right-4 z-[70] xl:hidden">
               <UButton
@@ -383,9 +505,16 @@ function handleSearchBlur() {
               playsinline
               muted
             />
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div class="w-2/3 h-1/3 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative">
-                <div class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" style="top: 50%" />
+            <div
+              class="absolute inset-0 flex items-center justify-center pointer-events-none"
+            >
+              <div
+                class="w-2/3 h-1/3 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative"
+              >
+                <div
+                  class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"
+                  style="top: 50%"
+                />
               </div>
             </div>
           </div>
@@ -402,10 +531,17 @@ function handleSearchBlur() {
                 @mousedown.prevent="addFromSearch(product)"
               >
                 <div>
-                  <p class="text-sm font-medium text-(--ui-text-highlighted)">{{ product.name }}</p>
-                  <p class="text-xs text-(--ui-text-dimmed) font-mono mt-0.5">{{ product.barcode_id }}</p>
+                  <p class="text-sm font-medium text-(--ui-text-highlighted)">
+                    {{ product.name }}
+                  </p>
+                  <p class="text-xs text-(--ui-text-dimmed) font-mono mt-0.5">
+                    {{ product.barcode_id }}
+                  </p>
                 </div>
-                <span class="text-sm font-semibold text-green-600 dark:text-green-400">{{ format(product.unit_price) }}</span>
+                <span
+                  class="text-sm font-semibold text-green-600 dark:text-green-400"
+                  >{{ format(product.unit_price) }}</span
+                >
               </button>
             </div>
           </Transition>
@@ -413,7 +549,11 @@ function handleSearchBlur() {
       </div>
 
       <div class="hidden xl:block flex-1 overflow-y-auto min-h-0">
-        <p class="text-xs font-medium text-(--ui-text-dimmed) uppercase tracking-wider mb-3">Quick Add</p>
+        <p
+          class="text-xs font-medium text-(--ui-text-dimmed) uppercase tracking-wider mb-3"
+        >
+          Quick Add
+        </p>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <button
             v-for="product in activeProducts"
@@ -421,23 +561,51 @@ function handleSearchBlur() {
             class="card-hover flex flex-col items-start p-3.5 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) text-left transition-all hover:border-green-500/30"
             @click="cart.addItem(product)"
           >
-            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/10 mb-2.5">
-              <UIcon name="i-lucide-package" class="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div
+              class="flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/10 mb-2.5"
+            >
+              <UIcon
+                name="i-lucide-package"
+                class="w-5 h-5 text-green-600 dark:text-green-400"
+              />
             </div>
-            <p class="text-sm font-medium text-(--ui-text-highlighted) leading-tight line-clamp-2">{{ product.name }}</p>
-            <p class="text-xs font-mono text-(--ui-text-dimmed) mt-1">{{ product.barcode_id }}</p>
-            <p class="text-sm font-semibold text-green-600 dark:text-green-400 mt-auto pt-2">{{ format(product.unit_price) }}</p>
+            <p
+              class="text-sm font-medium text-(--ui-text-highlighted) leading-tight line-clamp-2"
+            >
+              {{ product.name }}
+            </p>
+            <p class="text-xs font-mono text-(--ui-text-dimmed) mt-1">
+              {{ product.barcode_id }}
+            </p>
+            <p
+              class="text-sm font-semibold text-green-600 dark:text-green-400 mt-auto pt-2"
+            >
+              {{ format(product.unit_price) }}
+            </p>
           </button>
         </div>
       </div>
     </div>
 
-    <div class="xl:w-[420px] flex flex-col min-h-0 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated)">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-(--ui-border)">
+    <div
+      class="xl:w-[420px] flex flex-col min-h-0 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated)"
+    >
+      <div
+        class="flex items-center justify-between px-5 py-4 border-b border-(--ui-border)"
+      >
         <div class="flex items-center gap-2">
-          <UIcon name="i-lucide-shopping-cart" class="w-5 h-5 text-(--ui-text-muted)" />
+          <UIcon
+            name="i-lucide-shopping-cart"
+            class="w-5 h-5 text-(--ui-text-muted)"
+          />
           <h3 class="font-semibold text-(--ui-text-highlighted)">Cart</h3>
-          <UBadge v-if="cart.itemCount > 0" color="primary" variant="subtle" size="xs">{{ cart.itemCount }}</UBadge>
+          <UBadge
+            v-if="cart.itemCount > 0"
+            color="primary"
+            variant="subtle"
+            size="xs"
+            >{{ cart.itemCount }}</UBadge
+          >
         </div>
         <UButton
           v-if="!cart.isEmpty"
@@ -451,14 +619,27 @@ function handleSearchBlur() {
         </UButton>
       </div>
 
-      <div class="flex-1 overflow-y-auto xl:max-h-none max-h-[300px] min-h-0 p-4 space-y-2">
+      <div
+        class="flex-1 overflow-y-auto xl:max-h-none max-h-[300px] min-h-0 p-4 space-y-2"
+      >
         <template v-if="cart.isEmpty">
-          <div class="flex flex-col items-center justify-center h-full text-center py-8">
-            <div class="w-16 h-16 rounded-full bg-(--ui-bg-accented) flex items-center justify-center mb-4">
-              <UIcon name="i-lucide-scan-barcode" class="w-8 h-8 text-(--ui-text-dimmed)" />
+          <div
+            class="flex flex-col items-center justify-center h-full text-center py-8"
+          >
+            <div
+              class="w-16 h-16 rounded-full bg-(--ui-bg-accented) flex items-center justify-center mb-4"
+            >
+              <UIcon
+                name="i-lucide-scan-barcode"
+                class="w-8 h-8 text-(--ui-text-dimmed)"
+              />
             </div>
-            <p class="text-sm font-medium text-(--ui-text-muted)">No items yet</p>
-            <p class="text-xs text-(--ui-text-dimmed) mt-1">Scan a barcode or search to add products</p>
+            <p class="text-sm font-medium text-(--ui-text-muted)">
+              No items yet
+            </p>
+            <p class="text-xs text-(--ui-text-dimmed) mt-1">
+              Scan a barcode or search to add products
+            </p>
           </div>
         </template>
 
@@ -470,7 +651,9 @@ function handleSearchBlur() {
           <!-- Top Row: Product Name (Full Width, line-clamp-2) & Delete Button -->
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-(--ui-text-highlighted) leading-snug line-clamp-2">
+              <p
+                class="text-sm font-semibold text-(--ui-text-highlighted) leading-snug line-clamp-2"
+              >
                 {{ item.name }}
               </p>
               <p class="text-[11px] text-(--ui-text-dimmed) mt-0.5 font-mono">
@@ -489,9 +672,13 @@ function handleSearchBlur() {
           </div>
 
           <!-- Bottom Row: Quantity Stepper & Subtotal -->
-          <div class="flex items-center justify-between gap-3 pt-1 border-t border-(--ui-border)/40">
+          <div
+            class="flex items-center justify-between gap-3 pt-1 border-t border-(--ui-border)/40"
+          >
             <!-- Stepper with touch-friendly tap targets -->
-            <div class="flex items-center gap-1.5 bg-(--ui-bg) border border-(--ui-border) rounded-lg p-0.5">
+            <div
+              class="flex items-center gap-1.5 bg-(--ui-bg) border border-(--ui-border) rounded-lg p-0.5"
+            >
               <UButton
                 variant="ghost"
                 color="neutral"
@@ -501,7 +688,10 @@ function handleSearchBlur() {
                 :disabled="item.quantity <= 1"
                 @click="cart.updateQuantity(item.slug, item.quantity - 1)"
               />
-              <span class="w-8 text-center text-xs font-bold text-(--ui-text-highlighted) font-mono">{{ item.quantity }}</span>
+              <span
+                class="w-8 text-center text-xs font-bold text-(--ui-text-highlighted) font-mono"
+                >{{ item.quantity }}</span
+              >
               <UButton
                 variant="ghost"
                 color="neutral"
@@ -514,7 +704,9 @@ function handleSearchBlur() {
 
             <!-- Item Total -->
             <div class="text-right">
-              <p class="text-sm font-bold text-(--ui-text-highlighted) font-mono">
+              <p
+                class="text-sm font-bold text-(--ui-text-highlighted) font-mono"
+              >
                 {{ format(item.unit_price * item.quantity) }}
               </p>
             </div>
@@ -529,15 +721,19 @@ function handleSearchBlur() {
             variant="ghost"
             :color="cart.customerId ? 'primary' : 'neutral'"
             size="xs"
-            :icon="cart.customerId ? 'i-lucide-user-check' : 'i-lucide-user-plus'"
+            :icon="
+              cart.customerId ? 'i-lucide-user-check' : 'i-lucide-user-plus'
+            "
             @click="showCustomerSearch = true"
           >
-            {{ selectedCustomerName || 'Link customer' }}
+            {{ selectedCustomerName || "Link customer" }}
           </UButton>
         </div>
 
         <div class="flex items-center gap-3">
-          <span class="text-xs text-(--ui-text-dimmed) whitespace-nowrap">Discount (₦)</span>
+          <span class="text-xs text-(--ui-text-dimmed) whitespace-nowrap"
+            >Discount (₦)</span
+          >
           <UInput
             :model-value="cart.discount / 100"
             type="number"
@@ -558,7 +754,7 @@ function handleSearchBlur() {
                 'flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-xs font-medium transition-all',
                 cart.paymentMethod === method.value
                   ? 'bg-green-500/15 text-green-600 dark:text-green-400 ring-1 ring-green-500/30'
-                  : 'bg-(--ui-bg-accented) text-(--ui-text-muted) hover:bg-(--ui-bg-accented)/80'
+                  : 'bg-(--ui-bg-accented) text-(--ui-text-muted) hover:bg-(--ui-bg-accented)/80',
               ]"
               @click="cart.paymentMethod = method.value as any"
             >
@@ -571,28 +767,53 @@ function handleSearchBlur() {
         <div class="space-y-1.5 pt-2 border-t border-(--ui-border)">
           <div class="flex justify-between text-sm">
             <span class="text-(--ui-text-muted)">Subtotal</span>
-            <span class="font-medium text-(--ui-text-highlighted)">{{ format(cart.subtotal) }}</span>
+            <span class="font-medium text-(--ui-text-highlighted)">{{
+              format(cart.subtotal)
+            }}</span>
           </div>
           <div v-if="cart.discount > 0" class="flex justify-between text-sm">
             <span class="text-(--ui-text-muted)">Discount</span>
-            <span class="font-medium text-rose-500">-{{ format(cart.discount) }}</span>
+            <span class="font-medium text-rose-500"
+              >-{{ format(cart.discount) }}</span
+            >
           </div>
           <div class="flex justify-between text-lg font-bold pt-1">
             <span class="text-(--ui-text-highlighted)">Total</span>
-            <span class="text-green-600 dark:text-green-400">{{ format(cart.grandTotal) }}</span>
+            <span class="text-green-600 dark:text-green-400">{{
+              format(cart.grandTotal)
+            }}</span>
           </div>
-          <div v-if="cart.paymentMethod !== 'debt' && cart.change > 0" class="flex justify-between text-sm">
+          <div
+            v-if="cart.paymentMethod !== 'debt' && cart.change > 0"
+            class="flex justify-between text-sm"
+          >
             <span class="text-(--ui-text-muted)">Change</span>
-            <span class="font-medium text-blue-500">{{ format(cart.change) }}</span>
+            <span class="font-medium text-blue-500">{{
+              format(cart.change)
+            }}</span>
           </div>
         </div>
 
-        <div v-if="isQuotaBlocked" class="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2.5 mb-3">
-          <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+        <div
+          v-if="isQuotaBlocked"
+          class="p-3 bg-rose-50 dark:bg-rose-950/25 border border-rose-300 dark:border-rose-800/40 rounded-xl text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2.5 mb-3 shadow-xs"
+        >
+          <UIcon
+            name="i-lucide-alert-triangle"
+            class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5"
+          />
           <div class="space-y-1">
-            <p class="font-bold text-red-200">{{ isOfflineLeaseExpired ? 'Offline Lease Expired' : 'Sales Limit Reached' }}</p>
-            <p class="leading-relaxed opacity-90">{{ quotaBlockReason }}</p>
-            <p class="text-[11px] text-red-400 italic pt-1 border-t border-red-500/20">
+            <p class="font-bold text-rose-950 dark:text-rose-100">
+              {{
+                isOfflineLeaseExpired
+                  ? "Offline Lease Expired"
+                  : "Sales Limit Reached"
+              }}
+            </p>
+            <p class="leading-relaxed opacity-95 text-rose-900 dark:text-rose-200">{{ quotaBlockReason }}</p>
+            <p
+              class="text-[11px] text-rose-700 dark:text-rose-300 italic pt-1 border-t border-rose-200 dark:border-rose-800/30"
+            >
               Notice: {{ offlineDisclaimer }}
             </p>
           </div>
@@ -625,10 +846,22 @@ function handleSearchBlur() {
               class="flex items-center gap-3 w-full p-3 rounded-lg text-left hover:bg-(--ui-bg-accented) transition"
               @click="selectCustomer(customer)"
             >
-              <UAvatar :text="customer.fullname.split(' ').map((n: string) => n[0]).join('')" size="sm" />
+              <UAvatar
+                :text="
+                  customer.fullname
+                    .split(' ')
+                    .map((n: string) => n[0])
+                    .join('')
+                "
+                size="sm"
+              />
               <div>
-                <p class="text-sm font-medium text-(--ui-text-highlighted)">{{ customer.fullname }}</p>
-                <p class="text-xs text-(--ui-text-dimmed)">{{ customer.phone }} • {{ customer.email }}</p>
+                <p class="text-sm font-medium text-(--ui-text-highlighted)">
+                  {{ customer.fullname }}
+                </p>
+                <p class="text-xs text-(--ui-text-dimmed)">
+                  {{ customer.phone }} • {{ customer.email }}
+                </p>
               </div>
             </button>
           </div>
@@ -639,12 +872,26 @@ function handleSearchBlur() {
     <UModal v-model:open="showReceipt" title="Receipt">
       <template #body>
         <div class="p-6 space-y-4">
-          <div class="text-center border-b border-dashed border-(--ui-border) pb-4">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#090d16] border border-emerald-500/40 overflow-hidden mb-2">
-              <img src="/kluda_icon.jpg" alt="Kluda" class="w-full h-full object-cover" />
+          <div
+            class="text-center border-b border-dashed border-(--ui-border) pb-4"
+          >
+            <div
+              class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#090d16] border border-emerald-500/40 overflow-hidden mb-2"
+            >
+              <img
+                src="/kluda_icon.jpg"
+                alt="Kluda"
+                class="w-full h-full object-cover"
+              />
             </div>
-            <h3 class="font-black text-lg tracking-wider text-(--ui-text-highlighted)">KLUDA</h3>
-            <p class="text-xs text-(--ui-text-dimmed)">{{ new Date().toLocaleString() }}</p>
+            <h3
+              class="font-black text-lg tracking-wider text-(--ui-text-highlighted)"
+            >
+              KLUDA
+            </h3>
+            <p class="text-xs text-(--ui-text-dimmed)">
+              {{ new Date().toLocaleString() }}
+            </p>
           </div>
 
           <div class="space-y-2">
@@ -653,15 +900,23 @@ function handleSearchBlur() {
               :key="item.slug"
               class="flex justify-between text-sm"
             >
-              <span class="text-(--ui-text-muted)">{{ item.name }} × {{ item.quantity }}</span>
-              <span class="font-medium text-(--ui-text-highlighted)">{{ format(item.unit_price * item.quantity) }}</span>
+              <span class="text-(--ui-text-muted)"
+                >{{ item.name }} × {{ item.quantity }}</span
+              >
+              <span class="font-medium text-(--ui-text-highlighted)">{{
+                format(item.unit_price * item.quantity)
+              }}</span>
             </div>
           </div>
 
-          <div class="border-t border-dashed border-(--ui-border) pt-3 space-y-1">
+          <div
+            class="border-t border-dashed border-(--ui-border) pt-3 space-y-1"
+          >
             <div class="flex justify-between font-bold text-lg">
               <span>Total</span>
-              <span class="text-green-600 dark:text-green-400">{{ format(cart.grandTotal) }}</span>
+              <span class="text-green-600 dark:text-green-400">{{
+                format(cart.grandTotal)
+              }}</span>
             </div>
             <div class="flex justify-between text-sm text-(--ui-text-muted)">
               <span>Payment</span>
@@ -671,20 +926,36 @@ function handleSearchBlur() {
 
           <div class="flex justify-center pt-2">
             <div class="p-3 bg-white rounded-lg">
-              <div class="w-24 h-24 bg-gray-200 rounded flex items-center justify-center">
-                <UIcon name="i-lucide-qr-code" class="w-16 h-16 text-gray-600" />
+              <div
+                class="w-24 h-24 bg-gray-200 rounded flex items-center justify-center"
+              >
+                <UIcon
+                  name="i-lucide-qr-code"
+                  class="w-16 h-16 text-gray-600"
+                />
               </div>
             </div>
           </div>
 
-          <p class="text-center text-xs text-(--ui-text-dimmed)">Thank you for your purchase!</p>
+          <p class="text-center text-xs text-(--ui-text-dimmed)">
+            Thank you for your purchase!
+          </p>
 
           <div class="flex gap-2">
-            <UButton block variant="outline" color="neutral" @click="finalizeAndReset">
-              <UIcon name="i-lucide-printer" class="w-4 h-4 mr-1" />
-              Print & Close
+            <UButton
+              block
+              variant="outline"
+              color="neutral"
+              :loading="isPrinting"
+              @click="handlePrintAndClose"
+            >
+              <UIcon
+                name="i-lucide-printer"
+                class="w-4 h-4 mr-1 text-emerald-400"
+              />
+              {{ isPrinterConnected ? "Print & Close" : "Pair & Print" }}
             </UButton>
-            <UButton block @click="finalizeAndReset">
+            <UButton block color="primary" @click="finalizeAndReset(false)">
               Done
             </UButton>
           </div>
@@ -692,13 +963,21 @@ function handleSearchBlur() {
       </template>
     </UModal>
 
+    <!-- Printer Hardware Pairing & Settings Modal -->
+    <PosPrinterSettingsModal v-model:open="showPrinterModal" />
+
     <div
       v-if="salesStore.isSyncing"
       class="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm flex flex-col items-center justify-center text-white"
     >
-      <UIcon name="i-lucide-loader-2" class="w-10 h-10 animate-spin text-green-500 mb-3" />
+      <UIcon
+        name="i-lucide-loader-2"
+        class="w-10 h-10 animate-spin text-green-500 mb-3"
+      />
       <p class="font-semibold text-lg">Syncing local sales...</p>
-      <p class="text-xs text-gray-400 mt-1">Please wait while we sync offline data to the server</p>
+      <p class="text-xs text-gray-400 mt-1">
+        Please wait while we sync offline data to the server
+      </p>
     </div>
   </div>
 </template>

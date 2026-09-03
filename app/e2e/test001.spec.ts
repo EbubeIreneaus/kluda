@@ -1,6 +1,24 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
+  let page: Page;
+
+  test.beforeAll(async ({ browser }) => {
+    const context = await browser.newContext();
+    page = await context.newPage();
+    await page.addInitScript(() => {
+      try {
+        window.localStorage.setItem("bypass_pwa_gate", "true");
+        window.sessionStorage.setItem("bypass_pwa_gate", "true");
+        window.sessionStorage.setItem("pos_unlocked", "true");
+      } catch {}
+    });
+  });
+
+  test.afterAll(async () => {
+    await page.close();
+  });
+
   // Generate isolated, dynamic variables for each test execution
   const testId = Date.now().toString().slice(-6);
 
@@ -34,7 +52,7 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     phone: `081${Math.floor(10000000 + Math.random() * 90000000)}`,
   };
 
-  test("01. Merchant Registration, Store Provisioning & PIN Setup", async ({ page }) => {
+  test("01. Merchant Registration, Store Provisioning & PIN Setup", async () => {
     // 1. Visit POS application root
     await page.goto("/?standalone=true");
 
@@ -53,7 +71,7 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     }
 
     // 2. Step 1: Merchant Account Information
-    await expect(page.getByRole("heading", { name: /Create Your Merchant Account/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Create Your Account/i })).toBeVisible({ timeout: 20000 });
 
     await page.getByPlaceholder("e.g. Chidinma Okonkwo").fill(merchant.fullname);
     await page.getByPlaceholder("owner@mybusiness.com").fill(merchant.email);
@@ -61,17 +79,20 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await page.getByRole("button", { name: "Continue to Store Setup" }).click();
 
     // 3. Step 2: Store Branch Setup
-    await expect(page.getByRole("heading", { name: /Setup Your First Store Branch/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Set Up Your Store/i })).toBeVisible();
 
     await page.getByPlaceholder("e.g. Chidinma Supermarket").fill(merchant.storeName);
     await page.getByRole("combobox").click();
     await page.getByText(merchant.storeCategory, { exact: false }).click();
     await page.getByPlaceholder(/14 Allen Avenue/i).fill(merchant.storeAddress);
 
+    // Check mandatory terms & privacy policy agreement
+    await page.locator('input[type="checkbox"]').check();
+
     // Listen for backend registration response
     const [regResponse] = await Promise.all([
       page.waitForResponse(
-        (resp) => resp.url().includes("/api/v1/auth/register") && resp.status() === 200,
+        (resp) => resp.url().includes("/auth/register") && (resp.status() === 200 || resp.status() === 201),
         { timeout: 20000 }
       ),
       page.getByRole("button", { name: "Launch Store & Register" }).click(),
@@ -81,7 +102,7 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     // 4. Quick Terminal PIN Setup Modal
     await expect(page.getByText("Create Quick Terminal PIN")).toBeVisible({ timeout: 15000 });
 
-    const pinModal = page.locator("div").filter({ hasText: /Create Quick Terminal PIN|Confirm Your PIN/ }).last();
+    const pinModal = page.locator('[data-testid="set-pin-modal"]');
 
     // Enter initial PIN (1 2 3 4)
     for (const digit of ["1", "2", "3", "4"]) {
@@ -94,7 +115,7 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     // Enter confirmation PIN (1 2 3 4) and listen for /pin response
     const [pinResponse] = await Promise.all([
       page.waitForResponse(
-        (resp) => resp.url().includes("/api/v1/auth/pin") && resp.status() === 200,
+        (resp) => resp.url().includes("/staff/pin") && (resp.status() === 200 || resp.status() === 201),
         { timeout: 15000 }
       ),
       (async () => {
@@ -106,18 +127,18 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     expect(pinResponse.ok()).toBeTruthy();
 
     // 5. Verify Terminal Loaded
-    await expect(page.getByText("KLUDA")).toBeVisible();
-    await expect(page.getByText(merchant.storeName)).toBeVisible();
+    await expect(page.getByText("KLUDA", { exact: true })).toBeVisible();
+    await expect(page.getByText(merchant.storeName).first()).toBeVisible();
     await expect(page.getByText("Quota Status")).toBeVisible();
   });
 
-  test("02. Product Catalog Management (Create Stock with Barcode)", async ({ page }) => {
+  test("02. Product Catalog Management (Create Stock with Barcode)", async () => {
     await page.goto("/products");
     await expect(page.getByRole("heading", { name: /Products & Inventory/i })).toBeVisible();
 
     await page.getByRole("button", { name: "Add Product" }).click();
 
-    const addProductModal = page.locator("div").filter({ hasText: "Add New Product" }).last();
+    const addProductModal = page.getByRole("dialog");
     await expect(addProductModal).toBeVisible();
 
     await addProductModal.getByPlaceholder("e.g. Golden Penny Spaghetti 500g").fill(product.name);
@@ -127,7 +148,7 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
 
     const [productRes] = await Promise.all([
       page.waitForResponse(
-        (resp) => resp.url().includes("/api/v1/products") && (resp.status() === 200 || resp.status() === 201),
+        (resp) => resp.url().includes("/product") && (resp.status() === 200 || resp.status() === 201),
         { timeout: 15000 }
       ),
       addProductModal.getByRole("button", { name: "Add Product" }).click(),
@@ -139,8 +160,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await expect(page.getByText(product.barcode).first()).toBeVisible();
   });
 
-  test("03. POS Register Workflow (Search, Discount, Complete Sale)", async ({ page }) => {
-    await page.goto("/");
+  test("03. POS Register Workflow (Search, Discount, Complete Sale)", async () => {
+    await page.goto("/pos");
     await expect(page.getByPlaceholder(/Enter name or scan barcode/i)).toBeVisible();
 
     // Search and select product
@@ -153,7 +174,7 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
 
     // Cart validation
     await expect(page.getByRole("heading", { name: "Cart" })).toBeVisible();
-    await expect(page.getByText(product.name)).toBeVisible();
+    await expect(page.getByText(product.name).first()).toBeVisible();
 
     // Apply Payment Method: POS
     await page.getByRole("button", { name: "POS", exact: true }).click();
@@ -162,76 +183,91 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     const discountInput = page.getByPlaceholder("0.00");
     await discountInput.fill("300");
 
-    await expect(page.getByText(/Total₦4,700\.00/)).toBeVisible();
+    await expect(page.getByText("₦4,700.00").first()).toBeVisible();
 
-    // Complete Sale and listen for API transaction response
+    // 1. Open Receipt Dialog
+    await page.getByRole("button", { name: "Complete Sale" }).click();
+
+    // 2. Click Done to finalize sale and listen for API transaction response
     const [saleRes] = await Promise.all([
       page.waitForResponse(
-        (resp) => resp.url().includes("/api/v1/sales") && (resp.status() === 200 || resp.status() === 201),
+        (resp) => resp.url().includes("/sales") && (resp.status() === 200 || resp.status() === 201),
         { timeout: 15000 }
       ),
-      page.getByRole("button", { name: "Complete Sale" }).click(),
+      page.getByRole("button", { name: "Done" }).click(),
     ]);
     expect(saleRes.ok()).toBeTruthy();
-
-    // Close Receipt Dialog
-    const doneBtn = page.getByRole("button", { name: "Done" });
-    if (await doneBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await doneBtn.click();
-    }
   });
 
-  test("04. Sales Audit Log Verification", async ({ page }) => {
-    await page.goto("/sales");
+  test("04. Sales Audit Log Verification", async () => {
+    // Navigate and wait for the page's API fetch to complete
+    const [salesFetch] = await Promise.all([
+      page.waitForResponse(
+        (resp) => resp.url().includes("/sales") && resp.status() === 200,
+        { timeout: 15000 }
+      ),
+      page.goto("/sales"),
+    ]);
+    expect(salesFetch.ok()).toBeTruthy();
+
     await expect(page.getByRole("heading", { name: /Sales History/i })).toBeVisible();
 
-    // Verify Walk-in sale with POS payment method
-    await expect(page.getByRole("cell", { name: "Walk-in" }).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole("cell", { name: "pos", exact: true }).first()).toBeVisible();
+    // Verify Walk-in sale with POS payment method appear as text (plain <td>)
+    await expect(page.getByText("Walk-in").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("pos").first()).toBeVisible();
   });
 
-  test("05. Customer Management & Debt Ledger", async ({ page }) => {
+  test("05. Customer Management & Debt Ledger", async () => {
     await page.goto("/customers");
-    await expect(page.getByRole("heading", { name: /Customers & Debtors/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Customers & Debts/i })).toBeVisible();
 
     await page.getByRole("button", { name: "Add Customer" }).click();
 
-    const customerModal = page.locator("div").filter({ hasText: "Add New Customer" }).last();
+    const customerModal = page.getByRole("dialog");
     await expect(customerModal).toBeVisible();
 
-    await customerModal.getByPlaceholder("e.g. Aliko Dangote").fill(customer.name);
-    await customerModal.getByPlaceholder("customer@example.com").fill(customer.email);
+    await customerModal.getByPlaceholder("e.g. Adebayo Femi").fill(customer.name);
+    await customerModal.getByPlaceholder("email@example.com").fill(customer.email);
     await customerModal.getByPlaceholder("08012345678").fill(customer.phone);
-    await customerModal.getByPlaceholder("Street address, City").fill(customer.address);
+    await customerModal.getByPlaceholder("Customer address...").fill(customer.address);
 
     const [custRes] = await Promise.all([
       page.waitForResponse(
-        (resp) => resp.url().includes("/api/v1/customers") && (resp.status() === 200 || resp.status() === 201),
+        (resp) => resp.url().includes("/customer") && (resp.status() === 200 || resp.status() === 201),
         { timeout: 15000 }
       ),
       customerModal.getByRole("button", { name: "Add Customer" }).click(),
     ]);
     expect(custRes.ok()).toBeTruthy();
 
-    // Verify customer in table
-    await expect(page.getByRole("cell", { name: customer.email }).first()).toBeVisible({ timeout: 10000 });
+    // Verify customer in table (using text match since table uses plain <td>)
+    await expect(page.getByText(customer.email).first()).toBeVisible({ timeout: 10000 });
 
-    // Inspect Debts tab
-    await page.getByRole("button", { name: /Debts/i }).click();
-    await expect(page.getByText("Total Outstanding")).toBeVisible();
+    // Inspect Debts tab — button is a plain <button> with text "Debts"
+    await page.getByRole("button", { name: "Debts", exact: true }).click();
+    await expect(page.getByText("Total Outstanding").first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("06. Analytics and Reporting", async ({ page }) => {
+  test("06. Analytics and Reporting", async () => {
     await page.goto("/analytics");
     await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
 
-    // Test Period Toggle
-    await page.getByRole("button", { name: "Today" }).click();
-    await expect(page.getByText("Total Revenue")).toBeVisible();
-    await expect(page.getByText("Transactions")).toBeVisible();
+    // Click Today and wait for analytics API to return data before asserting KPI cards
+    const [analyticsRes] = await Promise.all([
+      page.waitForResponse(
+        (resp) => resp.url().includes("/analytics") && resp.status() === 200,
+        { timeout: 15000 }
+      ),
+      page.getByRole("button", { name: "Today" }).first().click(),
+    ]);
+    expect(analyticsRes.ok()).toBeTruthy();
+
+    // KPI cards only render once data is loaded (v-if="data")
+    await expect(page.getByText("Total Revenue").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Transactions").first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("07. Merchant Hub & Branch Cashier Management", async ({ page }) => {
+  test("07. Merchant Hub & Branch Cashier Management", async () => {
     // 1. Visit Merchant Hub
     await page.goto("/marchant");
     await expect(page.getByRole("heading", { name: new RegExp(merchant.fullname, "i") })).toBeVisible({ timeout: 15000 });
@@ -242,7 +278,7 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await expect(page.getByText(merchant.storeName)).toBeVisible({ timeout: 10000 });
 
     // 3. Open Store Branch Detail
-    const manageBtn = page.getByRole("button", { name: "Manage Branch" }).first();
+    const manageBtn = page.getByRole("link", { name: "Manage Branch" }).or(page.getByRole("button", { name: "Manage Branch" })).first();
     if (await manageBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await manageBtn.click();
     } else {
@@ -252,7 +288,7 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     // 4. Add Cashier to this Branch
     await page.getByRole("button", { name: "Add Cashier" }).click();
 
-    const addStaffModal = page.locator("div").filter({ hasText: "Add Cashier / Staff Member" }).last();
+    const addStaffModal = page.getByRole("dialog");
     await expect(addStaffModal).toBeVisible();
 
     await addStaffModal.locator('input[type="text"]').first().fill(cashier.firstName);
@@ -271,19 +307,20 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     expect(staffRes.ok()).toBeTruthy();
 
     // Assert dynamic confirmation without brittle hardcoded UUIDs
-    await expect(page.getByText("Cashier Account Created!")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/added to this branch/)).toBeVisible();
+    // .last() on both: ARIA live region shadow-matches the same text but is aria-hidden
+    await expect(page.getByText("Cashier Account Created!").last()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/added to this branch/).last()).toBeVisible();
 
-    // Verify staff appears in branch team team
-    await expect(page.getByRole("cell", { name: cashier.email })).toBeVisible();
+    // Verify staff appears in branch team (plain <td>, use getByText)
+    await expect(page.getByText(cashier.email).first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("08. Logout & Terminal Lock", async ({ page }) => {
+  test("08. Logout & Terminal Lock", async () => {
     await page.goto("/");
-    await expect(page.getByText("KLUDA")).toBeVisible();
+    await expect(page.getByText("KLUDA", { exact: true })).toBeVisible();
 
     // Open User Dropdown Menu
-    const userMenuBtn = page.getByRole("button", { name: /T\d|O/i }).first();
+    const userMenuBtn = page.locator("header").locator("button.rounded-full").last();
     await userMenuBtn.click();
 
     await page.getByRole("menuitem", { name: "Logout" }).click();

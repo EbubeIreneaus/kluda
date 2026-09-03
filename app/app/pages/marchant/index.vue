@@ -48,14 +48,14 @@ function handleLaunchTerminal(storeId: string) {
               class="px-2.5 py-0.5 rounded-full text-xs font-bold border"
               :class="[
                 status === 'ACTIVE'
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-500/20'
               ]"
             >
               {{ plan.name }} • {{ status }}
             </span>
-            <span v-if="rawSub?.is_trial" class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center gap-1">
-              <UIcon name="i-lucide-sparkles" class="w-3.5 h-3.5 text-indigo-400" />
+            <span v-if="rawSub?.is_trial" class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-800 dark:text-indigo-300 border border-indigo-500/20 flex items-center gap-1">
+              <UIcon name="i-lucide-sparkles" class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>{{ daysRemaining }} days trial left</span>
             </span>
           </div>
@@ -70,9 +70,9 @@ function handleLaunchTerminal(storeId: string) {
           <!-- Active Offer/Referral Audit Description Banner if exists -->
           <div
             v-if="rawSub?.description"
-            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium mt-2"
+            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs font-medium mt-2 shadow-xs"
           >
-            <UIcon name="i-lucide-gift" class="w-4 h-4 text-amber-400 shrink-0" />
+            <UIcon name="i-lucide-gift" class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>Offer Active: {{ rawSub.description }}</span>
           </div>
         </div>
@@ -226,7 +226,7 @@ function handleLaunchTerminal(storeId: string) {
           </UButton>
         </NuxtLink>
         <NuxtLink v-else to="/marchant/billing">
-          <span class="text-xs text-amber-400 hover:underline font-semibold flex items-center gap-1">
+          <span class="text-xs text-amber-600 dark:text-amber-400 hover:underline font-semibold flex items-center gap-1">
             <UIcon name="i-lucide-alert-circle" class="w-3.5 h-3.5" />
             Branch limit reached (Upgrade)
           </span>
