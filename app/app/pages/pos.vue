@@ -1,10 +1,19 @@
 <script setup lang="ts">
+definePageMeta({
+  ssr: false,
+});
+
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
 import {
   BrowserMultiFormatReader,
   BarcodeFormat,
   DecodeHintType,
 } from "@zxing/library";
+import { useCartStore } from "~/stores/cart";
+import { useSalesStore } from "~/stores/sales";
+import { useProductsStore } from "~/stores/product";
+import { useCustomerStore } from "~/stores/customer";
+import { useAuthStore } from "~/stores/auth";
 
 const cart = useCartStore();
 const salesStore = useSalesStore();
@@ -181,6 +190,12 @@ function handleBarcodeScan() {
   searchQuery.value = "";
   showSearchResults.value = false;
   focusBarcode();
+}
+
+function onBarcodeKeydown(e: KeyboardEvent) {
+  if (e.key === "Enter") {
+    handleBarcodeScan();
+  }
 }
 
 function addFromSearch(product: any) {
@@ -418,7 +433,8 @@ function handleSearchBlur() {
 </script>
 
 <template>
-  <div class="flex flex-col xl:flex-row gap-4 h-[calc(100vh-7rem)]">
+  <ClientOnly>
+    <div class="flex flex-col xl:flex-row gap-4 h-[calc(100vh-7rem)]">
     <div class="flex-1 flex flex-col min-h-0 space-y-4">
       <div class="space-y-3">
         <div class="relative">
@@ -478,7 +494,7 @@ function handleSearchBlur() {
                 autofocus
                 @focus="showSearchResults = true"
                 @blur="handleSearchBlur"
-                @keydown.enter="handleBarcodeScan"
+                @keydown="onBarcodeKeydown"
               />
             </div>
           </div>
@@ -600,15 +616,15 @@ function handleSearchBlur() {
           />
           <h3 class="font-semibold text-(--ui-text-highlighted)">Cart</h3>
           <UBadge
-            v-if="cart.itemCount > 0"
+            v-if="cart?.itemCount && cart.itemCount > 0"
             color="primary"
             variant="subtle"
             size="xs"
-            >{{ cart.itemCount }}</UBadge
+            >{{ cart?.itemCount }}</UBadge
           >
         </div>
         <UButton
-          v-if="!cart.isEmpty"
+          v-if="cart && !cart.isEmpty"
           variant="ghost"
           color="error"
           size="xs"
@@ -980,4 +996,10 @@ function handleSearchBlur() {
       </p>
     </div>
   </div>
+    <template #fallback>
+      <div class="flex items-center justify-center min-h-[400px]">
+        <UIcon name="i-lucide-loader" class="w-8 h-8 animate-spin text-primary-500" />
+      </div>
+    </template>
+  </ClientOnly>
 </template>

@@ -176,9 +176,9 @@ function formatNgn(num: number) {
           <div class="flex items-center justify-between">
             <span class="text-slate-400 flex items-center gap-1.5">
               <UIcon name="i-lucide-sparkles" class="w-4 h-4 text-emerald-400" />
-              Public Beta Access:
+              Starter Plan Access:
             </span>
-            <span class="font-mono font-bold text-emerald-400">100% Free</span>
+            <span class="font-mono font-bold text-emerald-400">Free Forever</span>
           </div>
         </div>
 

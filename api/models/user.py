@@ -81,6 +81,8 @@ class StoreMember(Base):
     store: MappedColumn["Store"] = relationship(back_populates="members")
     user: MappedColumn["User"] = relationship(back_populates="memberships")
 
+Staff = StoreMember
+
 class UserSession(Base):
     __tablename__ = "user_sessions"
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)

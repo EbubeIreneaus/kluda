@@ -16,10 +16,15 @@ interface PlanItem {
   product_limit: number
   sales_limit_per_month: number
   analytics_read_per_month: number
-  status: 'AVAILABLE' | 'UNAVAILABLE'
+  status: string
   paystack_planid: string | null
   created_at: string
   updated_at: string
+}
+
+function isPlanActive(plan: PlanItem | null | undefined): boolean {
+  if (!plan || !plan.status) return false
+  return String(plan.status).toLowerCase() === 'available'
 }
 
 const plans = ref<PlanItem[]>([])
@@ -60,7 +65,7 @@ const createForm = reactive({
   product_limit: 100,
   sales_limit_per_month: 500,
   analytics_read_per_month: 100,
-  status: 'AVAILABLE' as 'AVAILABLE' | 'UNAVAILABLE',
+  status: 'available',
   paystack_planid: ''
 })
 
@@ -76,7 +81,7 @@ const editForm = reactive({
   product_limit: 0,
   sales_limit_per_month: 0,
   analytics_read_per_month: 0,
-  status: 'AVAILABLE' as 'AVAILABLE' | 'UNAVAILABLE',
+  status: 'available',
   paystack_planid: ''
 })
 
@@ -104,7 +109,7 @@ function openCreateModal() {
   createForm.product_limit = 100
   createForm.sales_limit_per_month = 500
   createForm.analytics_read_per_month = 100
-  createForm.status = 'AVAILABLE'
+  createForm.status = 'available'
   createForm.paystack_planid = ''
   isCreateOpen.value = true
 }
@@ -122,14 +127,14 @@ function openEditModal(plan: PlanItem) {
   editForm.product_limit = plan.product_limit
   editForm.sales_limit_per_month = plan.sales_limit_per_month
   editForm.analytics_read_per_month = plan.analytics_read_per_month
-  editForm.status = plan.status
+  editForm.status = isPlanActive(plan) ? 'available' : 'unavailable'
   editForm.paystack_planid = plan.paystack_planid || ''
   isEditOpen.value = true
 }
 
 async function handleCreatePlan() {
   if (!createForm.slug.trim() || !createForm.name.trim()) {
-    alert('Slug and Plan Name are required.')
+    toast.add({ title: 'Missing Information', description: 'Slug and Plan Name are required.', color: 'warning' })
     return
   }
 
@@ -150,14 +155,16 @@ async function handleCreatePlan() {
         product_limit: Number(createForm.product_limit),
         sales_limit_per_month: Number(createForm.sales_limit_per_month),
         analytics_read_per_month: Number(createForm.analytics_read_per_month),
-        status: createForm.status,
+        status: createForm.status.toLowerCase(),
         paystack_planid: createForm.paystack_planid.trim() || null
       }
     })
+    toast.add({ title: 'Plan Created', description: `Plan "${createForm.name}" created successfully.`, color: 'success' })
     isCreateOpen.value = false
     await fetchPlans()
   } catch (err: any) {
-    alert(err?.data?.detail || 'Failed to create plan')
+    const msg = getErrorMessage(err, 'Failed to create plan')
+    toast.add({ title: 'Failed to Create Plan', description: msg, color: 'error' })
   } finally {
     isSubmitting.value = false
   }
@@ -182,22 +189,25 @@ async function handleUpdatePlan() {
         product_limit: Number(editForm.product_limit),
         sales_limit_per_month: Number(editForm.sales_limit_per_month),
         analytics_read_per_month: Number(editForm.analytics_read_per_month),
-        status: editForm.status,
+        status: editForm.status.toLowerCase(),
         paystack_planid: editForm.paystack_planid.trim() || null
       }
     })
+    toast.add({ title: 'Plan Updated', description: `Plan "${editForm.name}" updated successfully.`, color: 'success' })
     isEditOpen.value = false
     await fetchPlans()
   } catch (err: any) {
-    alert(err?.data?.detail || 'Failed to update plan')
+    const msg = getErrorMessage(err, 'Failed to update plan')
+    toast.add({ title: 'Failed to Update Plan', description: msg, color: 'error' })
   } finally {
     isSubmitting.value = false
   }
 }
 
 async function togglePlanStatus(plan: PlanItem) {
-  const newStatus = plan.status === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE'
-  const actionText = newStatus === 'AVAILABLE' ? 'activate' : 'deactivate'
+  const isAvailable = isPlanActive(plan)
+  const newStatus = isAvailable ? 'unavailable' : 'available'
+  const actionText = isAvailable ? 'deactivate' : 'activate'
   if (!confirm(`Are you sure you want to ${actionText} the "${plan.name}" plan?`)) return
 
   try {
@@ -205,13 +215,35 @@ async function togglePlanStatus(plan: PlanItem) {
       method: 'PUT',
       body: { status: newStatus }
     })
+    toast.add({ title: 'Status Updated', description: `Plan "${plan.name}" has been ${actionText}d.`, color: 'success' })
     await fetchPlans()
   } catch (err: any) {
-    alert(err?.data?.detail || `Failed to ${actionText} plan`)
+    const msg = getErrorMessage(err, `Failed to ${actionText} plan`)
+    toast.add({ title: 'Failed to Update Status', description: msg, color: 'error' })
   }
 }
 
-const activePlansCount = computed(() => plans.value.filter(p => p.status === 'AVAILABLE').length)
+async function handleDeletePlan(plan: PlanItem) {
+  if (plan.slug === 'free') {
+    toast.add({ title: 'Action Not Allowed', description: 'The core Free plan cannot be deleted.', color: 'warning' })
+    return
+  }
+
+  if (!confirm(`Are you sure you want to permanently delete "${plan.name}" (${plan.slug})?\n\nNote: Deletion will be rejected if merchants are currently assigned to this plan.`)) return
+
+  try {
+    await apiFetch(`/admin/plans/${plan.slug}`, {
+      method: 'DELETE'
+    })
+    toast.add({ title: 'Plan Deleted', description: `Plan "${plan.name}" was permanently deleted.`, color: 'success' })
+    await fetchPlans()
+  } catch (err: any) {
+    const msg = getErrorMessage(err, 'Failed to delete plan')
+    toast.add({ title: 'Cannot Delete Plan', description: msg, color: 'error' })
+  }
+}
+
+const activePlansCount = computed(() => plans.value.filter(p => isPlanActive(p)).length)
 const highestPrice = computed(() => {
   if (!plans.value.length) return 0
   return Math.max(...plans.value.map(p => p.price)) / 100
@@ -278,7 +310,7 @@ async function handleGrantOffer() {
   } catch (err: any) {
     toast.add({
       title: 'Grant Failed',
-      description: err?.data?.detail || err?.message || 'Could not grant subscription offer',
+      description: getErrorMessage(err, 'Could not grant subscription offer'),
       color: 'error'
     })
   } finally {
@@ -380,7 +412,7 @@ onMounted(() => {
         :key="plan.id"
         class="bg-zinc-900/60 border rounded-2xl p-5 flex flex-col justify-between backdrop-blur-sm transition-all relative overflow-hidden"
         :class="[
-          plan.status === 'AVAILABLE'
+          isPlanActive(plan)
             ? 'border-zinc-800/90 hover:border-zinc-700/80 shadow-lg shadow-black/20'
             : 'border-zinc-800/40 opacity-75'
         ]"
@@ -414,12 +446,12 @@ onMounted(() => {
             <span
               :class="[
                 'px-2 py-0.5 rounded text-[10px] font-semibold border',
-                plan.status === 'AVAILABLE'
+                isPlanActive(plan)
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                   : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
               ]"
             >
-              {{ plan.status }}
+              {{ isPlanActive(plan) ? 'AVAILABLE' : 'UNAVAILABLE' }}
             </span>
           </div>
 
@@ -503,12 +535,21 @@ onMounted(() => {
             @click="openEditModal(plan)"
           />
           <UButton
-            :label="plan.status === 'AVAILABLE' ? 'Deactivate' : 'Activate'"
-            :icon="plan.status === 'AVAILABLE' ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+            :label="isPlanActive(plan) ? 'Deactivate' : 'Activate'"
+            :icon="isPlanActive(plan) ? 'i-lucide-eye-off' : 'i-lucide-eye'"
             size="xs"
-            :color="plan.status === 'AVAILABLE' ? 'error' : 'primary'"
+            :color="isPlanActive(plan) ? 'warning' : 'primary'"
             variant="ghost"
             @click="togglePlanStatus(plan)"
+          />
+          <UButton
+            v-if="plan.slug !== 'free'"
+            label="Delete"
+            icon="i-lucide-trash-2"
+            size="xs"
+            color="error"
+            variant="ghost"
+            @click="handleDeletePlan(plan)"
           />
         </div>
       </div>
@@ -588,8 +629,8 @@ onMounted(() => {
                 v-model="createForm.status"
                 class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
               >
-                <option value="AVAILABLE">AVAILABLE (Active for purchase)</option>
-                <option value="UNAVAILABLE">UNAVAILABLE (Hidden / Inactive)</option>
+                <option value="available">AVAILABLE (Active for purchase)</option>
+                <option value="unavailable">UNAVAILABLE (Hidden / Inactive)</option>
               </select>
             </div>
           </div>
@@ -738,8 +779,8 @@ onMounted(() => {
                 v-model="editForm.status"
                 class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
               >
-                <option value="AVAILABLE">AVAILABLE (Active)</option>
-                <option value="UNAVAILABLE">UNAVAILABLE (Inactive / Hidden)</option>
+                <option value="available">AVAILABLE (Active)</option>
+                <option value="unavailable">UNAVAILABLE (Inactive / Hidden)</option>
               </select>
             </div>
           </div>

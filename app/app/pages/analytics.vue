@@ -142,6 +142,7 @@ const colorMap: Record<string, string> = {
       </div>
       <UButton
         icon="i-lucide-refresh-cw"
+        class="p-2"
         variant="outline"
         color="neutral"
         :loading="isLoading"

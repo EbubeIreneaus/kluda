@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from models.config import get_db
 from models.admin.plan import Plan
 from models.admin.user import Admin
+from models.subscription import UserSubscription
 from schemas.admin.plan import PlanCreate, PlanUpdate, PlanResponse
 from schemas.admin.user import AdminPermission
 from schemas.subscription import PlanStatus
@@ -188,8 +189,8 @@ async def update_plan(
     return plan
 
 
-@router.delete("/{plan_id_or_slug}", response_model=PlanResponse)
-async def deactivate_plan(
+@router.delete("/{plan_id_or_slug}")
+async def delete_plan(
     plan_id_or_slug: str,
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(require_admin_permission(AdminPermission.MANAGE_BILLINGS)),
@@ -202,17 +203,34 @@ async def deactivate_plan(
     if not plan:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription plan not found")
 
-    plan.status = PlanStatus.UNAVAILABLE
+    if plan.slug in ["free"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="System core 'free' plan cannot be deleted. You can edit its quotas instead.",
+        )
+
+    # Check if any user subscriptions are linked to this plan
+    sub_count = await db.scalar(
+        select(func.count(UserSubscription.id)).where(UserSubscription.plan_id == plan.slug)
+    )
+    if sub_count and sub_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete plan '{plan.name}' because {sub_count} merchant(s) are currently attached to it. Please deactivate the plan instead to protect subscription records.",
+        )
+
+    plan_name = plan.name
+    plan_slug = plan.slug
+    await db.delete(plan)
     await db.flush()
-    await db.refresh(plan)
 
     await record_audit_log(
         db=db,
         admin_id=admin.admin_id,
-        action="PLAN_DEACTIVATED",
+        action="PLAN_DELETED",
         target_type="plan",
-        details={"slug": plan.slug, "name": plan.name},
+        details={"slug": plan_slug, "name": plan_name},
     )
     await db.commit()
     await delete_cache("kluda:cache:public_plans")
-    return plan
+    return {"message": f"Plan '{plan_name}' successfully deleted", "slug": plan_slug}

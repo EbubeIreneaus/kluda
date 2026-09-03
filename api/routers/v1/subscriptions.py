@@ -24,7 +24,7 @@ from schemas.subscription import (
     SubscriptionHistoryItem,
 )
 from schemas.business import StoreStatus
-from libs.deps import get_current_user
+from libs.deps import get_current_user, get_optional_current_user
 from libs.payment import payment_manager, PaymentException
 from libs.cache import get_cache, set_cache
 from setting import settings
@@ -39,20 +39,22 @@ router = APIRouter(prefix="/subscriptions", tags=["Subscriptions & Billing"])
 @router.get("/plans", response_model=list[PlanResponse])
 async def list_available_plans(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
-    # Check if user has EVER used any trial anywhere on any plan
-    has_used_trial = (
-        await db.scalar(
-            select(func.count(UserSubscription.id)).where(
-                UserSubscription.user_id == current_user.user_id,
-                (UserSubscription.is_trial.is_(True)) | (UserSubscription.plan_id == "trial"),
+    has_used_trial = False
+    if current_user:
+        # Check if user has EVER used any trial anywhere on any plan
+        has_used_trial = (
+            await db.scalar(
+                select(func.count(UserSubscription.id)).where(
+                    UserSubscription.user_id == current_user.user_id,
+                    (UserSubscription.is_trial.is_(True)) | (UserSubscription.plan_id == "trial"),
+                )
             )
-        )
-        or 0
-    ) > 0
-    if not has_used_trial and getattr(current_user, "has_used_trial", False):
-        has_used_trial = True
+            or 0
+        ) > 0
+        if not has_used_trial and getattr(current_user, "has_used_trial", False):
+            has_used_trial = True
 
     # Standalone 'trial' plan is excluded
     cached_plans = await get_cache("kluda:cache:public_plans")
@@ -61,6 +63,14 @@ async def list_available_plans(
     else:
         query = select(Plan).where(Plan.status == PlanStatus.AVAILABLE, Plan.slug != "trial")
         db_plans = (await db.scalars(query.order_by(Plan.price.asc()))).all()
+        if not db_plans:
+            try:
+                from scripts.seed_subscriptions import seed_subscriptions
+                await seed_subscriptions()
+                db_plans = (await db.scalars(query.order_by(Plan.price.asc()))).all()
+            except Exception as e:
+                logger.warning("Failed to auto-seed subscriptions", error=str(e))
+
         serialized = [PlanResponse.model_validate(p).model_dump(mode="json") for p in db_plans]
         await set_cache("kluda:cache:public_plans", serialized, expire_seconds=3600)
         plans = [PlanResponse(**p) for p in serialized]

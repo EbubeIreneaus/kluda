@@ -98,6 +98,17 @@ get_staff = get_current_user
 get_user = get_current_user
 
 
+async def get_optional_current_user(
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    try:
+        return await get_current_user(request, token, db)
+    except Exception:
+        return None
+
+
 def require_permission(permission: StaffPermission | str):
     async def permission_checker(
         user: User = Depends(get_current_user),

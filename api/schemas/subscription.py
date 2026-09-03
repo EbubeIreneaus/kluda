@@ -8,16 +8,43 @@ class PlanStatus(str, Enum):
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
 
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val_lower = value.strip().lower()
+            for member in cls:
+                if member.value == val_lower or member.name.lower() == val_lower:
+                    return member
+        return None
+
 
 class PaymentChannel(str, Enum):
     PAYSTACK = "paystack"
     MONIFY = "monify"
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val_lower = value.strip().lower()
+            for member in cls:
+                if member.value == val_lower or member.name.lower() == val_lower:
+                    return member
+        return None
 
 
 class SubscriptionStatus(str, Enum):
     ACTIVE = "active"
     DUE = "due"
     EXPIRED = "expired"
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val_lower = value.strip().lower()
+            for member in cls:
+                if member.value == val_lower or member.name.lower() == val_lower:
+                    return member
+        return None
 
 
 class PlanResponse(BaseModel):

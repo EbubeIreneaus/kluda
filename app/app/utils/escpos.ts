@@ -99,7 +99,7 @@ export class EscPosBuilder {
     const sanitized = sanitizeAscii(str)
     const bytes = this.encoder.encode(sanitized)
     for (let i = 0; i < bytes.length; i++) {
-      this.buffer.push(bytes[i])
+      this.buffer.push(bytes[i]!)
     }
     return this
   }

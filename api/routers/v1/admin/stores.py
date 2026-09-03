@@ -40,7 +40,7 @@ async def list_stores(
 
     items = []
     for s in stores:
-        staff_count = await db.scalar(select(func.count(Staff.id)).where(Staff.store_id == s.store_id)) or 0
+        staff_count = await db.scalar(select(func.count(StoreMember.id)).where(StoreMember.store_id == s.store_id)) or 0
         product_count = await db.scalar(select(func.count(Stock.id)).where(Stock.store_id == s.store_id)) or 0
         sales_stats = await db.execute(
             select(
@@ -81,7 +81,7 @@ async def get_store_detail(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
 
     owner = await db.scalar(select(User).where(User.user_id == store.user_id))
-    staff_count = await db.scalar(select(func.count(Staff.id)).where(Staff.store_id == store.store_id)) or 0
+    staff_count = await db.scalar(select(func.count(StoreMember.id)).where(StoreMember.store_id == store.store_id)) or 0
     product_count = await db.scalar(select(func.count(Stock.id)).where(Stock.store_id == store.store_id)) or 0
     sales_stats = await db.execute(
         select(
@@ -137,7 +137,7 @@ async def update_store_status(
     )
 
     owner = await db.scalar(select(User).where(User.user_id == store.user_id))
-    staff_count = await db.scalar(select(func.count(Staff.id)).where(Staff.store_id == store.store_id)) or 0
+    staff_count = await db.scalar(select(func.count(StoreMember.id)).where(StoreMember.store_id == store.store_id)) or 0
     product_count = await db.scalar(select(func.count(Stock.id)).where(Stock.store_id == store.store_id)) or 0
     sales_stats = await db.execute(
         select(

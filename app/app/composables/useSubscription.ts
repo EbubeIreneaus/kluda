@@ -8,6 +8,7 @@ import { useApi } from '~/composables/useApi'
 const currentSubscriptionData = ref<any | null>(null)
 const availablePlans = ref<any[]>([])
 const isLoading = ref(false)
+const isLoadingPlans = ref(false)
 
 export function useSubscription() {
   const auth = useAuthStore()
@@ -55,12 +56,15 @@ export function useSubscription() {
   }
 
   async function fetchAvailablePlans() {
+    isLoadingPlans.value = true
     try {
       const data = await api<any[]>('/subscriptions/plans')
       availablePlans.value = data || []
       return availablePlans.value
     } catch {
       return []
+    } finally {
+      isLoadingPlans.value = false
     }
   }
 
@@ -337,6 +341,7 @@ export function useSubscription() {
     isOfflineLeaseExpired,
     offlineDisclaimer,
     isLoading,
+    isLoadingPlans,
     fetchCurrentSubscription,
     fetchAvailablePlans,
     subscribePlan,

@@ -35,6 +35,11 @@ export function usePrinter() {
     return typeof navigator !== 'undefined' && 'usb' in navigator
   })
 
+  const isMobile = computed(() => {
+    if (typeof navigator === 'undefined') return false
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  })
+
   const isConnected = computed(() => {
     return connectionType.value !== 'none'
   })

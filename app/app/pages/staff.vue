@@ -117,12 +117,13 @@ onMounted(() => {
           color="neutral"
           :loading="isLoading"
           @click="fetchStaffs"
+          class="px-3 py-2"
         >
           Refresh
         </UButton>
 
         <NuxtLink v-if="auth.isOwner" :to="`/marchant/stores/${auth.store_id || ''}`">
-          <UButton color="primary" icon="i-lucide-user-plus" class="font-bold">
+          <UButton color="primary" icon="i-lucide-user-plus" class="font-bold px-3 py-2">
             Manage & Add Staff
           </UButton>
         </NuxtLink>

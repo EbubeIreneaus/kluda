@@ -6,14 +6,21 @@ export function useAdminApi() {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
     const fullUrl = `${apiBase}${cleanEndpoint}`
 
-    return $fetch<T>(fullUrl, {
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        ...options.headers
-      },
-      ...options
-    })
+    try {
+      return await $fetch<T>(fullUrl, {
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          ...options.headers
+        },
+        ...options
+      })
+    } catch (err: any) {
+      if (err?.data && err.data.detail !== undefined) {
+        err.data.detail = getErrorMessage(err)
+      }
+      throw err
+    }
   }
 
   return {

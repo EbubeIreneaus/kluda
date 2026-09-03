@@ -6,7 +6,7 @@ export default defineAppConfig({
     },
     button: {
       defaultVariants: {
-        size: '2xl'
+        size: 'xl'
       }
     },
 

@@ -314,7 +314,7 @@ watch([showAddModal, showEditSlideover], () => {
         <h2 class="text-xl font-bold text-(--ui-text-highlighted)">Products & Inventory</h2>
         <p class="text-sm text-(--ui-text-muted)">{{ products.length }} products in stock</p>
       </div>
-      <UButton v-if="auth.hasPermission('manage:product')" icon="i-lucide-plus" @click="showAddModal = true">
+      <UButton class="p-2.5" v-if="auth.hasPermission('manage:product')" icon="i-lucide-plus" @click="showAddModal = true">
         Add Product
       </UButton>
     </div>

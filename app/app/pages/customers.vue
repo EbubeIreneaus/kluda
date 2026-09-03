@@ -259,7 +259,7 @@ const debtStatusOptions = [
           <span class="text-amber-500 font-semibold">{{ format(totalOutstanding) }}</span>
         </p>
       </div>
-      <UButton v-if="customerStore && auth.hasPermission('manage:user')" icon="i-lucide-user-plus" @click="showAddModal = true">
+      <UButton class="p-2.5" v-if="customerStore && auth.hasPermission('manage:user')" icon="i-lucide-user-plus" @click="showAddModal = true">
         Add Customer
       </UButton>
     </div>

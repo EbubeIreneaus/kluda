@@ -1,22 +1,15 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
-test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
-  let page: Page;
+test("Kluda Retail POS - Complete End-to-End Suite", async ({ page }) => {
+  // Allow ample time for the full 8-step end-to-end journey across dev server / CI
+  test.setTimeout(120000);
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
-    page = await context.newPage();
-    await page.addInitScript(() => {
-      try {
-        window.localStorage.setItem("bypass_pwa_gate", "true");
-        window.sessionStorage.setItem("bypass_pwa_gate", "true");
-        window.sessionStorage.setItem("pos_unlocked", "true");
-      } catch {}
-    });
-  });
-
-  test.afterAll(async () => {
-    await page.close();
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem("bypass_pwa_gate", "true");
+      window.sessionStorage.setItem("bypass_pwa_gate", "true");
+      window.sessionStorage.setItem("pos_unlocked", "true");
+    } catch {}
   });
 
   // Generate isolated, dynamic variables for each test execution
@@ -52,7 +45,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     phone: `081${Math.floor(10000000 + Math.random() * 90000000)}`,
   };
 
-  test("01. Merchant Registration, Store Provisioning & PIN Setup", async () => {
+  // ── Step 01 ─────────────────────────────────────────────────────────────
+  await test.step("01. Merchant Registration, Store Provisioning & PIN Setup", async () => {
     // 1. Visit POS application root
     await page.goto("/?standalone=true");
 
@@ -132,7 +126,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await expect(page.getByText("Quota Status")).toBeVisible();
   });
 
-  test("02. Product Catalog Management (Create Stock with Barcode)", async () => {
+  // ── Step 02 ─────────────────────────────────────────────────────────────
+  await test.step("02. Product Catalog Management (Create Stock with Barcode)", async () => {
     await page.goto("/products");
     await expect(page.getByRole("heading", { name: /Products & Inventory/i })).toBeVisible();
 
@@ -160,7 +155,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await expect(page.getByText(product.barcode).first()).toBeVisible();
   });
 
-  test("03. POS Register Workflow (Search, Discount, Complete Sale)", async () => {
+  // ── Step 03 ─────────────────────────────────────────────────────────────
+  await test.step("03. POS Register Workflow (Search, Discount, Complete Sale)", async () => {
     await page.goto("/pos");
     await expect(page.getByPlaceholder(/Enter name or scan barcode/i)).toBeVisible();
 
@@ -199,7 +195,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     expect(saleRes.ok()).toBeTruthy();
   });
 
-  test("04. Sales Audit Log Verification", async () => {
+  // ── Step 04 ─────────────────────────────────────────────────────────────
+  await test.step("04. Sales Audit Log Verification", async () => {
     // Navigate and wait for the page's API fetch to complete
     const [salesFetch] = await Promise.all([
       page.waitForResponse(
@@ -217,7 +214,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await expect(page.getByText("pos").first()).toBeVisible();
   });
 
-  test("05. Customer Management & Debt Ledger", async () => {
+  // ── Step 05 ─────────────────────────────────────────────────────────────
+  await test.step("05. Customer Management & Debt Ledger", async () => {
     await page.goto("/customers");
     await expect(page.getByRole("heading", { name: /Customers & Debts/i })).toBeVisible();
 
@@ -248,7 +246,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await expect(page.getByText("Total Outstanding").first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("06. Analytics and Reporting", async () => {
+  // ── Step 06 ─────────────────────────────────────────────────────────────
+  await test.step("06. Analytics and Reporting", async () => {
     await page.goto("/analytics");
     await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
 
@@ -267,7 +266,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await expect(page.getByText("Transactions").first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("07. Merchant Hub & Branch Cashier Management", async () => {
+  // ── Step 07 ─────────────────────────────────────────────────────────────
+  await test.step("07. Merchant Hub & Branch Cashier Management", async () => {
     // 1. Visit Merchant Hub
     await page.goto("/marchant");
     await expect(page.getByRole("heading", { name: new RegExp(merchant.fullname, "i") })).toBeVisible({ timeout: 15000 });
@@ -307,7 +307,6 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     expect(staffRes.ok()).toBeTruthy();
 
     // Assert dynamic confirmation without brittle hardcoded UUIDs
-    // .last() on both: ARIA live region shadow-matches the same text but is aria-hidden
     await expect(page.getByText("Cashier Account Created!").last()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(/added to this branch/).last()).toBeVisible();
 
@@ -315,7 +314,8 @@ test.describe.serial("Kluda Retail POS - Complete End-to-End Suite", () => {
     await expect(page.getByText(cashier.email).first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("08. Logout & Terminal Lock", async () => {
+  // ── Step 08 ─────────────────────────────────────────────────────────────
+  await test.step("08. Logout & Terminal Lock", async () => {
     await page.goto("/");
     await expect(page.getByText("KLUDA", { exact: true })).toBeVisible();
 
