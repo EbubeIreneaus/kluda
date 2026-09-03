@@ -89,4 +89,45 @@ describe('Offline Sales Queue & Deduplication', () => {
     const updated = await db.products.get('item-1')
     expect(updated?.quantities).toBe(7)
   })
+
+  it('detects and recovers deleted IndexedDB pending sales from shadow journal', async () => {
+    const key = '33333333-3333-3333-3333-333333333333'
+    const pendingSale: PendingSale = {
+      idempotency_key: key,
+      items: [{ stock_slug: 'test-item', quantities: 1, amount: 50000 }],
+      discount: 0,
+      payment_method: 'cash',
+      amount_recived: 50000,
+      created_at: new Date().toISOString(),
+      status: 'completed',
+      customer_id: null,
+      staff_note: null
+    }
+
+    // 1. Queued in both IndexedDB and shadow journal
+    await db.pendingSales.add(pendingSale)
+    const shadowJournal = [{ key, sale: pendingSale, recorded_at: new Date().toISOString() }]
+
+    // 2. Attacker deletes from IndexedDB
+    await db.pendingSales.delete(key)
+    expect((await db.pendingSales.toArray()).length).toBe(0)
+
+    // 3. Sync engine detects deletion and auto-recovers
+    const pendingInDb = await db.pendingSales.toArray()
+    const pendingKeySet = new Set(pendingInDb.map((p) => p.idempotency_key))
+    const missing: PendingSale[] = []
+    for (const entry of shadowJournal) {
+      if (!pendingKeySet.has(entry.key)) {
+        missing.push(entry.sale)
+      }
+    }
+    expect(missing.length).toBe(1)
+    await db.pendingSales.bulkPut(missing)
+
+    // 4. Sale is restored in IndexedDB
+    const recovered = await db.pendingSales.toArray()
+    expect(recovered.length).toBe(1)
+    expect(recovered[0].idempotency_key).toBe(key)
+  })
 })
+

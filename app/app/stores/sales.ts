@@ -2,6 +2,56 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { db, getStoreDb, type PendingSale, type LocalSale } from '~/utils/db'
 
+export interface ShadowJournalEntry {
+  key: string
+  sale: PendingSale
+  recorded_at: string
+}
+
+function getShadowJournal(storeId: string): ShadowJournalEntry[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(`kluda_shadow_journal_${storeId}`)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function addToShadowJournal(storeId: string, sale: PendingSale) {
+  if (typeof window === 'undefined') return
+  try {
+    const list = getShadowJournal(storeId)
+    const updated = [
+      ...list.filter((e) => e.key !== sale.idempotency_key),
+      {
+        key: sale.idempotency_key,
+        sale,
+        recorded_at: new Date().toISOString()
+      }
+    ].slice(-200)
+    localStorage.setItem(`kluda_shadow_journal_${storeId}`, JSON.stringify(updated))
+  } catch {}
+}
+
+function removeFromShadowJournal(storeId: string, syncedKeys?: string[]) {
+  if (typeof window === 'undefined') return
+  try {
+    if (!syncedKeys || syncedKeys.length === 0) {
+      localStorage.removeItem(`kluda_shadow_journal_${storeId}`)
+      return
+    }
+    const list = getShadowJournal(storeId)
+    const keySet = new Set(syncedKeys)
+    const remaining = list.filter((e) => !keySet.has(e.key))
+    if (remaining.length === 0) {
+      localStorage.removeItem(`kluda_shadow_journal_${storeId}`)
+    } else {
+      localStorage.setItem(`kluda_shadow_journal_${storeId}`, JSON.stringify(remaining))
+    }
+  } catch {}
+}
+
 export const useSalesStore = defineStore('sales', () => {
   const sales = ref<LocalSale[]>([])
   const isInitialized = ref(false)
@@ -163,6 +213,10 @@ export const useSalesStore = defineStore('sales', () => {
     }
 
     await db.pendingSales.add(newSale)
+    const storeId = auth.store_id || auth.staff?.store_id
+    if (storeId) {
+      addToShadowJournal(storeId, newSale)
+    }
 
     const formattedLocalSale = mapPendingToLocalSale(newSale)
     sales.value = [formattedLocalSale, ...sales.value]
@@ -189,7 +243,29 @@ export const useSalesStore = defineStore('sales', () => {
 
     try {
       const activeDb = getStoreDb(storeId)
-      const pending = await activeDb.pendingSales.toArray()
+      let pending = await activeDb.pendingSales.toArray()
+
+      // Detection & Auto-Recovery of deleted IndexedDB offline transactions
+      const shadowJournal = getShadowJournal(storeId)
+      if (shadowJournal.length > 0) {
+        const pendingKeySet = new Set(pending.map((p) => p.idempotency_key))
+        const missingFromDb: PendingSale[] = []
+
+        for (const entry of shadowJournal) {
+          if (!pendingKeySet.has(entry.key) && entry.sale) {
+            missingFromDb.push(entry.sale)
+          }
+        }
+
+        if (missingFromDb.length > 0) {
+          console.warn(
+            `[Audit Trail] Detected ${missingFromDb.length} missing/deleted offline sale(s) in IndexedDB. Auto-recovering!`,
+            missingFromDb.map((m) => m.idempotency_key)
+          )
+          await activeDb.pendingSales.bulkPut(missingFromDb)
+          pending = await activeDb.pendingSales.toArray()
+        }
+      }
 
       if (pending.length > 0) {
         try {
@@ -204,8 +280,10 @@ export const useSalesStore = defineStore('sales', () => {
 
             if (res.synced_keys && Array.isArray(res.synced_keys) && res.synced_keys.length > 0) {
               await activeDb.pendingSales.bulkDelete(res.synced_keys)
+              removeFromShadowJournal(storeId, res.synced_keys)
             } else if (res.success) {
               await activeDb.pendingSales.clear()
+              removeFromShadowJournal(storeId)
             }
 
             await fetchSales()
@@ -224,7 +302,21 @@ export const useSalesStore = defineStore('sales', () => {
         for (const otherStore of auth.stores) {
           if (!otherStore.store_id || otherStore.store_id === storeId) continue
           const otherDb = getStoreDb(otherStore.store_id)
-          const otherPending = await otherDb.pendingSales.toArray()
+          let otherPending = await otherDb.pendingSales.toArray()
+          const otherShadow = getShadowJournal(otherStore.store_id)
+          if (otherShadow.length > 0) {
+            const otherKeySet = new Set(otherPending.map((p) => p.idempotency_key))
+            const otherMissing: PendingSale[] = []
+            for (const entry of otherShadow) {
+              if (!otherKeySet.has(entry.key) && entry.sale) {
+                otherMissing.push(entry.sale)
+              }
+            }
+            if (otherMissing.length > 0) {
+              await otherDb.pendingSales.bulkPut(otherMissing)
+              otherPending = await otherDb.pendingSales.toArray()
+            }
+          }
           if (otherPending.length > 0) {
             try {
               const res = await api<any>(`/${otherStore.store_id}/sales`, {
@@ -237,8 +329,10 @@ export const useSalesStore = defineStore('sales', () => {
 
                 if (res.synced_keys && Array.isArray(res.synced_keys) && res.synced_keys.length > 0) {
                   await otherDb.pendingSales.bulkDelete(res.synced_keys)
+                  removeFromShadowJournal(otherStore.store_id, res.synced_keys)
                 } else if (res.success) {
                   await otherDb.pendingSales.clear()
+                  removeFromShadowJournal(otherStore.store_id)
                 }
               }
             } catch {}

@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { getTerminalUnlockProof } from '~/composables/usePinAuth'
 
 export interface PlanDetails {
   slug: string
@@ -264,6 +265,7 @@ export const useAuthStore = defineStore('auth', {
       refreshPromise = (async () => {
         try {
           const storedRefresh = import.meta.client ? localStorage.getItem('pos_refresh_token') : null
+          const pinProof = getTerminalUnlockProof()
           const refreshRes = await $fetch<{
             success: boolean
             staff?: any
@@ -275,7 +277,14 @@ export const useAuthStore = defineStore('auth', {
           }>(`${apiBase}/auth/refresh-token`, {
             method: 'POST',
             credentials: 'include',
-            body: storedRefresh ? { refresh_token: storedRefresh } : undefined
+            headers: {
+              'X-Client-App': 'pos',
+              ...(pinProof ? { 'X-Pin-Proof': pinProof } : {})
+            },
+            body: {
+              ...(storedRefresh ? { refresh_token: storedRefresh } : {}),
+              ...(pinProof ? { pin_proof: pinProof } : {})
+            }
           })
 
           if (refreshRes && refreshRes.success) {

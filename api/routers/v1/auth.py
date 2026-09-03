@@ -392,8 +392,18 @@ async def refresh_token_endpoint(
     user_refresh_token: Annotated[str | None, Cookie()] = None,
     db: AsyncSession = Depends(get_db),
 ):
+    body_data = {}
+    try:
+        raw_body = await request.json()
+        if isinstance(raw_body, dict):
+            body_data = raw_body
+    except Exception:
+        pass
+
     if not user_refresh_token:
         user_refresh_token = request.cookies.get("staff_refresh_token")
+    if not user_refresh_token:
+        user_refresh_token = body_data.get("refresh_token") or body_data.get("user_refresh_token")
     if not user_refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -423,6 +433,21 @@ async def refresh_token_endpoint(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is suspended or inactive",
         )
+
+    client_app = request.headers.get("X-Client-App") or body_data.get("client_app")
+    pin_proof = request.headers.get("X-Pin-Proof") or body_data.get("pin_proof")
+
+    # In-memory Proof-of-Possession for POS terminals:
+    # If the request originates from a POS client and user has configured a terminal PIN,
+    # require the in-memory PIN proof to match user.pin_hash.
+    if client_app == "pos" and user.pin_hash:
+        if not pin_proof or pin_proof != user.pin_hash:
+            session.active = False
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Terminal locked: Valid PIN proof required to refresh session",
+            )
 
     now = datetime.now(timezone.utc)
     new_raw_refresh = generate_refresh_token()

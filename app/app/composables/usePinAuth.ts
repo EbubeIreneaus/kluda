@@ -25,6 +25,19 @@ const modalState = ref<PinModalState>({
 
 const isSettingPinOpen = ref(false);
 const isTerminalLocked = ref(false);
+const terminalUnlockProof = ref<string | null>(null);
+
+export function getTerminalUnlockProof(): string | null {
+  return terminalUnlockProof.value;
+}
+
+export function setTerminalUnlockProof(proof: string | null) {
+  terminalUnlockProof.value = proof;
+}
+
+export function clearTerminalUnlockProof() {
+  terminalUnlockProof.value = null;
+}
 
 export function usePinAuth() {
   const auth = useAuthStore();
@@ -221,9 +234,12 @@ export function usePinAuth() {
     }
   }
 
-  function unlockTerminal() {
+  function unlockTerminal(proof?: string | null) {
     if (import.meta.client) {
       sessionStorage.setItem("pos_unlocked", "true");
+    }
+    if (proof) {
+      terminalUnlockProof.value = proof;
     }
     isTerminalLocked.value = false;
   }
@@ -232,6 +248,7 @@ export function usePinAuth() {
     if (import.meta.client) {
       sessionStorage.removeItem("pos_unlocked");
     }
+    terminalUnlockProof.value = null;
     isTerminalLocked.value = true;
   }
 
@@ -247,6 +264,10 @@ export function usePinAuth() {
     modalState,
     isSettingPinOpen,
     isTerminalLocked,
+    terminalUnlockProof,
+    getTerminalUnlockProof,
+    setTerminalUnlockProof,
+    clearTerminalUnlockProof,
     computeSha256,
     verifyStaffPin,
     syncStaffCredentials,

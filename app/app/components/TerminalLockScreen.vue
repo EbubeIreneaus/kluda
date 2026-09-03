@@ -93,9 +93,10 @@ async function submitPin() {
 
     const isValid = await verifyStaffPin(enteredPin.value, target);
     if (isValid) {
+      const proof = target.pin_hash;
       enteredPin.value = "";
       errorMessage.value = "";
-      unlockTerminal();
+      unlockTerminal(proof);
     } else {
       triggerError("Incorrect PIN. Please try again.");
     }
