@@ -13,6 +13,7 @@ const {
   daysRemaining,
   usage,
   availablePlans,
+  hasUsedTrial,
   isLoading,
   fetchCurrentSubscription,
   fetchAvailablePlans,
@@ -22,7 +23,24 @@ const {
 } = useSubscription()
 
 const isProcessing = ref(false)
-const billingPeriod = ref<'monthly' | 'yearly'>('monthly')
+const selectedInterval = ref<string>('monthly')
+
+// Dynamically extract unique intervals present in availablePlans (excluding standalone trial)
+const availableIntervals = computed(() => {
+  if (!availablePlans.value || availablePlans.value.length === 0) {
+    return ['monthly', 'yearly']
+  }
+  const cleanPlans = availablePlans.value.filter((p: any) => p.slug !== 'trial')
+  const intervals = Array.from(new Set(cleanPlans.map((p: any) => p.interval || 'monthly')))
+  return intervals.length > 0 ? intervals : ['monthly']
+})
+
+// Auto-select first available interval if selectedInterval is not in list
+watch(availableIntervals, (intervals) => {
+  if (intervals.length > 0 && !intervals.includes(selectedInterval.value)) {
+    selectedInterval.value = intervals[0]
+  }
+}, { immediate: true })
 
 // Fallback plans if backend plans not populated yet
 const defaultPlans = [
@@ -30,8 +48,9 @@ const defaultPlans = [
     slug: 'starter',
     name: 'Starter Tier',
     price: 0,
-    priceMonthly: 'Free',
-    priceYearly: 'Free',
+    interval: 'monthly',
+    has_trial: false,
+    trial_duration_days: 0,
     badge: 'Basic',
     description: 'Essential POS counter for single-terminal retail operations.',
     features: [
@@ -46,8 +65,9 @@ const defaultPlans = [
     slug: 'growth',
     name: 'Merchant Growth',
     price: 1500000, // 15,000 NGN in kobo
-    priceMonthly: '₦15,000 / mo',
-    priceYearly: '₦150,000 / yr',
+    interval: 'monthly',
+    has_trial: true,
+    trial_duration_days: 14,
     badge: 'Popular',
     description: 'Full multi-branch retail suite with real-time cloud synchronization.',
     features: [
@@ -64,8 +84,9 @@ const defaultPlans = [
     slug: 'enterprise',
     name: 'Enterprise Mesh',
     price: 4500000, // 45,000 NGN in kobo
-    priceMonthly: '₦45,000 / mo',
-    priceYearly: '₦450,000 / yr',
+    interval: 'monthly',
+    has_trial: false,
+    trial_duration_days: 0,
     badge: 'Custom',
     description: 'High-throughput retail chains with automated inventory reconciliation.',
     features: [
@@ -80,40 +101,53 @@ const defaultPlans = [
 ]
 
 const displayPlans = computed(() => {
-  if (availablePlans.value && availablePlans.value.length > 0) {
-    return availablePlans.value.map((p) => {
-      const isCurrent = currentPlan.value.slug === p.slug
-      const priceNaira = p.price / 100
-      return {
-        slug: p.slug,
-        name: p.name,
-        price: p.price,
-        priceMonthly: p.price === 0 ? 'Free' : `₦${priceNaira.toLocaleString()} / mo`,
-        priceYearly: p.price === 0 ? 'Free' : `₦${(priceNaira * 10).toLocaleString()} / yr`,
-        badge: isCurrent ? 'Active' : (p.price > 2000000 ? 'Enterprise' : 'Available'),
-        description: p.description || 'Retail point-of-sale tier with automated inventory sync.',
-        features: [
-          `${p.store_limit && p.store_limit > 0 ? p.store_limit : 'Unlimited'} Store ${p.store_limit === 1 ? 'Branch' : 'Branches'}`,
-          `${p.product_limit && p.product_limit > 0 ? p.product_limit.toLocaleString() : 'Unlimited'} Products`,
-          `${p.sales_limit_per_month && p.sales_limit_per_month > 0 ? p.sales_limit_per_month.toLocaleString() : 'Unlimited'} Monthly Sales`,
-          'Real-time Multi-Branch Sales Sync',
-          'Automated Thermal Receipts'
-        ],
-        isCurrent
-      }
-    })
-  }
+  const rawList = (availablePlans.value && availablePlans.value.length > 0) ? availablePlans.value : defaultPlans
+  // Standalone trial is NEVER shown
+  const plans = rawList.filter((p: any) => p.slug !== 'trial')
+  
+  // Filter by selectedInterval if availableIntervals has multiple
+  const filtered = plans.filter((p: any) => {
+    const planInterval = (p.interval || 'monthly').toLowerCase()
+    return planInterval === selectedInterval.value.toLowerCase()
+  })
 
-  return defaultPlans.map(p => ({
-    ...p,
-    isCurrent: currentPlan.value.slug === p.slug
-  }))
+  const targetPlans = filtered.length > 0 ? filtered : plans
+
+  return targetPlans.map((p: any) => {
+    const isCurrent = currentPlan.value.slug === p.slug
+    const priceNaira = p.price / 100
+    const inv = (p.interval || 'monthly').toLowerCase()
+    const intervalLabel = inv === 'daily' ? 'day' : (inv === 'weekly' ? 'wk' : (inv === 'yearly' ? 'yr' : (inv === 'quarterly' ? 'quarter' : 'mo')))
+    
+    // Check if trial is available for this plan AND user hasn't used trial before
+    const canTrial = Boolean(p.has_trial && p.trial_duration_days && p.trial_duration_days > 0 && !hasUsedTrial.value)
+
+    return {
+      slug: p.slug,
+      name: p.name,
+      price: p.price,
+      interval: p.interval || 'monthly',
+      priceFormatted: p.price === 0 ? 'Free' : `₦${priceNaira.toLocaleString()} / ${intervalLabel}`,
+      badge: isCurrent ? 'Active' : (canTrial ? `${p.trial_duration_days}-Day Trial` : (p.price > 2000000 ? 'Enterprise' : 'Available')),
+      description: p.description || 'Retail point-of-sale tier with automated inventory sync.',
+      hasTrial: canTrial,
+      trialDurationDays: p.trial_duration_days || 0,
+      features: [
+        `${p.store_limit && p.store_limit > 0 ? p.store_limit : 'Unlimited'} Store ${p.store_limit === 1 ? 'Branch' : 'Branches'}`,
+        `${p.product_limit && p.product_limit > 0 ? p.product_limit.toLocaleString() : 'Unlimited'} Products`,
+        `${p.sales_limit_per_month && p.sales_limit_per_month > 0 ? p.sales_limit_per_month.toLocaleString() : 'Unlimited'} Monthly Sales`,
+        'Real-time Multi-Branch Sales Sync',
+        'Automated Thermal Receipts'
+      ],
+      isCurrent
+    }
+  })
 })
 
-async function handleSubscribe(planSlug: string) {
+async function handleSubscribe(planSlug: string, isTrial = false) {
   isProcessing.value = true
   try {
-    const res = await subscribePlan(planSlug)
+    const res = await subscribePlan(planSlug, isTrial)
     if (res.redirect_url) {
       toast.add({
         title: 'Redirecting to Checkout',
@@ -123,15 +157,15 @@ async function handleSubscribe(planSlug: string) {
       window.location.href = res.redirect_url
     } else if (res.status === 'active') {
       toast.add({
-        title: 'Subscription Updated',
-        description: res.message || 'Plan activated successfully.',
+        title: isTrial ? 'Free Trial Activated!' : 'Subscription Updated',
+        description: res.message || 'Your subscription is now active.',
         color: 'success'
       })
     }
   } catch (err: any) {
     toast.add({
-      title: 'Subscription Error',
-      description: err?.data?.detail || err?.message || 'Unable to initialize subscription.',
+      title: 'Subscription Action Failed',
+      description: err?.data?.detail || 'Could not process plan request. Please try again.',
       color: 'error'
     })
   } finally {
@@ -245,22 +279,17 @@ onMounted(async () => {
           <p class="text-xs text-(--ui-text-muted)">Scale your retail business with our tiered offerings.</p>
         </div>
 
-        <div class="flex items-center p-1 bg-(--ui-bg-elevated) border border-(--ui-border) rounded-2xl">
+        <!-- Dynamic Interval Selector -->
+        <div v-if="availableIntervals.length > 1" class="flex items-center p-1 bg-(--ui-bg-elevated) border border-(--ui-border) rounded-2xl">
           <button
+            v-for="inv in availableIntervals"
+            :key="inv"
             type="button"
-            class="px-4 py-1.5 rounded-xl text-xs font-bold transition"
-            :class="billingPeriod === 'monthly' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-(--ui-text-muted)'"
-            @click="billingPeriod = 'monthly'"
+            class="px-4 py-1.5 rounded-xl text-xs font-bold transition capitalize"
+            :class="selectedInterval === inv ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-(--ui-text-muted) hover:text-(--ui-text-highlighted)'"
+            @click="selectedInterval = inv"
           >
-            Monthly
-          </button>
-          <button
-            type="button"
-            class="px-4 py-1.5 rounded-xl text-xs font-bold transition"
-            :class="billingPeriod === 'yearly' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-(--ui-text-muted)'"
-            @click="billingPeriod = 'yearly'"
-          >
-            Yearly (Save 15%)
+            {{ inv === 'yearly' ? 'Yearly (Save 15%)' : (inv === 'daily' ? 'Daily Pass' : inv) }}
           </button>
         </div>
       </div>
@@ -285,7 +314,7 @@ onMounted(async () => {
             </div>
 
             <div class="text-2xl font-black text-(--ui-text-highlighted)">
-              {{ billingPeriod === 'monthly' ? p.priceMonthly : p.priceYearly }}
+              {{ p.priceFormatted }}
             </div>
 
             <p class="text-xs text-(--ui-text-muted) min-h-[32px]">{{ p.description }}</p>
@@ -310,13 +339,15 @@ onMounted(async () => {
             </UButton>
             <UButton
               v-else
-              variant="outline"
+              :variant="p.hasTrial ? 'solid' : 'outline'"
               color="primary"
               class="w-full font-bold justify-center"
+              :class="p.hasTrial ? 'shadow-md shadow-emerald-500/20' : ''"
               :loading="isProcessing"
-              @click="handleSubscribe(p.slug)"
+              @click="handleSubscribe(p.slug, p.hasTrial)"
             >
-              {{ p.slug === 'trial' ? 'Start 30-Day Free Trial' : (p.price === 0 ? 'Switch to Free Tier' : `Select ${p.name}`) }}
+              <UIcon v-if="p.hasTrial" name="i-lucide-sparkles" class="w-4 h-4 mr-1.5" />
+              {{ p.hasTrial ? `Start ${p.trialDurationDays}-Day Free Trial` : (p.price === 0 ? 'Switch to Free Tier' : `Select ${p.name}`) }}
             </UButton>
           </div>
         </div>

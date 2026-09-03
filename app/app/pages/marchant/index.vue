@@ -54,8 +54,9 @@ function handleLaunchTerminal(storeId: string) {
             >
               {{ plan.name }} • {{ status }}
             </span>
-            <span v-if="plan.slug === 'trial'" class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-              {{ daysRemaining }} days trial left
+            <span v-if="rawSub?.is_trial" class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center gap-1">
+              <UIcon name="i-lucide-sparkles" class="w-3.5 h-3.5 text-indigo-400" />
+              <span>{{ daysRemaining }} days trial left</span>
             </span>
           </div>
 

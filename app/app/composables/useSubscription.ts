@@ -64,7 +64,7 @@ export function useSubscription() {
     }
   }
 
-  async function subscribePlan(planSlug: string) {
+  async function subscribePlan(planSlug: string, isTrial = false) {
     isLoading.value = true
     try {
       const res = await api<{
@@ -74,11 +74,12 @@ export function useSubscription() {
         message: string
       }>('/subscriptions/subscribe', {
         method: 'POST',
-        body: { plan_slug: planSlug }
+        body: { plan_slug: planSlug, is_trial: isTrial }
       })
 
       if (res.status === 'active') {
         await fetchCurrentSubscription()
+        await fetchAvailablePlans()
       }
       return res
     } finally {

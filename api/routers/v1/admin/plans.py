@@ -87,6 +87,8 @@ async def create_plan(
         description=payload.description.strip(),
         price=payload.price,
         interval=plan_interval,
+        has_trial=payload.has_trial,
+        trial_duration_days=payload.trial_duration_days or 0,
         store_limit=payload.store_limit,
         product_limit=payload.product_limit,
         sales_limit_per_month=payload.sales_limit_per_month,
@@ -103,7 +105,7 @@ async def create_plan(
         admin_id=admin.admin_id,
         action="PLAN_CREATED",
         target_type="plan",
-        details={"slug": plan.slug, "name": plan.name, "price": plan.price, "interval": plan.interval},
+        details={"slug": plan.slug, "name": plan.name, "price": plan.price, "interval": plan.interval, "has_trial": plan.has_trial, "trial_duration_days": plan.trial_duration_days},
     )
     await db.commit()
     return plan
@@ -139,6 +141,10 @@ async def update_plan(
         plan.price = payload.price
     if payload.interval is not None:
         plan.interval = payload.interval.strip().lower()
+    if payload.has_trial is not None:
+        plan.has_trial = payload.has_trial
+    if payload.trial_duration_days is not None:
+        plan.trial_duration_days = payload.trial_duration_days
     if payload.store_limit is not None:
         plan.store_limit = payload.store_limit
     if payload.product_limit is not None:

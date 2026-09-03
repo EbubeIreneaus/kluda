@@ -6,6 +6,7 @@ definePageMeta({ layout: 'auth' })
 const auth = useAuthStore()
 const config = useRuntimeConfig()
 const toast = useToast()
+const route = useRoute()
 
 const step = ref<1 | 2>(1)
 const isLoading = ref(false)
@@ -18,7 +19,8 @@ const form = ref({
   password: '',
   store_name: '',
   store_category: 'Supermarket & Grocery',
-  store_address: ''
+  store_address: '',
+  referral_code: (route.query.ref as string) || ''
 })
 
 const categories = [
@@ -215,6 +217,15 @@ async function handleRegister() {
               placeholder="e.g. 14 Allen Avenue, Ikeja"
               size="md"
               icon="i-lucide-map-pin"
+            />
+          </UFormField>
+
+          <UFormField label="Referral Code (Optional)">
+            <UInput
+              v-model="form.referral_code"
+              placeholder="e.g. CHIDINMA-A1B2"
+              size="md"
+              icon="i-lucide-gift"
             />
           </UFormField>
 

@@ -28,6 +28,8 @@ class PlanResponse(BaseModel):
     # Amount in subunit (kobo for NGN)
     price: int
     interval: str = "monthly"
+    has_trial: bool = False
+    trial_duration_days: int | None = 0
     store_limit: int | None = 0
     product_limit: int | None = 0
     sales_limit_per_month: int | None = 0
@@ -60,6 +62,7 @@ class CurrentSubscriptionResponse(BaseModel):
     is_owner: bool = True
     owner_name: str | None = None
     has_used_trial: bool = False
+    is_trial: bool = False
     quota_token: str | None = None
     max_offline_days: int = 3
     offline_lease_expires_at: int | None = None
@@ -70,6 +73,7 @@ class CurrentSubscriptionResponse(BaseModel):
 
 class SubscribeRequest(BaseModel):
     plan_slug: str
+    is_trial: bool = False
 
 
 class SubscribeResponse(BaseModel):

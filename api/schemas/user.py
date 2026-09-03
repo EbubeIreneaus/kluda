@@ -103,6 +103,7 @@ class UserRegisterWithStore(BaseModel):
     store_name: str | None = None
     store_category: str | None = None
     store_address: str | None = None
+    referral_code: str | None = None
 
 class StoreMemberCreate(BaseModel):
     email: EmailStr
@@ -147,6 +148,7 @@ class UserResponseMini(BaseUser):
     user_id: uuid.UUID
     created_at: datetime
     status: UserStatus = UserStatus.ACTIVE
+    referral_code: str | None = None
 
 class ChangePasswordRequest(BaseModel):
     old_password: str

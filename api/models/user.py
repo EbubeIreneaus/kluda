@@ -60,6 +60,12 @@ class User(Base):
     paystack_customer_code: MappedColumn[str | None] = mapped_column(String(100), unique=True, index=True, nullable=True)
     paystack_authorization: MappedColumn[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
+    referral_code: MappedColumn[str | None] = mapped_column(String(30), unique=True, index=True, nullable=True)
+    referred_by_id: MappedColumn[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    referred_by: MappedColumn["User | None"] = relationship("User", remote_side=[id], foreign_keys=[referred_by_id])
+
+    has_used_trial: MappedColumn[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+
 
 class StoreMember(Base):
     __tablename__ = "store_members"

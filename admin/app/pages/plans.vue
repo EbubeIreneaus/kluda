@@ -10,6 +10,8 @@ interface PlanItem {
   description: string
   price: number // in kobo
   interval?: string
+  has_trial?: boolean
+  trial_duration_days?: number
   store_limit: number
   product_limit: number
   sales_limit_per_month: number
@@ -46,13 +48,14 @@ const grantForm = reactive({
   amountNaira: 0
 })
 
-// Form for creating a new plan (price in Naira for display/input)
 const createForm = reactive({
   slug: '',
   name: '',
   description: '',
   priceNaira: 0,
   interval: 'monthly',
+  has_trial: false,
+  trial_duration_days: 14,
   store_limit: 1,
   product_limit: 100,
   sales_limit_per_month: 500,
@@ -67,6 +70,8 @@ const editForm = reactive({
   description: '',
   priceNaira: 0,
   interval: 'monthly',
+  has_trial: false,
+  trial_duration_days: 14,
   store_limit: 0,
   product_limit: 0,
   sales_limit_per_month: 0,
@@ -93,6 +98,8 @@ function openCreateModal() {
   createForm.description = ''
   createForm.priceNaira = 5000
   createForm.interval = 'monthly'
+  createForm.has_trial = false
+  createForm.trial_duration_days = 14
   createForm.store_limit = 1
   createForm.product_limit = 100
   createForm.sales_limit_per_month = 500
@@ -109,6 +116,8 @@ function openEditModal(plan: PlanItem) {
   // Convert kobo to Naira for editing
   editForm.priceNaira = Math.round(plan.price / 100)
   editForm.interval = plan.interval || 'monthly'
+  editForm.has_trial = Boolean(plan.has_trial)
+  editForm.trial_duration_days = plan.trial_duration_days || 14
   editForm.store_limit = plan.store_limit
   editForm.product_limit = plan.product_limit
   editForm.sales_limit_per_month = plan.sales_limit_per_month
@@ -135,6 +144,8 @@ async function handleCreatePlan() {
         // Convert Naira to kobo for backend storage
         price: Math.round(Number(createForm.priceNaira) * 100),
         interval: createForm.interval,
+        has_trial: createForm.has_trial,
+        trial_duration_days: createForm.has_trial ? Number(createForm.trial_duration_days || 0) : 0,
         store_limit: Number(createForm.store_limit),
         product_limit: Number(createForm.product_limit),
         sales_limit_per_month: Number(createForm.sales_limit_per_month),
@@ -165,6 +176,8 @@ async function handleUpdatePlan() {
         // Convert Naira to kobo for backend storage
         price: Math.round(Number(editForm.priceNaira) * 100),
         interval: editForm.interval,
+        has_trial: editForm.has_trial,
+        trial_duration_days: editForm.has_trial ? Number(editForm.trial_duration_days || 0) : 0,
         store_limit: Number(editForm.store_limit),
         product_limit: Number(editForm.product_limit),
         sales_limit_per_month: Number(editForm.sales_limit_per_month),
@@ -389,6 +402,13 @@ onMounted(() => {
               >
                 {{ plan.interval || 'monthly' }}
               </span>
+              <span
+                v-if="plan.has_trial"
+                class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1"
+              >
+                <UIcon name="i-lucide-sparkles" class="size-3" />
+                {{ plan.trial_duration_days || 0 }}-Day Trial
+              </span>
             </div>
 
             <span
@@ -554,7 +574,10 @@ onMounted(() => {
                 v-model="createForm.interval"
                 class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
               >
+                <option value="daily">Daily Pass (24 Hours)</option>
+                <option value="weekly">Weekly (7 Days)</option>
                 <option value="monthly">Monthly (30 Days)</option>
+                <option value="quarterly">Quarterly (90 Days)</option>
                 <option value="yearly">Yearly (365 Days)</option>
               </select>
             </div>
@@ -568,6 +591,31 @@ onMounted(() => {
                 <option value="AVAILABLE">AVAILABLE (Active for purchase)</option>
                 <option value="UNAVAILABLE">UNAVAILABLE (Hidden / Inactive)</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Free Trial Configuration -->
+          <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-zinc-200 flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="createForm.has_trial"
+                  type="checkbox"
+                  class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4"
+                />
+                Offer Free Trial for this Plan
+              </label>
+              <span v-if="createForm.has_trial" class="text-[10px] text-amber-400 font-mono">
+                No Paystack charge during trial
+              </span>
+            </div>
+
+            <div v-if="createForm.has_trial" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-800/60">
+              <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-zinc-400">Trial Duration (in Days)</label>
+                <UInput v-model.number="createForm.trial_duration_days" type="number" min="1" max="365" placeholder="14" size="xs" />
+                <span class="text-[10px] text-zinc-500">e.g. 1, 3, 7, 14, 30 days</span>
+              </div>
             </div>
           </div>
 
@@ -676,7 +724,10 @@ onMounted(() => {
                 v-model="editForm.interval"
                 class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
               >
+                <option value="daily">Daily Pass (24 Hours)</option>
+                <option value="weekly">Weekly (7 Days)</option>
                 <option value="monthly">Monthly (30 Days)</option>
+                <option value="quarterly">Quarterly (90 Days)</option>
                 <option value="yearly">Yearly (365 Days)</option>
               </select>
             </div>
@@ -690,6 +741,31 @@ onMounted(() => {
                 <option value="AVAILABLE">AVAILABLE (Active)</option>
                 <option value="UNAVAILABLE">UNAVAILABLE (Inactive / Hidden)</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Free Trial Configuration -->
+          <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-zinc-200 flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="editForm.has_trial"
+                  type="checkbox"
+                  class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4"
+                />
+                Offer Free Trial for this Plan
+              </label>
+              <span v-if="editForm.has_trial" class="text-[10px] text-amber-400 font-mono">
+                No Paystack charge during trial
+              </span>
+            </div>
+
+            <div v-if="editForm.has_trial" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-800/60">
+              <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-zinc-400">Trial Duration (in Days)</label>
+                <UInput v-model.number="editForm.trial_duration_days" type="number" min="1" max="365" placeholder="14" size="xs" />
+                <span class="text-[10px] text-zinc-500">e.g. 1, 3, 7, 14, 30 days</span>
+              </div>
             </div>
           </div>
 

@@ -34,6 +34,20 @@ const filteredSales = computed(() => {
   })
 })
 
+const currentPage = ref(1)
+const pageSize = ref(15)
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredSales.value.length / pageSize.value)))
+
+const paginatedSales = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredSales.value.slice(start, start + pageSize.value)
+})
+
+watch([search, methodFilter, statusFilter], () => {
+  currentPage.value = 1
+})
+
 function openDetail(sale: any) {
   selectedSale.value = sale
   showDetailModal.value = true
@@ -82,7 +96,8 @@ const statusColors: Record<string, string> = {
       />
     </div>
 
-    <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden">
+    <!-- Desktop Table View (>= md) -->
+    <div class="hidden md:block rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -99,7 +114,7 @@ const statusColors: Record<string, string> = {
           </thead>
           <tbody>
             <tr
-              v-for="sale in filteredSales"
+              v-for="sale in paginatedSales"
               :key="sale.sale_id"
               class="border-b border-(--ui-border)/50 last:border-0 hover:bg-(--ui-bg-accented)/30 transition cursor-pointer"
               @click="openDetail(sale)"
@@ -121,6 +136,116 @@ const statusColors: Record<string, string> = {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Mobile Card List View (< md) -->
+    <div class="block md:hidden space-y-3">
+      <div
+        v-if="filteredSales.length === 0"
+        class="text-center py-12 px-4 rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated)"
+      >
+        <UIcon name="i-lucide-receipt" class="size-10 text-(--ui-text-dimmed) mx-auto mb-2" />
+        <p class="text-sm font-semibold text-(--ui-text-highlighted)">No sales transactions found</p>
+        <p class="text-xs text-(--ui-text-dimmed) mt-1">Transactions completed in the register will show up here</p>
+      </div>
+
+      <div
+        v-for="sale in paginatedSales"
+        :key="sale.sale_id"
+        class="rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated) p-4 shadow-sm space-y-3 cursor-pointer active:scale-[0.99] transition"
+        @click="openDetail(sale)"
+      >
+        <!-- Top: Sale ID, Date & Badges -->
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <span class="font-mono text-xs font-semibold text-(--ui-text-dimmed)">
+              #{{ sale.sale_id.slice(-8) }}
+            </span>
+            <p class="text-[11px] text-(--ui-text-dimmed) mt-0.5">
+              {{ sale.date }}
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <UBadge :color="methodColors[sale.method] as any" variant="subtle" size="xs" class="capitalize">
+              {{ sale.method }}
+            </UBadge>
+            <UBadge :color="statusColors[sale.status] as any" variant="subtle" size="xs" class="capitalize">
+              {{ sale.status }}
+            </UBadge>
+          </div>
+        </div>
+
+        <!-- Middle: Customer & Item Count -->
+        <div class="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-(--ui-bg-accented)/30 border border-(--ui-border)/40">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <UIcon name="i-lucide-user" class="size-3.5 text-(--ui-text-dimmed) shrink-0" />
+            <span class="font-medium text-(--ui-text-highlighted) truncate">
+              {{ sale.customer || 'Walk-in Customer' }}
+            </span>
+          </div>
+          <span class="text-(--ui-text-dimmed) font-mono shrink-0 ml-2">
+            {{ sale.items.length }} {{ sale.items.length === 1 ? 'item' : 'items' }}
+          </span>
+        </div>
+
+        <!-- Bottom: Total & View Receipt Affordance -->
+        <div class="flex items-center justify-between pt-1 border-t border-(--ui-border)/40">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-(--ui-text-dimmed) tracking-wider block">Total Amount</span>
+            <span class="text-base font-black text-green-600 dark:text-green-400 font-mono">
+              {{ format(sale.total) }}
+            </span>
+          </div>
+          <span class="text-xs font-semibold text-emerald-500 hover:text-emerald-400 flex items-center gap-1">
+            Receipt
+            <UIcon name="i-lucide-chevron-right" class="size-4" />
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div
+      v-if="filteredSales.length > pageSize"
+      class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 text-xs text-(--ui-text-muted)"
+    >
+      <p>
+        Showing
+        <span class="font-bold text-(--ui-text-highlighted)">{{ (currentPage - 1) * pageSize + 1 }}</span>
+        to
+        <span class="font-bold text-(--ui-text-highlighted)">{{ Math.min(currentPage * pageSize, filteredSales.length) }}</span>
+        of
+        <span class="font-bold text-(--ui-text-highlighted)">{{ filteredSales.length }}</span>
+        sales
+      </p>
+
+      <div class="flex items-center gap-1.5">
+        <UButton
+          size="xs"
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-chevron-left"
+          :disabled="currentPage <= 1"
+          @click="currentPage--"
+        >
+          Previous
+        </UButton>
+
+        <span class="px-3 py-1 rounded-lg bg-(--ui-bg-elevated) border border-(--ui-border) font-bold text-(--ui-text-highlighted) font-mono">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+
+        <UButton
+          size="xs"
+          variant="outline"
+          color="neutral"
+          trailing-icon="i-lucide-chevron-right"
+          :disabled="currentPage >= totalPages"
+          @click="currentPage++"
+        >
+          Next
+        </UButton>
       </div>
     </div>
 

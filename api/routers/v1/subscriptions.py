@@ -39,23 +39,46 @@ async def list_available_plans(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # If user already had a trial subscription ever, no trial should be shown or selected
+    # Check if user has EVER used any trial anywhere on any plan
     has_used_trial = (
         await db.scalar(
             select(func.count(UserSubscription.id)).where(
                 UserSubscription.user_id == current_user.user_id,
-                UserSubscription.plan_id == "trial",
+                (UserSubscription.is_trial.is_(True)) | (UserSubscription.plan_id == "trial"),
             )
         )
         or 0
     ) > 0
+    if not has_used_trial and getattr(current_user, "has_used_trial", False):
+        has_used_trial = True
 
-    query = select(Plan).where(Plan.status == PlanStatus.AVAILABLE)
+    # Standalone 'trial' plan is excluded
+    query = select(Plan).where(Plan.status == PlanStatus.AVAILABLE, Plan.slug != "trial")
+    plans = (await db.scalars(query.order_by(Plan.price.asc()))).all()
+
     if has_used_trial:
-        query = query.where(Plan.slug != "trial")
+        # Trial option and text must NOT be available if user has ever used any trial
+        return [
+            PlanResponse(
+                id=p.id,
+                slug=p.slug,
+                name=p.name,
+                description=p.description,
+                price=p.price,
+                interval=p.interval,
+                has_trial=False,
+                trial_duration_days=0,
+                store_limit=p.store_limit,
+                product_limit=p.product_limit,
+                sales_limit_per_month=p.sales_limit_per_month,
+                analytics_read_per_month=p.analytics_read_per_month,
+                status=p.status,
+                paystack_planid=p.paystack_planid,
+            )
+            for p in plans
+        ]
 
-    result = await db.scalars(query.order_by(Plan.price.asc()))
-    return result.all()
+    return plans
 
 
 @router.get("/current", response_model=CurrentSubscriptionResponse)
@@ -170,11 +193,13 @@ async def get_current_subscription(
         await db.scalar(
             select(func.count(UserSubscription.id)).where(
                 UserSubscription.user_id == target_user_id,
-                UserSubscription.plan_id == "trial",
+                (UserSubscription.is_trial.is_(True)) | (UserSubscription.plan_id == "trial"),
             )
         )
         or 0
     ) > 0
+    if not has_used_trial and getattr(current_user, "has_used_trial", False):
+        has_used_trial = True
 
     from libs.quota_token import generate_signed_quota_token
     token_info = await generate_signed_quota_token(
@@ -193,6 +218,7 @@ async def get_current_subscription(
         is_owner=is_owner,
         owner_name=owner_name,
         has_used_trial=has_used_trial,
+        is_trial=bool(getattr(current_sub, "is_trial", False)),
         quota_token=token_info["token"],
         max_offline_days=token_info["payload"]["max_offline_days"],
         offline_lease_expires_at=token_info["payload"]["offline_lease_expires_at"],
@@ -208,33 +234,67 @@ async def subscribe_plan(
 ):
     target_slug = payload.plan_slug.strip().lower()
 
-    # Trial plan opt-in validation
     if target_slug == "trial":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Standalone trial plan is not available",
+        )
+
+    plan = await db.scalar(
+        select(Plan).where(
+            Plan.slug == target_slug,
+            Plan.status == PlanStatus.AVAILABLE,
+            Plan.slug != "trial",
+        )
+    )
+    if not plan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Requested subscription plan is not available",
+        )
+
+    # Free trial opt-in validation
+    if payload.is_trial:
+        if not plan.has_trial or not plan.trial_duration_days or plan.trial_duration_days <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This plan does not offer a free trial",
+            )
+
+        # Enforce on API: check if user has EVER used ANY trial anywhere before
         has_used_trial = (
             await db.scalar(
                 select(func.count(UserSubscription.id)).where(
                     UserSubscription.user_id == current_user.user_id,
-                    UserSubscription.plan_id == "trial",
+                    (UserSubscription.is_trial.is_(True)) | (UserSubscription.plan_id == "trial"),
                 )
             )
             or 0
         ) > 0
+        if not has_used_trial and getattr(current_user, "has_used_trial", False):
+            has_used_trial = True
+
         if has_used_trial:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="30-day Pro trial has already been used on this account",
+                detail="You have already used your one-time trial on an account before",
             )
 
+        # Activate trial immediately - NO Paystack gateway called!
+        duration = plan.trial_duration_days
         new_sub = UserSubscription(
             user_id=current_user.user_id,
-            plan_id="trial",
+            plan_id=plan.slug,
             status=SubscriptionStatus.ACTIVE,
             amount=0,
+            is_trial=True,
             payment_channel=PaymentChannel.PAYSTACK,
-            next_renewal=datetime.now(timezone.utc) + timedelta(days=30),
-            idempotency_key=f"trial_{current_user.user_id}",
+            next_renewal=datetime.now(timezone.utc) + timedelta(days=duration),
+            idempotency_key=f"trial_{plan.slug}_{current_user.user_id}_{uuid.uuid4().hex[:6]}",
+            description=f"{duration}-Day Free Trial of {plan.name}",
         )
         db.add(new_sub)
+        current_user.has_used_trial = True
         await db.flush()
         current_user.current_subscription_id = new_sub.subscription_id
         await db.commit()
@@ -243,19 +303,7 @@ async def subscribe_plan(
             status="active",
             redirect_url=None,
             reference=None,
-            message="30-day Pro Trial activated successfully!",
-        )
-
-    plan = await db.scalar(
-        select(Plan).where(
-            Plan.slug == target_slug,
-            Plan.status == PlanStatus.AVAILABLE,
-        )
-    )
-    if not plan:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Requested subscription plan is not available",
+            message=f"{duration}-Day Free Trial of {plan.name} activated successfully!",
         )
 
     # Free plan: activate immediately without gateway checkout

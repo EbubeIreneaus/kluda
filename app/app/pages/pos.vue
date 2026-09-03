@@ -465,41 +465,60 @@ function handleSearchBlur() {
         <div
           v-for="item in cart.items"
           :key="item.slug"
-          class="flex items-center gap-3 p-3 rounded-lg bg-(--ui-bg-accented)/50 group"
+          class="p-3 rounded-xl bg-(--ui-bg-accented)/50 border border-(--ui-border)/60 flex flex-col gap-2.5 transition-all"
         >
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-(--ui-text-highlighted)">{{ item.name }}</p>
-            <p class="text-xs text-(--ui-text-dimmed) mt-0.5">{{ format(item.unit_price) }} each</p>
-          </div>
-          <div class="flex items-center gap-1.5">
+          <!-- Top Row: Product Name (Full Width, line-clamp-2) & Delete Button -->
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-(--ui-text-highlighted) leading-snug line-clamp-2">
+                {{ item.name }}
+              </p>
+              <p class="text-[11px] text-(--ui-text-dimmed) mt-0.5 font-mono">
+                {{ format(item.unit_price) }} each
+              </p>
+            </div>
             <UButton
-              variant="outline"
-              color="neutral"
+              variant="ghost"
+              color="error"
               size="xs"
-              icon="i-lucide-minus"
-              :disabled="item.quantity <= 1"
-              @click="cart.updateQuantity(item.slug, item.quantity - 1)"
-            />
-            <span class="w-8 text-center text-sm font-semibold text-(--ui-text-highlighted)">{{ item.quantity }}</span>
-            <UButton
-              variant="outline"
-              color="neutral"
-              size="xs"
-              icon="i-lucide-plus"
-              @click="cart.updateQuantity(item.slug, item.quantity + 1)"
+              icon="i-lucide-x"
+              class="shrink-0 -mr-1 -mt-1 text-(--ui-text-dimmed) hover:text-rose-500 hover:bg-rose-500/10 transition rounded-lg"
+              title="Remove item"
+              @click="cart.removeItem(item.slug)"
             />
           </div>
-          <div class="text-right w-20 shrink-0">
-            <p class="text-sm font-semibold text-(--ui-text-highlighted)">{{ format(item.unit_price * item.quantity) }}</p>
+
+          <!-- Bottom Row: Quantity Stepper & Subtotal -->
+          <div class="flex items-center justify-between gap-3 pt-1 border-t border-(--ui-border)/40">
+            <!-- Stepper with touch-friendly tap targets -->
+            <div class="flex items-center gap-1.5 bg-(--ui-bg) border border-(--ui-border) rounded-lg p-0.5">
+              <UButton
+                variant="ghost"
+                color="neutral"
+                size="xs"
+                icon="i-lucide-minus"
+                class="size-7 p-0 flex items-center justify-center rounded-md"
+                :disabled="item.quantity <= 1"
+                @click="cart.updateQuantity(item.slug, item.quantity - 1)"
+              />
+              <span class="w-8 text-center text-xs font-bold text-(--ui-text-highlighted) font-mono">{{ item.quantity }}</span>
+              <UButton
+                variant="ghost"
+                color="neutral"
+                size="xs"
+                icon="i-lucide-plus"
+                class="size-7 p-0 flex items-center justify-center rounded-md"
+                @click="cart.updateQuantity(item.slug, item.quantity + 1)"
+              />
+            </div>
+
+            <!-- Item Total -->
+            <div class="text-right">
+              <p class="text-sm font-bold text-(--ui-text-highlighted) font-mono">
+                {{ format(item.unit_price * item.quantity) }}
+              </p>
+            </div>
           </div>
-          <UButton
-            variant="ghost"
-            color="error"
-            size="xs"
-            icon="i-lucide-x"
-            class="opacity-0 group-hover:opacity-100 transition"
-            @click="cart.removeItem(item.slug)"
-          />
         </div>
       </div>
 

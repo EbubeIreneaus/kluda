@@ -72,6 +72,20 @@ const filteredProducts = computed(() => {
   )
 })
 
+const currentPage = ref(1)
+const pageSize = ref(15)
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredProducts.value.length / pageSize.value)))
+
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredProducts.value.slice(start, start + pageSize.value)
+})
+
+watch(search, () => {
+  currentPage.value = 1
+})
+
 function getStockBadge(qty: number) {
   if (qty === 0) return { label: 'Out of stock', color: 'error' as const }
   if (qty <= 10) return { label: 'Low stock', color: 'warning' as const }
@@ -313,7 +327,8 @@ watch([showAddModal, showEditSlideover], () => {
       class="max-w-md"
     />
 
-    <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden">
+    <!-- Desktop Table View (>= md) -->
+    <div class="hidden md:block rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -328,7 +343,7 @@ watch([showAddModal, showEditSlideover], () => {
           </thead>
           <tbody>
             <tr
-              v-for="product in filteredProducts"
+              v-for="product in paginatedProducts"
               :key="product.slug"
               class="border-b border-(--ui-border)/50 last:border-0 hover:bg-(--ui-bg-accented)/30 transition"
             >
@@ -360,6 +375,144 @@ watch([showAddModal, showEditSlideover], () => {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Mobile Card List View (< md) -->
+    <div class="block md:hidden space-y-3">
+      <div
+        v-if="filteredProducts.length === 0"
+        class="text-center py-12 px-4 rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated)"
+      >
+        <UIcon name="i-lucide-package-search" class="size-10 text-(--ui-text-dimmed) mx-auto mb-2" />
+        <p class="text-sm font-semibold text-(--ui-text-highlighted)">No products found</p>
+        <p class="text-xs text-(--ui-text-dimmed) mt-1">Try adjusting your search query or add a new product</p>
+      </div>
+
+      <div
+        v-for="product in paginatedProducts"
+        :key="product.slug"
+        class="rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated) p-4 shadow-sm space-y-3"
+      >
+        <!-- Top: Name & Stock Badge -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1 min-w-0">
+            <h3 class="font-bold text-sm text-(--ui-text-highlighted) leading-snug">
+              {{ product.name }}
+            </h3>
+            <p v-if="product.barcode_id" class="text-xs font-mono text-(--ui-text-dimmed) mt-0.5 flex items-center gap-1">
+              <UIcon name="i-lucide-scan-barcode" class="size-3.5" />
+              {{ product.barcode_id }}
+            </p>
+          </div>
+          <UBadge :color="getStockBadge(product.quantity).color" variant="subtle" size="sm" class="shrink-0 font-medium">
+            {{ getStockBadge(product.quantity).label }}
+          </UBadge>
+        </div>
+
+        <!-- Middle: Price & Available Quantity -->
+        <div class="grid grid-cols-2 gap-2 py-2 px-3 rounded-xl bg-(--ui-bg-accented)/40 border border-(--ui-border)/50">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-(--ui-text-dimmed) tracking-wider block">Unit Price</span>
+            <span class="text-base font-black text-(--ui-text-highlighted) font-mono">
+              {{ format(product.price) }}
+            </span>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] uppercase font-bold text-(--ui-text-dimmed) tracking-wider block">In Stock</span>
+            <span class="text-sm font-bold text-(--ui-text-highlighted)">
+              {{ product.quantity }} <span class="text-xs font-normal text-(--ui-text-dimmed)">{{ product.unit }}</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Bottom: Action Buttons for Mobile -->
+        <div v-if="auth.hasPermission('manage:product')" class="grid grid-cols-4 gap-1.5 pt-1">
+          <UButton
+            variant="outline"
+            color="primary"
+            size="xs"
+            icon="i-lucide-boxes"
+            class="flex items-center justify-center gap-1 py-2 text-xs font-medium rounded-xl"
+            @click="openAdjust(product)"
+          >
+            Adjust
+          </UButton>
+          <UButton
+            variant="outline"
+            color="neutral"
+            size="xs"
+            icon="i-lucide-history"
+            class="flex items-center justify-center gap-1 py-2 text-xs font-medium rounded-xl"
+            @click="openHistory(product)"
+          >
+            History
+          </UButton>
+          <UButton
+            variant="outline"
+            color="neutral"
+            size="xs"
+            icon="i-lucide-pencil"
+            class="flex items-center justify-center gap-1 py-2 text-xs font-medium rounded-xl"
+            @click="openEdit(product)"
+          >
+            Edit
+          </UButton>
+          <UButton
+            variant="outline"
+            color="error"
+            size="xs"
+            icon="i-lucide-trash-2"
+            class="flex items-center justify-center gap-1 py-2 text-xs font-medium rounded-xl"
+            @click="confirmDelete(product)"
+          >
+            Delete
+          </UButton>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div
+      v-if="filteredProducts.length > pageSize"
+      class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 text-xs text-(--ui-text-muted)"
+    >
+      <p>
+        Showing
+        <span class="font-bold text-(--ui-text-highlighted)">{{ (currentPage - 1) * pageSize + 1 }}</span>
+        to
+        <span class="font-bold text-(--ui-text-highlighted)">{{ Math.min(currentPage * pageSize, filteredProducts.length) }}</span>
+        of
+        <span class="font-bold text-(--ui-text-highlighted)">{{ filteredProducts.length }}</span>
+        products
+      </p>
+
+      <div class="flex items-center gap-1.5">
+        <UButton
+          size="xs"
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-chevron-left"
+          :disabled="currentPage <= 1"
+          @click="currentPage--"
+        >
+          Previous
+        </UButton>
+
+        <span class="px-3 py-1 rounded-lg bg-(--ui-bg-elevated) border border-(--ui-border) font-bold text-(--ui-text-highlighted) font-mono">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+
+        <UButton
+          size="xs"
+          variant="outline"
+          color="neutral"
+          trailing-icon="i-lucide-chevron-right"
+          :disabled="currentPage >= totalPages"
+          @click="currentPage++"
+        >
+          Next
+        </UButton>
       </div>
     </div>
 

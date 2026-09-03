@@ -390,69 +390,154 @@ function copyStoreId() {
         </UButton>
       </div>
 
-      <div v-else class="overflow-hidden rounded-3xl border border-(--ui-border) bg-(--ui-bg-elevated) shadow-xs">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr class="border-b border-(--ui-border) bg-(--ui-bg-accented)/30">
-                <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Staff ID</th>
-                <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Full Name</th>
-                <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Role</th>
-                <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Contact</th>
-                <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Status</th>
-                <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-(--ui-border)">
-              <tr v-for="staff in staffList" :key="staff.staff_id" class="hover:bg-(--ui-bg-accented)/20 transition">
-                <td class="p-4 font-mono font-bold text-emerald-400">{{ staff.staff_id }}</td>
-                <td class="p-4 font-bold text-(--ui-text-highlighted)">{{ staff.first_name }} {{ staff.last_name }}</td>
-                <td class="p-4">
-                  <span class="text-xs px-2.5 py-1 rounded-full bg-(--ui-bg-accented) font-semibold text-(--ui-text-highlighted) capitalize">
+      <div v-else class="space-y-4">
+        <!-- Desktop Table View (>= md) -->
+        <div class="hidden md:block overflow-hidden rounded-3xl border border-(--ui-border) bg-(--ui-bg-elevated) shadow-xs">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="border-b border-(--ui-border) bg-(--ui-bg-accented)/30">
+                  <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Staff ID</th>
+                  <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Full Name</th>
+                  <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Role</th>
+                  <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Contact</th>
+                  <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Status</th>
+                  <th class="p-4 font-bold text-xs text-(--ui-text-muted)">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-(--ui-border)">
+                <tr v-for="staff in staffList" :key="staff.staff_id" class="hover:bg-(--ui-bg-accented)/20 transition">
+                  <td class="p-4 font-mono font-bold text-emerald-400">{{ staff.staff_id }}</td>
+                  <td class="p-4 font-bold text-(--ui-text-highlighted)">{{ staff.first_name }} {{ staff.last_name }}</td>
+                  <td class="p-4">
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-(--ui-bg-accented) font-semibold text-(--ui-text-highlighted) capitalize">
+                      {{ staff.role }}
+                    </span>
+                  </td>
+                  <td class="p-4 text-xs text-(--ui-text-muted)">
+                    <div class="font-medium text-(--ui-text-highlighted)">{{ staff.email }}</div>
+                    <div v-if="staff.phone" class="text-[11px] text-(--ui-text-dimmed)">{{ staff.phone }}</div>
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                      :class="{
+                        'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20': staff.status === 'active',
+                        'bg-amber-500/10 text-amber-400 border border-amber-500/20': staff.status === 'suspended',
+                        'bg-rose-500/10 text-rose-400 border border-rose-500/20': staff.status === 'terminated'
+                      }"
+                    >
+                      {{ staff.status }}
+                    </span>
+                  </td>
+                  <td class="p-4">
+                    <div class="flex items-center gap-2">
+                      <UButton
+                        size="xs"
+                        variant="soft"
+                        color="neutral"
+                        icon="i-lucide-pencil"
+                        @click="openEditStaff(staff)"
+                      >
+                        Edit
+                      </UButton>
+                      <UButton
+                        size="xs"
+                        variant="ghost"
+                        color="neutral"
+                        title="Revoke active sessions"
+                        @click="handleRevokeSession(staff.staff_id)"
+                      >
+                        Revoke
+                      </UButton>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mobile Card List View (< md) -->
+        <div class="block md:hidden space-y-3">
+          <div
+            v-for="staff in staffList"
+            :key="staff.staff_id"
+            class="rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated) p-4 shadow-sm space-y-3"
+          >
+            <!-- Top: Avatar, Name, Role, Status -->
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <UAvatar
+                  :text="`${staff.first_name?.[0] || ''}${staff.last_name?.[0] || ''}`"
+                  size="md"
+                />
+                <div class="min-w-0">
+                  <h3 class="font-bold text-sm text-(--ui-text-highlighted) truncate">
+                    {{ staff.first_name }} {{ staff.last_name }}
+                  </h3>
+                  <span class="text-[11px] px-2 py-0.5 rounded-full bg-(--ui-bg-accented) font-semibold text-(--ui-text-muted) capitalize inline-block mt-0.5">
                     {{ staff.role }}
                   </span>
-                </td>
-                <td class="p-4 text-xs text-(--ui-text-muted)">
-                  <div class="font-medium text-(--ui-text-highlighted)">{{ staff.email }}</div>
-                  <div v-if="staff.phone" class="text-[11px] text-(--ui-text-dimmed)">{{ staff.phone }}</div>
-                </td>
-                <td class="p-4">
-                  <span
-                    class="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider"
-                    :class="{
-                      'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20': staff.status === 'active',
-                      'bg-amber-500/10 text-amber-400 border border-amber-500/20': staff.status === 'suspended',
-                      'bg-rose-500/10 text-rose-400 border border-rose-500/20': staff.status === 'terminated'
-                    }"
-                  >
-                    {{ staff.status }}
-                  </span>
-                </td>
-                <td class="p-4">
-                  <div class="flex items-center gap-2">
-                    <UButton
-                      size="xs"
-                      variant="soft"
-                      color="neutral"
-                      icon="i-lucide-pencil"
-                      @click="openEditStaff(staff)"
-                    >
-                      Edit
-                    </UButton>
-                    <UButton
-                      size="xs"
-                      variant="ghost"
-                      color="neutral"
-                      title="Revoke active sessions"
-                      @click="handleRevokeSession(staff.staff_id)"
-                    >
-                      Revoke
-                    </UButton>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+              </div>
+
+              <span
+                class="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0"
+                :class="{
+                  'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20': staff.status === 'active',
+                  'bg-amber-500/10 text-amber-400 border border-amber-500/20': staff.status === 'suspended',
+                  'bg-rose-500/10 text-rose-400 border border-rose-500/20': staff.status === 'terminated'
+                }"
+              >
+                {{ staff.status }}
+              </span>
+            </div>
+
+            <!-- Middle: Staff ID, Email, Phone -->
+            <div class="space-y-1.5 py-2 px-3 rounded-xl bg-(--ui-bg-accented)/30 border border-(--ui-border)/40 text-xs">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-(--ui-text-dimmed) text-[11px]">Staff ID:</span>
+                <span class="font-mono text-emerald-400 font-bold text-xs">{{ staff.staff_id }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-(--ui-text-dimmed) text-[11px]">Email:</span>
+                <a :href="`mailto:${staff.email}`" class="text-(--ui-text-highlighted) font-medium truncate hover:underline">
+                  {{ staff.email }}
+                </a>
+              </div>
+              <div v-if="staff.phone" class="flex items-center justify-between gap-2">
+                <span class="text-(--ui-text-dimmed) text-[11px]">Phone:</span>
+                <a :href="`tel:${staff.phone}`" class="text-emerald-500 font-mono font-medium hover:underline">
+                  {{ staff.phone }}
+                </a>
+              </div>
+            </div>
+
+            <!-- Bottom: Action Buttons -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <UButton
+                size="xs"
+                variant="outline"
+                color="primary"
+                icon="i-lucide-pencil"
+                class="flex items-center justify-center gap-1 py-2 text-xs font-medium rounded-xl"
+                @click="openEditStaff(staff)"
+              >
+                Edit Staff
+              </UButton>
+              <UButton
+                size="xs"
+                variant="outline"
+                color="neutral"
+                icon="i-lucide-shield-alert"
+                class="flex items-center justify-center gap-1 py-2 text-xs font-medium rounded-xl"
+                @click="handleRevokeSession(staff.staff_id)"
+              >
+                Revoke Sessions
+              </UButton>
+            </div>
+          </div>
         </div>
       </div>
     </div>

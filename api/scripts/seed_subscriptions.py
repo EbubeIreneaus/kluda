@@ -19,25 +19,46 @@ async def seed_subscriptions():
         default_plans = [
             {
                 "slug": "free",
-                "name": "Free Tier",
+                "name": "Free Starter Tier",
                 "description": "Essential single-store retail operations with offline checkout.",
                 "price": 0,
+                "interval": "monthly",
+                "has_trial": False,
+                "trial_duration_days": 0,
                 "store_limit": 1,
                 "product_limit": 100,
-                "sales_limit_per_month": 200,
+                "sales_limit_per_month": 500,
                 "analytics_read_per_month": 50,
                 "status": PlanStatus.AVAILABLE,
                 "paystack_planid": None,
             },
             {
-                "slug": "trial",
-                "name": "30-Day Pro Trial",
-                "description": "Full-access 30-day trial with multi-branch synchronization and advanced reports.",
-                "price": 0,
+                "slug": "growth",
+                "name": "Merchant Growth",
+                "description": "Multi-branch retail synchronization with real-time analytics and staff roles.",
+                "price": 1500000,
+                "interval": "monthly",
+                "has_trial": True,
+                "trial_duration_days": 14,
                 "store_limit": 3,
-                "product_limit": 1000,
-                "sales_limit_per_month": 5000,
+                "product_limit": 2000,
+                "sales_limit_per_month": 10000,
                 "analytics_read_per_month": 500,
+                "status": PlanStatus.AVAILABLE,
+                "paystack_planid": None,
+            },
+            {
+                "slug": "enterprise",
+                "name": "Enterprise Mesh",
+                "description": "High-throughput retail chains with automated inventory reconciliation and SLA.",
+                "price": 4500000,
+                "interval": "monthly",
+                "has_trial": False,
+                "trial_duration_days": 0,
+                "store_limit": 0,
+                "product_limit": 0,
+                "sales_limit_per_month": 0,
+                "analytics_read_per_month": 0,
                 "status": PlanStatus.AVAILABLE,
                 "paystack_planid": None,
             }
@@ -50,7 +71,16 @@ async def seed_subscriptions():
                 db.add(plan)
                 print(f"Created plan: {p_data['name']} ({p_data['slug']})")
             else:
-                print(f"Plan already exists: {existing.name} ({existing.slug})")
+                existing.has_trial = p_data["has_trial"]
+                existing.trial_duration_days = p_data["trial_duration_days"]
+                existing.interval = p_data["interval"]
+                print(f"Plan updated: {existing.name} ({existing.slug}) - Trial: {existing.has_trial}")
+
+        # Ensure standalone trial plan is deactivated
+        old_trial = await db.scalar(select(Plan).where(Plan.slug == "trial"))
+        if old_trial:
+            old_trial.status = PlanStatus.UNAVAILABLE
+            print("Deactivated legacy standalone trial plan.")
 
         await db.flush()
 

@@ -138,7 +138,8 @@ onMounted(() => {
       />
     </div>
 
-    <div class="rounded-3xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden shadow-xs">
+    <!-- Desktop Table View (>= md) -->
+    <div class="hidden md:block rounded-3xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden shadow-xs">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -227,6 +228,114 @@ onMounted(() => {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Mobile Card List View (< md) -->
+    <div class="block md:hidden space-y-3">
+      <div v-if="isLoading && staffList.length === 0" class="py-12 text-center text-(--ui-text-muted)">
+        <UIcon name="i-lucide-loader" class="w-6 h-6 animate-spin inline-block mr-2 text-emerald-500" />
+        Loading staff team...
+      </div>
+
+      <div
+        v-else-if="filteredStaff.length === 0"
+        class="text-center py-12 px-4 rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated)"
+      >
+        <UIcon name="i-lucide-users" class="size-10 text-(--ui-text-dimmed) mx-auto mb-2" />
+        <p class="text-sm font-semibold text-(--ui-text-highlighted)">No staff members found</p>
+        <p class="text-xs text-(--ui-text-dimmed) mt-1">Try adjusting your search criteria</p>
+      </div>
+
+      <div
+        v-for="staff in filteredStaff"
+        :key="staff.staff_id"
+        class="rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated) p-4 shadow-sm space-y-3"
+      >
+        <!-- Top: Avatar, Name, Role, Status -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <UAvatar
+              :text="`${staff.first_name?.[0] || ''}${staff.last_name?.[0] || ''}`"
+              size="md"
+            />
+            <div class="min-w-0">
+              <h3 class="font-bold text-sm text-(--ui-text-highlighted) truncate">
+                {{ staff.first_name }} {{ staff.last_name }}
+              </h3>
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-(--ui-bg-accented) font-semibold text-(--ui-text-muted) capitalize inline-block mt-0.5">
+                {{ staff.role }}
+              </span>
+            </div>
+          </div>
+
+          <UBadge
+            :color="(statusColors[staff.status] as any) || 'neutral'"
+            size="xs"
+            variant="subtle"
+            class="font-bold uppercase tracking-wider text-[10px] shrink-0"
+          >
+            {{ staff.status }}
+          </UBadge>
+        </div>
+
+        <!-- Middle: Contact Info & Staff ID -->
+        <div class="space-y-1.5 py-2 px-3 rounded-xl bg-(--ui-bg-accented)/30 border border-(--ui-border)/40 text-xs">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-(--ui-text-dimmed) text-[11px]">Staff ID:</span>
+            <div class="flex items-center gap-1 font-mono text-emerald-400 font-bold text-xs">
+              <span>{{ staff.staff_id }}</span>
+              <button
+                type="button"
+                class="text-(--ui-text-dimmed) hover:text-emerald-400 p-0.5"
+                title="Copy Staff ID"
+                @click="copyStaffId(staff.staff_id)"
+              >
+                <UIcon name="i-lucide-copy" class="size-3" />
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-(--ui-text-dimmed) text-[11px]">Email:</span>
+            <a :href="`mailto:${staff.email}`" class="text-(--ui-text-highlighted) font-medium truncate hover:underline">
+              {{ staff.email }}
+            </a>
+          </div>
+
+          <div v-if="staff.phone" class="flex items-center justify-between gap-2">
+            <span class="text-(--ui-text-dimmed) text-[11px]">Phone:</span>
+            <a :href="`tel:${staff.phone}`" class="text-emerald-500 font-mono font-medium hover:underline">
+              {{ staff.phone }}
+            </a>
+          </div>
+        </div>
+
+        <!-- Permissions List -->
+        <div v-if="staff.permission.length > 0" class="space-y-1">
+          <span class="text-[10px] uppercase font-bold text-(--ui-text-dimmed) tracking-wider block">Permissions</span>
+          <div class="flex flex-wrap gap-1">
+            <span
+              v-for="perm in staff.permission.slice(0, 4)"
+              :key="perm"
+              class="text-[10px] px-2 py-0.5 rounded-md bg-(--ui-bg-accented) text-(--ui-text-muted) font-mono"
+            >
+              {{ perm }}
+            </span>
+            <span
+              v-if="staff.permission.length > 4"
+              class="text-[10px] px-1.5 py-0.5 rounded-md bg-(--ui-bg-accented) text-(--ui-text-dimmed)"
+            >
+              +{{ staff.permission.length - 4 }} more
+            </span>
+          </div>
+        </div>
+
+        <!-- Footer: Last Active -->
+        <div class="flex items-center justify-between pt-1 border-t border-(--ui-border)/40 text-[11px] text-(--ui-text-dimmed)">
+          <span>Last active</span>
+          <span class="font-mono text-(--ui-text-muted)">{{ formatLastLogin(staff.last_login) }}</span>
+        </div>
       </div>
     </div>
   </div>

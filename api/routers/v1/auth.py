@@ -129,8 +129,19 @@ def _make_staff_compatibility_dict(user: User, stores: list[dict]) -> dict:
         "permission": primary["permission"] if primary else ["manage:all"],
         "status": user.status.value if hasattr(user.status, "value") else str(user.status),
         "has_pin": bool(getattr(user, "pin_hash", None)),
+        "referral_code": getattr(user, "referral_code", None),
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
+
+
+async def generate_user_referral_code(db: AsyncSession, fullname: str) -> str:
+    clean_name = "".join(c for c in fullname if c.isalnum())[:5].upper() or "KLUDA"
+    for _ in range(10):
+        code = f"{clean_name}-{secrets.token_hex(3).upper()}"
+        exists = await db.scalar(select(func.count(User.id)).where(User.referral_code == code))
+        if not exists:
+            return code
+    return f"KLUDA-{uuid.uuid4().hex[:8].upper()}"
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -150,13 +161,23 @@ async def create_user(
         )
 
     user_id = await generate_user_id(db)
+    my_referral_code = await generate_user_referral_code(db, body.fullname)
+
+    referred_by_id = None
+    if body.referral_code:
+        ref_clean = body.referral_code.strip().upper()
+        ref_user = await db.scalar(select(User).where(func.upper(User.referral_code) == ref_clean))
+        if ref_user:
+            referred_by_id = ref_user.id
     
     new_user = User(
         fullname=body.fullname,
         email=email,
         phone=body.phone,
         user_id=user_id,
-        password=hash_password(body.password)
+        password=hash_password(body.password),
+        referral_code=my_referral_code,
+        referred_by_id=referred_by_id,
     )
 
     db.add(new_user)

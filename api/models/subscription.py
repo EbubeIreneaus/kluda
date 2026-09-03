@@ -1,7 +1,7 @@
 from schemas.subscription import PaymentChannel
 from sqlalchemy.orm import MappedColumn, mapped_column, relationship
 from models.config import Base
-from sqlalchemy import UUID, Integer, Text, DateTime, String, Enum, ForeignKey, func
+from sqlalchemy import UUID, Integer, Text, DateTime, String, Enum, ForeignKey, Boolean, func
 from datetime import datetime
 import uuid
 from schemas.subscription import SubscriptionStatus
@@ -21,6 +21,7 @@ class UserSubscription(Base):
     plan: MappedColumn["Plan"] = relationship("Plan", back_populates="subscriptions")
     status: MappedColumn[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus), default=SubscriptionStatus.DUE)
     amount: MappedColumn[int] = mapped_column(Integer, nullable=False)
+    is_trial: MappedColumn[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     reference: MappedColumn[str | None] = mapped_column(String, unique=True, index=True)
     idempotency_key: MappedColumn[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     paystack_subscription_code: MappedColumn[str | None] = mapped_column(String(100), index=True, nullable=True)

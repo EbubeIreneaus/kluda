@@ -10,6 +10,8 @@ class PlanCreate(BaseModel):
     # amount in subunit (kobo for NGN)
     price: int
     interval: str = "monthly"
+    has_trial: bool = False
+    trial_duration_days: int | None = 0
     store_limit: int | None = 0
     product_limit: int | None = 0
     sales_limit_per_month: int | None = 0
@@ -24,6 +26,8 @@ class PlanUpdate(BaseModel):
     # amount in subunit (kobo for NGN)
     price: int | None = None
     interval: str | None = None
+    has_trial: bool | None = None
+    trial_duration_days: int | None = None
     store_limit: int | None = None
     product_limit: int | None = None
     sales_limit_per_month: int | None = None
@@ -40,6 +44,8 @@ class PlanResponse(BaseModel):
     # amount in subunit (kobo for NGN)
     price: int
     interval: str = "monthly"
+    has_trial: bool = False
+    trial_duration_days: int | None = 0
     store_limit: int | None = 0
     product_limit: int | None = 0
     sales_limit_per_month: int | None = 0
