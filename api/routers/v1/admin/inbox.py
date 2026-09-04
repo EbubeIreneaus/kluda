@@ -46,7 +46,7 @@ async def list_threads(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(get_admin),
 ):
-    stmt = select(EmailThread)
+    stmt = select(EmailThread).options(selectinload(EmailThread.messages))
 
     if mailbox_id:
         stmt = stmt.where(EmailThread.mailbox_id == mailbox_id)
