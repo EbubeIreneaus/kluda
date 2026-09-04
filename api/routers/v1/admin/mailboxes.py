@@ -28,7 +28,7 @@ async def list_mailboxes(
         )
         if not personal_mb:
             personal_mb = EmailMailbox(
-                name=f"{admin.fullname} (Personal)",
+                name=admin.fullname,
                 email=admin.company_email.lower(),
                 type=MailboxType.PERSONAL,
                 owner_admin_id=admin.admin_id,

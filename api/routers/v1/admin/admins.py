@@ -72,6 +72,18 @@ async def invite_admin(
     await db.flush()
     await db.refresh(new_admin)
 
+    from models.admin.email import EmailMailbox
+    from schemas.admin.email import MailboxType
+    personal_mb = EmailMailbox(
+        name=new_admin.fullname,
+        email=company_email.lower(),
+        type=MailboxType.PERSONAL,
+        owner_admin_id=new_admin.admin_id,
+        allowed_admin_ids=[str(new_admin.admin_id)],
+    )
+    db.add(personal_mb)
+    await db.flush()
+
     await record_audit_log(
         db=db,
         admin_id=current_admin.admin_id,

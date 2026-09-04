@@ -269,6 +269,8 @@ async def send_auth_reset_email(ctx: dict, recipient_email: str, otp_code: str, 
 
 async def process_inbound_resend_email(ctx: dict, email_id: str):
     from models.admin.email import EmailThread, EmailMessages, EmailMailbox, EmailThreadStatus
+    from models.admin.user import Admin
+    from schemas.admin.email import MailboxType
     email_details = await asyncio.to_thread(fetch_resend_email_details, email_id)
     if not email_details:
         return
@@ -281,6 +283,9 @@ async def process_inbound_resend_email(ctx: dict, email_id: str):
     references = None
     from_raw = email_details.get("from")
     to_raw = email_details.get("to")
+    if not to_raw and email_details.get("received_for"):
+        to_raw = email_details.get("received_for")
+
     subject = email_details.get("subject") or "(No Subject)"
     html_body = email_details.get("html") or email_details.get("text") or ""
 
@@ -303,8 +308,17 @@ async def process_inbound_resend_email(ctx: dict, email_id: str):
     if not mail_id:
         mail_id = email_details.get("id") or email_details.get("email_id") or email_id
 
+    if isinstance(from_raw, (list, tuple)) and len(from_raw) > 0:
+        from_raw = from_raw[0]
+
+    if isinstance(to_raw, (list, tuple)) and len(to_raw) > 0:
+        to_raw = to_raw[0]
+
     from_parsed = email.utils.parseaddr(str(from_raw))[1] if from_raw else "unknown@example.com"
     to_parsed = email.utils.parseaddr(str(to_raw))[1] if to_raw else f"support@{settings.DOMAIN_NAME}"
+
+    if not to_parsed:
+        to_parsed = f"support@{settings.DOMAIN_NAME}"
 
     from_email = from_parsed.lower()
     to_email = to_parsed.lower()
@@ -324,8 +338,28 @@ async def process_inbound_resend_email(ctx: dict, email_id: str):
             if existing_msg:
                 thread = await db.scalar(select(EmailThread).where(EmailThread.thread_id == existing_msg.thread_id))
 
+        mailbox = await db.scalar(select(EmailMailbox).where(EmailMailbox.email == to_email))
+        if not mailbox:
+            admin_match = await db.scalar(select(Admin).where(Admin.company_email == to_email))
+            if admin_match:
+                mailbox = EmailMailbox(
+                    name=admin_match.fullname,
+                    email=admin_match.company_email.lower(),
+                    type=MailboxType.PERSONAL,
+                    owner_admin_id=admin_match.admin_id,
+                    allowed_admin_ids=[str(admin_match.admin_id)],
+                )
+                db.add(mailbox)
+                await db.flush()
+                await db.refresh(mailbox)
+            else:
+                mailbox = await db.scalar(
+                    select(EmailMailbox)
+                    .where(EmailMailbox.type == MailboxType.SHARED)
+                    .order_by(EmailMailbox.id.asc())
+                )
+
         if not thread:
-            mailbox = await db.scalar(select(EmailMailbox).where(EmailMailbox.email == to_email))
             clean_subject = subject.replace("Re: ", "").replace("RE: ", "").replace("Fwd: ", "").strip()
             thread = await db.scalar(
                 select(EmailThread).where(
@@ -335,7 +369,6 @@ async def process_inbound_resend_email(ctx: dict, email_id: str):
             )
 
         if not thread:
-            mailbox = await db.scalar(select(EmailMailbox).where(EmailMailbox.email == to_email))
             thread = EmailThread(
                 mailbox_id=mailbox.mailbox_id if mailbox else None,
                 customer_email=from_email,
@@ -352,6 +385,10 @@ async def process_inbound_resend_email(ctx: dict, email_id: str):
             thread.snippet = (html_body[:150] + "...") if len(html_body) > 150 else html_body
             thread.status = EmailThreadStatus.UNREAD
             thread.last_message_at = now
+            if not thread.mailbox_id and mailbox:
+                thread.mailbox_id = mailbox.mailbox_id
+            if not thread.to or thread.to == "":
+                thread.to = to_email
             await db.flush()
 
         new_message = EmailMessages(

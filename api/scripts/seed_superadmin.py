@@ -44,8 +44,20 @@ async def seed_superadmin():
         )
 
         db.add(superadmin)
-        await db.commit()
+        await db.flush()
         await db.refresh(superadmin)
+
+        from models.admin.email import EmailMailbox
+        from schemas.admin.email import MailboxType
+        mailbox = EmailMailbox(
+            name=f"{superadmin.fullname}",
+            email=superadmin.company_email.lower(),
+            type=MailboxType.PERSONAL,
+            owner_admin_id=superadmin.admin_id,
+            allowed_admin_ids=[str(superadmin.admin_id)],
+        )
+        db.add(mailbox)
+        await db.commit()
 
         print(f"Superadmin created successfully!")
         print(f"Company Email: {superadmin.company_email}")
