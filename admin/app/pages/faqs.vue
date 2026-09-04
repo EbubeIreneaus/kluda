@@ -294,71 +294,77 @@ onMounted(() => {
     </div>
 
     <!-- Create / Edit Modal -->
-    <UModal v-model:open="isModalOpen" :title="editingFaq ? 'Edit FAQ Item' : 'Create New FAQ'">
-      <template #body>
-        <form @submit.prevent="handleSaveFaq" class="p-6 space-y-4">
+    <AdminBottomSheet
+      v-model="isModalOpen"
+      :title="editingFaq ? 'Edit FAQ Item' : 'Create New FAQ'"
+      description="Add or update frequently asked questions for merchants"
+      max-width="max-w-lg"
+    >
+      <form id="faq-form" @submit.prevent="handleSaveFaq" class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-zinc-300">Question <span class="text-rose-400">*</span></label>
+          <UInput v-model="form.question" placeholder="e.g. Can I use Kluda POS when my shop has no internet?" size="sm" required />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="space-y-1.5">
-            <label class="text-xs font-medium text-zinc-300">Question <span class="text-rose-400">*</span></label>
-            <UInput v-model="form.question" placeholder="e.g. Can I use Kluda POS when my shop has no internet?" size="sm" required />
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-zinc-300">Category</label>
-              <select
-                v-model="form.category"
-                class="w-full bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-              >
-                <option v-for="cat in categories" :key="cat.value" :value="cat.value">
-                  {{ cat.label }}
-                </option>
-              </select>
-            </div>
-
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-zinc-300">Display Order</label>
-              <UInput v-model.number="form.display_order" type="number" min="1" size="sm" />
-            </div>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-medium text-zinc-300">Answer Explanation <span class="text-rose-400">*</span></label>
-            <textarea
-              v-model="form.answer"
-              rows="4"
-              placeholder="Provide a clear, reassuring answer for retail store merchants..."
+            <label class="text-xs font-medium text-zinc-300">Category</label>
+            <select
+              v-model="form.category"
               class="w-full bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-              required
-            />
+            >
+              <option v-for="cat in categories" :key="cat.value" :value="cat.value">
+                {{ cat.label }}
+              </option>
+            </select>
           </div>
 
-          <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800">
-            <label class="text-xs font-bold text-zinc-200 flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.is_published"
-                type="checkbox"
-                class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4 cursor-pointer"
-              />
-              Publish to Website immediately
-            </label>
-            <span class="text-[10px] text-zinc-500">
-              {{ form.is_published ? 'Visible to public' : 'Hidden from public' }}
-            </span>
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-zinc-300">Display Order</label>
+            <UInput v-model.number="form.display_order" type="number" min="1" size="sm" />
           </div>
+        </div>
 
-          <div class="flex justify-end gap-2 pt-4 border-t border-zinc-800">
-            <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isModalOpen = false" />
-            <UButton
-              type="submit"
-              label="Save FAQ"
-              icon="i-lucide-save"
-              color="primary"
-              size="sm"
-              :loading="isSubmitting"
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-zinc-300">Answer Explanation <span class="text-rose-400">*</span></label>
+          <textarea
+            v-model="form.answer"
+            rows="4"
+            placeholder="Provide a clear, reassuring answer for retail store merchants..."
+            class="w-full bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+            required
+          />
+        </div>
+
+        <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+          <label class="text-xs font-bold text-zinc-200 flex items-center gap-2 cursor-pointer">
+            <input
+              v-model="form.is_published"
+              type="checkbox"
+              class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4 cursor-pointer"
             />
-          </div>
-        </form>
+            Publish to Website immediately
+          </label>
+          <span class="text-[10px] text-zinc-500">
+            {{ form.is_published ? 'Visible to public' : 'Hidden from public' }}
+          </span>
+        </div>
+      </form>
+
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isModalOpen = false" />
+          <UButton
+            form="faq-form"
+            type="submit"
+            label="Save FAQ"
+            icon="i-lucide-save"
+            color="primary"
+            size="sm"
+            :loading="isSubmitting"
+          />
+        </div>
       </template>
-    </UModal>
+    </AdminBottomSheet>
   </div>
 </template>

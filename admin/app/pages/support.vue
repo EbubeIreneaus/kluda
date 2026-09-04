@@ -169,47 +169,38 @@ watch([selectedStatus, selectedPriority], () => {
       </div>
     </div>
 
-    <div
-      v-if="isDrawerOpen && selectedTicket"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
-      @click="isDrawerOpen = false"
+    <AdminFullScreenModal
+      v-if="selectedTicket"
+      v-model="isDrawerOpen"
+      :title="selectedTicket.subject"
+      :description="'Ticket ID: ' + selectedTicket.ticket_id"
+      max-width="max-w-lg"
     >
-      <div
-        class="w-full max-w-lg bg-zinc-900 border-l border-zinc-800 h-full p-6 flex flex-col justify-between overflow-y-auto"
-        @click.stop
-      >
-        <div class="flex flex-col gap-6">
-          <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
-            <div>
-              <h2 class="text-base font-bold text-white">{{ selectedTicket.subject }}</h2>
-              <div class="text-[11px] text-zinc-400 font-mono mt-0.5">Ticket ID: {{ selectedTicket.ticket_id }}</div>
-            </div>
-            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" @click="isDrawerOpen = false" />
-          </div>
+      <div class="flex flex-col gap-6">
+        <div class="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 leading-relaxed">
+          {{ selectedTicket.description }}
+        </div>
 
-          <div class="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 leading-relaxed">
-            {{ selectedTicket.description }}
-          </div>
-
-          <div v-if="selectedTicket.device_diagnostics" class="flex flex-col gap-2">
-            <span class="text-xs font-semibold text-zinc-300">Device & Runtime Diagnostics</span>
-            <div class="p-4 rounded-xl bg-zinc-950 border border-zinc-800 font-mono text-[11px] text-emerald-400 overflow-x-auto">
-              <pre>{{ JSON.stringify(selectedTicket.device_diagnostics, null, 2) }}</pre>
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <label class="text-xs font-semibold text-zinc-300">Resolution Notes</label>
-            <textarea
-              v-model="resolutionNotes"
-              rows="3"
-              class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500"
-              placeholder="Add resolution or troubleshooting steps..."
-            />
+        <div v-if="selectedTicket.device_diagnostics" class="flex flex-col gap-2">
+          <span class="text-xs font-semibold text-zinc-300">Device & Runtime Diagnostics</span>
+          <div class="p-4 rounded-xl bg-zinc-950 border border-zinc-800 font-mono text-[11px] text-emerald-400 overflow-x-auto">
+            <pre>{{ JSON.stringify(selectedTicket.device_diagnostics, null, 2) }}</pre>
           </div>
         </div>
 
-        <div class="border-t border-zinc-800 pt-4 flex gap-2">
+        <div class="flex flex-col gap-2">
+          <label class="text-xs font-semibold text-zinc-300">Resolution Notes</label>
+          <textarea
+            v-model="resolutionNotes"
+            rows="3"
+            class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500"
+            placeholder="Add resolution or troubleshooting steps..."
+          />
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex gap-2">
           <UButton
             v-if="selectedTicket.status !== 'resolved'"
             label="Mark Resolved"
@@ -232,7 +223,7 @@ watch([selectedStatus, selectedPriority], () => {
             @click="updateTicketStatus('open')"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminFullScreenModal>
   </div>
 </template>

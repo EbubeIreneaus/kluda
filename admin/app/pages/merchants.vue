@@ -171,71 +171,60 @@ watch([search, selectedStatus], () => {
       </div>
     </div>
 
-    <div
-      v-if="isDetailOpen && selectedMerchant"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
-      @click="isDetailOpen = false"
+    <AdminFullScreenModal
+      v-if="selectedMerchant"
+      v-model="isDetailOpen"
+      :title="selectedMerchant.fullname"
+      :description="'User ID: ' + selectedMerchant.user_id"
+      max-width="max-w-lg"
     >
-      <div
-        class="w-full max-w-lg bg-zinc-900 border-l border-zinc-800 h-full p-6 flex flex-col justify-between overflow-y-auto"
-        @click.stop
-      >
-        <div class="flex flex-col gap-6">
-          <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
-            <div>
-              <h2 class="text-base font-bold text-white">{{ selectedMerchant.fullname }}</h2>
-              <div class="text-[11px] text-zinc-400 font-mono mt-0.5">User ID: {{ selectedMerchant.user_id }}</div>
-            </div>
-            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" @click="isDetailOpen = false" />
-          </div>
+      <div class="flex flex-col gap-3 text-xs">
+        <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
+          <span class="text-zinc-400">Account Email</span>
+          <span class="font-mono text-zinc-100">{{ selectedMerchant.email }}</span>
+        </div>
 
-          <div class="flex flex-col gap-3 text-xs">
-            <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
-              <span class="text-zinc-400">Account Email</span>
-              <span class="font-mono text-zinc-100">{{ selectedMerchant.email }}</span>
-            </div>
+        <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
+          <span class="text-zinc-400">Phone Contact</span>
+          <span class="font-mono text-zinc-100">{{ selectedMerchant.phone || 'None' }}</span>
+        </div>
 
-            <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
-              <span class="text-zinc-400">Phone Contact</span>
-              <span class="font-mono text-zinc-100">{{ selectedMerchant.phone || 'None' }}</span>
-            </div>
+        <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
+          <span class="text-zinc-400">Account Status</span>
+          <span
+            :class="[
+              'px-2 py-0.5 rounded text-[10px] font-semibold border',
+              selectedMerchant.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+            ]"
+          >
+            {{ selectedMerchant.status }}
+          </span>
+        </div>
 
-            <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
-              <span class="text-zinc-400">Account Status</span>
-              <span
-                :class="[
-                  'px-2 py-0.5 rounded text-[10px] font-semibold border',
-                  selectedMerchant.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                ]"
-              >
-                {{ selectedMerchant.status }}
+        <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
+          <span class="text-zinc-400">Registered On</span>
+          <span class="text-zinc-200">{{ new Date(selectedMerchant.created_at).toLocaleString() }}</span>
+        </div>
+
+        <div class="flex flex-col gap-2 mt-2">
+          <span class="font-semibold text-zinc-300">Retail Stores Owned ({{ selectedMerchant.stores?.length || 0 }})</span>
+          <div class="flex flex-col gap-2">
+            <div
+              v-for="st in selectedMerchant.stores || []"
+              :key="st.store_id"
+              class="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between items-center"
+            >
+              <div class="font-medium text-zinc-200">{{ st.name }}</div>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-800 text-zinc-300">
+                {{ st.status }}
               </span>
-            </div>
-
-            <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
-              <span class="text-zinc-400">Registered On</span>
-              <span class="text-zinc-200">{{ new Date(selectedMerchant.created_at).toLocaleString() }}</span>
-            </div>
-
-            <div class="flex flex-col gap-2 mt-2">
-              <span class="font-semibold text-zinc-300">Retail Stores Owned ({{ selectedMerchant.stores?.length || 0 }})</span>
-              <div class="flex flex-col gap-2">
-                <div
-                  v-for="st in selectedMerchant.stores || []"
-                  :key="st.store_id"
-                  class="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between items-center"
-                >
-                  <div class="font-medium text-zinc-200">{{ st.name }}</div>
-                  <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-800 text-zinc-300">
-                    {{ st.status }}
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="border-t border-zinc-800 pt-4 flex gap-2">
+      <template #footer>
+        <div class="flex gap-2">
           <UButton
             label="Send Reset Code"
             icon="i-lucide-key-round"
@@ -254,7 +243,7 @@ watch([search, selectedStatus], () => {
             @click="toggleMerchantStatus(selectedMerchant)"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminFullScreenModal>
   </div>
 </template>

@@ -399,340 +399,326 @@ onMounted(() => {
       />
     </div>
 
-    <div
-      v-if="isComposing"
-      class="bg-zinc-900/90 border border-zinc-800 p-6 rounded-2xl flex flex-col gap-6 backdrop-blur-xl"
+    <AdminFullScreenModal
+      v-model="isComposing"
+      :title="editingCampaignId ? 'Edit Campaign Draft' : 'Visual Campaign Studio'"
+      description="WYSIWYG Email Paper Canvas with Instant Split Preview"
+      max-width="max-w-6xl"
     >
-      <div
-        class="flex items-center justify-between border-b border-zinc-800 pb-4"
-      >
-        <div>
-          <h2 class="text-base font-bold text-white">
-            {{ editingCampaignId ? 'Edit Campaign Draft' : 'Visual Campaign Studio' }}
-          </h2>
-          <p class="text-xs text-zinc-400">
-            WYSIWYG Email Paper Canvas with Instant Split Preview
-          </p>
-        </div>
-        <UButton
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          @click="isComposing = false"
-        />
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <label class="text-xs font-semibold text-zinc-300"
-          >Choose a Pre-Designed Campaign Preset</label
-        >
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <button
-            v-for="tpl in templatePresets"
-            :key="tpl.id"
-            type="button"
-            class="text-left p-3.5 rounded-xl border transition-all flex flex-col gap-1.5 group"
-            :class="
-              form.title === tpl.title
-                ? 'bg-emerald-950/30 border-emerald-500/50 ring-1 ring-emerald-500/30'
-                : 'bg-zinc-950/80 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-950'
-            "
-            @click="applyTemplate(tpl)"
+      <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-2">
+          <label class="text-xs font-semibold text-zinc-300"
+            >Choose a Pre-Designed Campaign Preset</label
           >
-            <div
-              class="font-bold text-xs text-zinc-100 group-hover:text-emerald-400 transition-colors"
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <button
+              v-for="tpl in templatePresets"
+              :key="tpl.id"
+              type="button"
+              class="text-left p-3.5 rounded-xl border transition-all flex flex-col gap-1.5 group"
+              :class="
+                form.title === tpl.title
+                  ? 'bg-emerald-950/30 border-emerald-500/50 ring-1 ring-emerald-500/30'
+                  : 'bg-zinc-950/80 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-950'
+              "
+              @click="applyTemplate(tpl)"
             >
-              {{ tpl.name }}
-            </div>
-            <div class="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
-              {{ tpl.description }}
-            </div>
-          </button>
+              <div
+                class="font-bold text-xs text-zinc-100 group-hover:text-emerald-400 transition-colors"
+              >
+                {{ tpl.name }}
+              </div>
+              <div class="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                {{ tpl.description }}
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="flex flex-col gap-1.5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300"
+              >Internal Campaign Name</label
+            >
+            <UInput
+              v-model="form.title"
+              placeholder="e.g. Q3 Feature Release Blast"
+              size="sm"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300"
+              >Email Subject Line</label
+            >
+            <UInput
+              v-model="form.subject"
+              placeholder="e.g. 🚀 Exciting Platform Updates"
+              size="sm"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300"
+              >From Sender Address</label
+            >
+            <select
+              v-model="form.sender"
+              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+            >
+              <optgroup label="My Personal Company Email">
+                <option
+                  v-if="adminUser?.company_email"
+                  :value="adminUser.company_email"
+                >
+                  {{ adminUser.fullname }} ({{ adminUser.company_email }})
+                </option>
+              </optgroup>
+              <optgroup label="Public / Shared Mailboxes">
+                <option
+                  v-for="mb in mailboxes.filter((m) => m.type === 'shared')"
+                  :key="mb.mailbox_id"
+                  :value="mb.email"
+                >
+                  {{ mb.name }} ({{ mb.email }})
+                </option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300"
+              >Target Recipient Audience</label
+            >
+            <select
+              v-model="audienceType"
+              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="all_merchants">All Store Owners (Merchants)</option>
+              <option value="all_users">All Registered Users</option>
+              <option value="specific_store">Specific Retail Store</option>
+              <option value="custom_emails">Custom Email List</option>
+            </select>
+          </div>
+        </div>
+
+        <div
+          v-if="audienceType === 'specific_store'"
+          class="flex flex-col gap-1.5 p-3 rounded-xl bg-zinc-950 border border-zinc-800"
+        >
+          <label class="text-xs font-medium text-zinc-300">Select Store</label>
+          <select
+            v-model="selectedStoreId"
+            class="bg-zinc-900 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+          >
+            <option value="" disabled>Choose a retail store...</option>
+            <option v-for="s in stores" :key="s.store_id" :value="s.store_id">
+              {{ s.name }} (Owner: {{ s.owner_email || "N/A" }})
+            </option>
+          </select>
+        </div>
+
+        <div
+          v-if="audienceType === 'custom_emails'"
+          class="flex flex-col gap-1.5 p-3 rounded-xl bg-zinc-950 border border-zinc-800"
+        >
           <label class="text-xs font-medium text-zinc-300"
-            >Internal Campaign Name</label
+            >Comma-separated email addresses</label
           >
           <UInput
-            v-model="form.title"
-            placeholder="e.g. Q3 Feature Release Blast"
+            v-model="customEmailList"
+            placeholder="merchant1@example.com, merchant2@example.com"
             size="sm"
           />
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-medium text-zinc-300"
-            >Email Subject Line</label
-          >
-          <UInput
-            v-model="form.subject"
-            placeholder="e.g. 🚀 Exciting Platform Updates"
-            size="sm"
-          />
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-medium text-zinc-300"
-            >From Sender Address</label
-          >
-          <select
-            v-model="form.sender"
-            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-          >
-            <optgroup label="My Personal Company Email">
-              <option
-                v-if="adminUser?.company_email"
-                :value="adminUser.company_email"
-              >
-                {{ adminUser.fullname }} ({{ adminUser.company_email }})
-              </option>
-            </optgroup>
-            <optgroup label="Public / Shared Mailboxes">
-              <option
-                v-for="mb in mailboxes.filter((m) => m.type === 'shared')"
-                :key="mb.mailbox_id"
-                :value="mb.email"
-              >
-                {{ mb.name }} ({{ mb.email }})
-              </option>
-            </optgroup>
-          </select>
-        </div>
-
-        <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-medium text-zinc-300"
-            >Target Recipient Audience</label
-          >
-          <select
-            v-model="audienceType"
-            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-          >
-            <option value="all_merchants">All Store Owners (Merchants)</option>
-            <option value="all_users">All Registered Users</option>
-            <option value="specific_store">Specific Retail Store</option>
-            <option value="custom_emails">Custom Email List</option>
-          </select>
-        </div>
-      </div>
-
-      <div
-        v-if="audienceType === 'specific_store'"
-        class="flex flex-col gap-1.5 p-3 rounded-xl bg-zinc-950 border border-zinc-800"
-      >
-        <label class="text-xs font-medium text-zinc-300">Select Store</label>
-        <select
-          v-model="selectedStoreId"
-          class="bg-zinc-900 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+        <div
+          class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800"
         >
-          <option value="" disabled>Choose a retail store...</option>
-          <option v-for="s in stores" :key="s.store_id" :value="s.store_id">
-            {{ s.name }} (Owner: {{ s.owner_email || "N/A" }})
-          </option>
-        </select>
-      </div>
-
-      <div
-        v-if="audienceType === 'custom_emails'"
-        class="flex flex-col gap-1.5 p-3 rounded-xl bg-zinc-950 border border-zinc-800"
-      >
-        <label class="text-xs font-medium text-zinc-300"
-          >Comma-separated email addresses</label
-        >
-        <UInput
-          v-model="customEmailList"
-          placeholder="merchant1@example.com, merchant2@example.com"
-          size="sm"
-        />
-      </div>
-
-      <div
-        class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800"
-      >
-        <div class="flex flex-wrap items-center gap-1.5 text-xs">
-          <span
-            class="text-zinc-400 font-medium text-[11px] flex items-center gap-1"
-          >
-            <UIcon
-              name="i-lucide-wand-2"
-              class="w-3.5 h-3.5 text-emerald-400"
-            />
-            Quick Insert Snippets:
-          </span>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white text-zinc-300 text-xs font-medium transition-colors flex items-center gap-1"
-            @click="handleInsertSnippet('callout')"
-          >
-            <UIcon name="i-lucide-sparkles" class="w-3 h-3 text-emerald-400" />
-            Callout Box
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white text-zinc-300 text-xs font-medium transition-colors flex items-center gap-1"
-            @click="handleInsertSnippet('warning')"
-          >
-            <UIcon
-              name="i-lucide-alert-triangle"
-              class="w-3 h-3 text-amber-400"
-            />
-            Alert Box
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white text-zinc-300 text-xs font-medium transition-colors flex items-center gap-1"
-            @click="handleInsertSnippet('button')"
-          >
-            <UIcon
-              name="i-lucide-arrow-up-right"
-              class="w-3 h-3 text-emerald-400"
-            />
-            Action Button
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white text-zinc-300 text-xs font-medium transition-colors flex items-center gap-1"
-            @click="handleInsertSnippet('table')"
-          >
-            <UIcon name="i-lucide-table" class="w-3 h-3 text-blue-400" />
-            Data Table
-          </button>
-        </div>
-
-        <div class="flex items-center gap-1.5 text-xs text-zinc-400">
-          <span class="text-[11px]">Variables:</span>
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]"
-            @click="insertVariable('{{merchant_name}}')"
-          >
-            &#123;&#123;merchant_name&#125;&#125;
-          </button>
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]"
-            @click="insertVariable('{{store_name}}')"
-          >
-            &#123;&#123;store_name&#125;&#125;
-          </button>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        <div class="xl:col-span-7 flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <label
-              class="text-xs font-medium text-zinc-300 flex items-center gap-1.5"
+          <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <span
+              class="text-zinc-400 font-medium text-[11px] flex items-center gap-1"
             >
               <UIcon
-                name="i-lucide-edit-3"
+                name="i-lucide-wand-2"
                 class="w-3.5 h-3.5 text-emerald-400"
               />
-              WYSIWYG Email Paper Canvas
-            </label>
-            <span class="text-[11px] text-zinc-500"
-              >Edit directly inside styled card</span
+              Quick Insert Snippets:
+            </span>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white text-zinc-300 text-xs font-medium transition-colors flex items-center gap-1"
+              @click="handleInsertSnippet('callout')"
             >
-          </div>
-          <TiptapEditor
-            ref="editorRef"
-            v-model="form.body"
-            variant="email-light"
-          />
-        </div>
-
-        <div class="xl:col-span-5 flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <label
-              class="text-xs font-medium text-zinc-300 flex items-center gap-1.5"
+              <UIcon name="i-lucide-sparkles" class="w-3 h-3 text-emerald-400" />
+              Callout Box
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white text-zinc-300 text-xs font-medium transition-colors flex items-center gap-1"
+              @click="handleInsertSnippet('warning')"
             >
-              <UIcon name="i-lucide-eye" class="w-3.5 h-3.5 text-emerald-400" />
-              Real-Time Client Preview
-            </label>
-            <div
-              class="flex bg-zinc-950 p-0.5 rounded-lg border border-zinc-800"
-            >
-              <button
-                type="button"
-                :class="[
-                  'px-2 py-0.5 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1',
-                  previewDevice === 'desktop'
-                    ? 'bg-zinc-800 text-white shadow-xs'
-                    : 'text-zinc-400',
-                ]"
-                @click="previewDevice = 'desktop'"
-              >
-                <UIcon name="i-lucide-monitor" class="w-3 h-3" />
-                Desktop
-              </button>
-              <button
-                type="button"
-                :class="[
-                  'px-2 py-0.5 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1',
-                  previewDevice === 'mobile'
-                    ? 'bg-zinc-800 text-white shadow-xs'
-                    : 'text-zinc-400',
-                ]"
-                @click="previewDevice = 'mobile'"
-              >
-                <UIcon name="i-lucide-smartphone" class="w-3 h-3" />
-                Mobile
-              </button>
-            </div>
-          </div>
-
-          <div
-            class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex justify-center overflow-x-auto min-h-[440px]"
-          >
-            <div
-              :style="{ width: previewDevice === 'mobile' ? '360px' : '100%' }"
-              class="transition-all duration-300 rounded-lg overflow-hidden border border-zinc-800/80 bg-[#f4f4f5] shadow-lg"
-            >
-              <iframe
-                :srcdoc="renderedPreviewHtml"
-                class="w-full h-[460px] border-0"
+              <UIcon
+                name="i-lucide-alert-triangle"
+                class="w-3 h-3 text-amber-400"
               />
+              Alert Box
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white text-zinc-300 text-xs font-medium transition-colors flex items-center gap-1"
+              @click="handleInsertSnippet('button')"
+            >
+              <UIcon
+                name="i-lucide-arrow-up-right"
+                class="w-3 h-3 text-emerald-400"
+              />
+              Action Button
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white text-zinc-300 text-xs font-medium transition-colors flex items-center gap-1"
+              @click="handleInsertSnippet('table')"
+            >
+              <UIcon name="i-lucide-table" class="w-3 h-3 text-blue-400" />
+              Data Table
+            </button>
+          </div>
+
+          <div class="flex items-center gap-1.5 text-xs text-zinc-400">
+            <span class="text-[11px]">Variables:</span>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]"
+              @click="insertVariable('{{merchant_name}}')"
+            >
+              &#123;&#123;merchant_name&#125;&#125;
+            </button>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 font-mono text-[11px]"
+              @click="insertVariable('{{store_name}}')"
+            >
+              &#123;&#123;store_name&#125;&#125;
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <div class="xl:col-span-7 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <label
+                class="text-xs font-medium text-zinc-300 flex items-center gap-1.5"
+              >
+                <UIcon
+                  name="i-lucide-edit-3"
+                  class="w-3.5 h-3.5 text-emerald-400"
+                />
+                WYSIWYG Email Paper Canvas
+              </label>
+              <span class="text-[11px] text-zinc-500"
+                >Edit directly inside styled card</span
+              >
+            </div>
+            <TiptapEditor
+              ref="editorRef"
+              v-model="form.body"
+              variant="email-light"
+            />
+          </div>
+
+          <div class="xl:col-span-5 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <label
+                class="text-xs font-medium text-zinc-300 flex items-center gap-1.5"
+              >
+                <UIcon name="i-lucide-eye" class="w-3.5 h-3.5 text-emerald-400" />
+                Real-Time Client Preview
+              </label>
+              <div
+                class="flex bg-zinc-950 p-0.5 rounded-lg border border-zinc-800"
+              >
+                <button
+                  type="button"
+                  :class="[
+                    'px-2 py-0.5 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1',
+                    previewDevice === 'desktop'
+                      ? 'bg-zinc-800 text-white shadow-xs'
+                      : 'text-zinc-400',
+                  ]"
+                  @click="previewDevice = 'desktop'"
+                >
+                  <UIcon name="i-lucide-monitor" class="w-3 h-3" />
+                  Desktop
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'px-2 py-0.5 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1',
+                    previewDevice === 'mobile'
+                      ? 'bg-zinc-800 text-white shadow-xs'
+                      : 'text-zinc-400',
+                  ]"
+                  @click="previewDevice = 'mobile'"
+                >
+                  <UIcon name="i-lucide-smartphone" class="w-3 h-3" />
+                  Mobile
+                </button>
+              </div>
+            </div>
+
+            <div
+              class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex justify-center overflow-x-auto min-h-[440px]"
+            >
+              <div
+                :style="{ width: previewDevice === 'mobile' ? '360px' : '100%' }"
+                class="transition-all duration-300 rounded-lg overflow-hidden border border-zinc-800/80 bg-[#f4f4f5] shadow-lg"
+              >
+                <iframe
+                  :srcdoc="renderedPreviewHtml"
+                  class="w-full h-[460px] border-0"
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="flex items-center justify-between border-t border-zinc-800 pt-4">
-        <UButton
-          label="Cancel"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          @click="isComposing = false"
-        />
-        <div class="flex items-center gap-2">
+      <template #footer>
+        <div class="flex items-center justify-between w-full">
           <UButton
-            label="Save as Draft"
-            icon="i-lucide-save"
+            label="Cancel"
             color="neutral"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            :disabled="!canManageEmails"
-            :loading="isSending"
-            @click="handleSaveCampaign(false)"
+            @click="isComposing = false"
           />
-          <UButton
-            label="Dispatch Broadcast Now"
-            icon="i-lucide-send"
-            color="primary"
-            size="sm"
-            :disabled="!canManageEmails"
-            :loading="isSending"
-            @click="handleSaveCampaign(true)"
-          />
+          <div class="flex items-center gap-2">
+            <UButton
+              label="Save as Draft"
+              icon="i-lucide-save"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              :disabled="!canManageEmails"
+              :loading="isSending"
+              @click="handleSaveCampaign(false)"
+            />
+            <UButton
+              label="Dispatch Broadcast Now"
+              icon="i-lucide-send"
+              color="primary"
+              size="sm"
+              :disabled="!canManageEmails"
+              :loading="isSending"
+              @click="handleSaveCampaign(true)"
+            />
+          </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminFullScreenModal>
 
     <div
       class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl overflow-hidden backdrop-blur-sm"

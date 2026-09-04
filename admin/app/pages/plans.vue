@@ -556,151 +556,138 @@ onMounted(() => {
     </div>
 
     <!-- Create Plan Modal -->
-    <div
-      v-if="isCreateOpen"
-      class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
-      @click="isCreateOpen = false"
+    <AdminFullScreenModal
+      v-model="isCreateOpen"
+      title="Create Subscription Plan"
+      description="Define pricing tier limits and sync directly with Paystack"
+      max-width="max-w-xl"
     >
-      <div
-        class="w-full max-w-xl bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-5 shadow-2xl my-8 max-h-[90vh] overflow-y-auto"
-        @click.stop
-      >
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
-          <div>
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-              <UIcon name="i-lucide-plus-circle" class="size-5 text-emerald-400" />
-              Create Subscription Plan
-            </h2>
-            <p class="text-xs text-zinc-400 mt-0.5">Define pricing tier limits and sync directly with Paystack</p>
-          </div>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isCreateOpen = false" />
-        </div>
-
-        <div class="flex flex-col gap-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Plan Slug <span class="text-rose-400">*</span></label>
-              <UInput v-model="createForm.slug" placeholder="e.g. starter, pro, enterprise" size="sm" />
-              <span class="text-[10px] text-zinc-500 font-mono">Unique machine identifier</span>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Display Name <span class="text-rose-400">*</span></label>
-              <UInput v-model="createForm.name" placeholder="e.g. Starter Plan" size="sm" />
-            </div>
+      <div class="flex flex-col gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300">Plan Slug <span class="text-rose-400">*</span></label>
+            <UInput v-model="createForm.slug" placeholder="e.g. starter, pro, enterprise" size="sm" />
+            <span class="text-[10px] text-zinc-500 font-mono">Unique machine identifier</span>
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Description</label>
-            <textarea
-              v-model="createForm.description"
-              rows="2"
-              placeholder="Features, target merchant profile, and highlights..."
+            <label class="text-xs font-medium text-zinc-300">Display Name <span class="text-rose-400">*</span></label>
+            <UInput v-model="createForm.name" placeholder="e.g. Starter Plan" size="sm" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Description</label>
+          <textarea
+            v-model="createForm.description"
+            rows="2"
+            placeholder="Features, target merchant profile, and highlights..."
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300">Price (₦ Naira) <span class="text-rose-400">*</span></label>
+            <UInput v-model.number="createForm.priceNaira" type="number" min="0" placeholder="5000" size="sm" />
+            <span class="text-[10px] text-zinc-500 font-mono">
+              = {{ ((createForm.priceNaira || 0) * 100).toLocaleString() }} kobo stored
+            </span>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300">Billing Interval</label>
+            <select
+              v-model="createForm.interval"
               class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-            />
+            >
+              <option value="daily">Daily Pass (24 Hours)</option>
+              <option value="weekly">Weekly (7 Days)</option>
+              <option value="monthly">Monthly (30 Days)</option>
+              <option value="quarterly">Quarterly (90 Days)</option>
+              <option value="yearly">Yearly (365 Days)</option>
+            </select>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Price (₦ Naira) <span class="text-rose-400">*</span></label>
-              <UInput v-model.number="createForm.priceNaira" type="number" min="0" placeholder="5000" size="sm" />
-              <span class="text-[10px] text-zinc-500 font-mono">
-                = {{ ((createForm.priceNaira || 0) * 100).toLocaleString() }} kobo stored
-              </span>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Billing Interval</label>
-              <select
-                v-model="createForm.interval"
-                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="daily">Daily Pass (24 Hours)</option>
-                <option value="weekly">Weekly (7 Days)</option>
-                <option value="monthly">Monthly (30 Days)</option>
-                <option value="quarterly">Quarterly (90 Days)</option>
-                <option value="yearly">Yearly (365 Days)</option>
-              </select>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Initial Status</label>
-              <select
-                v-model="createForm.status"
-                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="available">AVAILABLE (Active for purchase)</option>
-                <option value="unavailable">UNAVAILABLE (Hidden / Inactive)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Free Trial Configuration -->
-          <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold text-zinc-200 flex items-center gap-2 cursor-pointer">
-                <input
-                  v-model="createForm.has_trial"
-                  type="checkbox"
-                  class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4"
-                />
-                Offer Free Trial for this Plan
-              </label>
-              <span v-if="createForm.has_trial" class="text-[10px] text-amber-400 font-mono">
-                No Paystack charge during trial
-              </span>
-            </div>
-
-            <div v-if="createForm.has_trial" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-800/60">
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Trial Duration (in Days)</label>
-                <UInput v-model.number="createForm.trial_duration_days" type="number" min="1" max="365" placeholder="14" size="xs" />
-                <span class="text-[10px] text-zinc-500">e.g. 1, 3, 7, 14, 30 days</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Resource Quotas -->
-          <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
-            <span class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
-              <UIcon name="i-lucide-sliders" class="size-3.5 text-emerald-400" />
-              Resource Limits (0 = Unlimited)
-            </span>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Stores Limit</label>
-                <UInput v-model.number="createForm.store_limit" type="number" min="0" size="xs" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Products Limit</label>
-                <UInput v-model.number="createForm.product_limit" type="number" min="0" size="xs" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Monthly Sales Limit</label>
-                <UInput v-model.number="createForm.sales_limit_per_month" type="number" min="0" size="xs" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Analytics Reads / Mo</label>
-                <UInput v-model.number="createForm.analytics_read_per_month" type="number" min="0" size="xs" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Paystack Plan Code Override -->
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300 flex items-center justify-between">
-              <span>Paystack Plan ID (Optional)</span>
-              <span class="text-[10px] text-zinc-500 font-mono">e.g. PLN_gx2edhub320ndfa</span>
-            </label>
-            <UInput v-model="createForm.paystack_planid" placeholder="Leave blank to auto-create plan on Paystack" size="sm" />
-            <span class="text-[10px] text-zinc-500">
-              If left blank, Kluda will automatically provision this plan in your Paystack dashboard.
-            </span>
+            <label class="text-xs font-medium text-zinc-300">Initial Status</label>
+            <select
+              v-model="createForm.status"
+              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="available">AVAILABLE (Active for purchase)</option>
+              <option value="unavailable">UNAVAILABLE (Hidden / Inactive)</option>
+            </select>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-4">
+        <!-- Free Trial Configuration -->
+        <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-zinc-200 flex items-center gap-2 cursor-pointer">
+              <input
+                v-model="createForm.has_trial"
+                type="checkbox"
+                class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4"
+              />
+              Offer Free Trial for this Plan
+            </label>
+            <span v-if="createForm.has_trial" class="text-[10px] text-amber-400 font-mono">
+              No Paystack charge during trial
+            </span>
+          </div>
+
+          <div v-if="createForm.has_trial" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-800/60">
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Trial Duration (in Days)</label>
+              <UInput v-model.number="createForm.trial_duration_days" type="number" min="1" max="365" placeholder="14" size="xs" />
+              <span class="text-[10px] text-zinc-500">e.g. 1, 3, 7, 14, 30 days</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resource Quotas -->
+        <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
+          <span class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+            <UIcon name="i-lucide-sliders" class="size-3.5 text-emerald-400" />
+            Resource Limits (0 = Unlimited)
+          </span>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Stores Limit</label>
+              <UInput v-model.number="createForm.store_limit" type="number" min="0" size="xs" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Products Limit</label>
+              <UInput v-model.number="createForm.product_limit" type="number" min="0" size="xs" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Monthly Sales Limit</label>
+              <UInput v-model.number="createForm.sales_limit_per_month" type="number" min="0" size="xs" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Analytics Reads / Mo</label>
+              <UInput v-model.number="createForm.analytics_read_per_month" type="number" min="0" size="xs" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Paystack Plan Code Override -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300 flex items-center justify-between">
+            <span>Paystack Plan ID (Optional)</span>
+            <span class="text-[10px] text-zinc-500 font-mono">e.g. PLN_gx2edhub320ndfa</span>
+          </label>
+          <UInput v-model="createForm.paystack_planid" placeholder="Leave blank to auto-create plan on Paystack" size="sm" />
+          <span class="text-[10px] text-zinc-500">
+            If left blank, Kluda will automatically provision this plan in your Paystack dashboard.
+          </span>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isCreateOpen = false" />
           <UButton
             label="Create Plan"
@@ -711,139 +698,127 @@ onMounted(() => {
             @click="handleCreatePlan"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminFullScreenModal>
 
     <!-- Edit Plan Modal -->
-    <div
-      v-if="isEditOpen && selectedPlan"
-      class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
-      @click="isEditOpen = false"
+    <AdminFullScreenModal
+      v-if="selectedPlan"
+      v-model="isEditOpen"
+      :title="'Edit Plan: ' + selectedPlan.name"
+      :description="'slug: ' + selectedPlan.slug"
+      max-width="max-w-xl"
     >
-      <div
-        class="w-full max-w-xl bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-5 shadow-2xl my-8 max-h-[90vh] overflow-y-auto"
-        @click.stop
-      >
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
-          <div>
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-              <UIcon name="i-lucide-edit" class="size-5 text-emerald-400" />
-              Edit Plan: {{ selectedPlan.name }}
-            </h2>
-            <div class="text-[11px] text-zinc-400 font-mono mt-0.5">slug: {{ selectedPlan.slug }}</div>
-          </div>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isEditOpen = false" />
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Display Name</label>
+          <UInput v-model="editForm.name" size="sm" />
         </div>
 
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Description</label>
+          <textarea
+            v-model="editForm.description"
+            rows="2"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Display Name</label>
-            <UInput v-model="editForm.name" size="sm" />
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Description</label>
-            <textarea
-              v-model="editForm.description"
-              rows="2"
-              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Price (₦ Naira)</label>
-              <UInput v-model.number="editForm.priceNaira" type="number" min="0" size="sm" />
-              <span class="text-[10px] text-zinc-500 font-mono">
-                = {{ ((editForm.priceNaira || 0) * 100).toLocaleString() }} kobo stored
-              </span>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Billing Interval</label>
-              <select
-                v-model="editForm.interval"
-                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="daily">Daily Pass (24 Hours)</option>
-                <option value="weekly">Weekly (7 Days)</option>
-                <option value="monthly">Monthly (30 Days)</option>
-                <option value="quarterly">Quarterly (90 Days)</option>
-                <option value="yearly">Yearly (365 Days)</option>
-              </select>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Status</label>
-              <select
-                v-model="editForm.status"
-                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="available">AVAILABLE (Active)</option>
-                <option value="unavailable">UNAVAILABLE (Inactive / Hidden)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Free Trial Configuration -->
-          <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold text-zinc-200 flex items-center gap-2 cursor-pointer">
-                <input
-                  v-model="editForm.has_trial"
-                  type="checkbox"
-                  class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4"
-                />
-                Offer Free Trial for this Plan
-              </label>
-              <span v-if="editForm.has_trial" class="text-[10px] text-amber-400 font-mono">
-                No Paystack charge during trial
-              </span>
-            </div>
-
-            <div v-if="editForm.has_trial" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-800/60">
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Trial Duration (in Days)</label>
-                <UInput v-model.number="editForm.trial_duration_days" type="number" min="1" max="365" placeholder="14" size="xs" />
-                <span class="text-[10px] text-zinc-500">e.g. 1, 3, 7, 14, 30 days</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Resource Quotas -->
-          <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
-            <span class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
-              <UIcon name="i-lucide-sliders" class="size-3.5 text-emerald-400" />
-              Resource Limits (0 = Unlimited)
+            <label class="text-xs font-medium text-zinc-300">Price (₦ Naira)</label>
+            <UInput v-model.number="editForm.priceNaira" type="number" min="0" size="sm" />
+            <span class="text-[10px] text-zinc-500 font-mono">
+              = {{ ((editForm.priceNaira || 0) * 100).toLocaleString() }} kobo stored
             </span>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Stores Limit</label>
-                <UInput v-model.number="editForm.store_limit" type="number" min="0" size="xs" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Products Limit</label>
-                <UInput v-model.number="editForm.product_limit" type="number" min="0" size="xs" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Monthly Sales Limit</label>
-                <UInput v-model.number="editForm.sales_limit_per_month" type="number" min="0" size="xs" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-zinc-400">Analytics Reads / Mo</label>
-                <UInput v-model.number="editForm.analytics_read_per_month" type="number" min="0" size="xs" />
-              </div>
-            </div>
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Paystack Plan Code</label>
-            <UInput v-model="editForm.paystack_planid" placeholder="PLN_..." size="sm" />
+            <label class="text-xs font-medium text-zinc-300">Billing Interval</label>
+            <select
+              v-model="editForm.interval"
+              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="daily">Daily Pass (24 Hours)</option>
+              <option value="weekly">Weekly (7 Days)</option>
+              <option value="monthly">Monthly (30 Days)</option>
+              <option value="quarterly">Quarterly (90 Days)</option>
+              <option value="yearly">Yearly (365 Days)</option>
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300">Status</label>
+            <select
+              v-model="editForm.status"
+              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="available">AVAILABLE (Active)</option>
+              <option value="unavailable">UNAVAILABLE (Inactive / Hidden)</option>
+            </select>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-4">
+        <!-- Free Trial Configuration -->
+        <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-zinc-200 flex items-center gap-2 cursor-pointer">
+              <input
+                v-model="editForm.has_trial"
+                type="checkbox"
+                class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4"
+              />
+              Offer Free Trial for this Plan
+            </label>
+            <span v-if="editForm.has_trial" class="text-[10px] text-amber-400 font-mono">
+              No Paystack charge during trial
+            </span>
+          </div>
+
+          <div v-if="editForm.has_trial" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-800/60">
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Trial Duration (in Days)</label>
+              <UInput v-model.number="editForm.trial_duration_days" type="number" min="1" max="365" placeholder="14" size="xs" />
+              <span class="text-[10px] text-zinc-500">e.g. 1, 3, 7, 14, 30 days</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resource Quotas -->
+        <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
+          <span class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+            <UIcon name="i-lucide-sliders" class="size-3.5 text-emerald-400" />
+            Resource Limits (0 = Unlimited)
+          </span>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Stores Limit</label>
+              <UInput v-model.number="editForm.store_limit" type="number" min="0" size="xs" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Products Limit</label>
+              <UInput v-model.number="editForm.product_limit" type="number" min="0" size="xs" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Monthly Sales Limit</label>
+              <UInput v-model.number="editForm.sales_limit_per_month" type="number" min="0" size="xs" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[11px] text-zinc-400">Analytics Reads / Mo</label>
+              <UInput v-model.number="editForm.analytics_read_per_month" type="number" min="0" size="xs" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Paystack Plan Code</label>
+          <UInput v-model="editForm.paystack_planid" placeholder="PLN_..." size="sm" />
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isEditOpen = false" />
           <UButton
             label="Save Changes"
@@ -854,151 +829,138 @@ onMounted(() => {
             @click="handleUpdatePlan"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminFullScreenModal>
 
     <!-- Grant Custom Offer Modal (Super Admin Only) -->
-    <div
-      v-if="isGrantOpen"
-      class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+    <AdminBottomSheet
+      v-model="isGrantOpen"
+      title="Grant Custom Subscription Offer"
+      description="Super Admin Privilege: Assign complimentary access or custom promos"
+      max-width="max-w-lg"
     >
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-lg w-full p-6 flex flex-col gap-5 shadow-2xl my-8">
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
-          <div class="flex items-center gap-2.5">
-            <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-              <UIcon name="i-lucide-gift" class="size-5" />
-            </div>
-            <div>
-              <h2 class="text-base font-bold text-white tracking-tight">Grant Custom Subscription Offer</h2>
-              <p class="text-xs text-zinc-400">Super Admin Privilege: Assign complimentary access or custom promos</p>
-            </div>
-          </div>
-          <button class="text-zinc-400 hover:text-white" @click="isGrantOpen = false">
-            <UIcon name="i-lucide-x" class="size-5" />
-          </button>
-        </div>
-
-        <div class="flex flex-col gap-4 text-xs">
-          <!-- Merchant Selection -->
-          <div class="flex flex-col gap-1.5">
-            <label class="font-medium text-zinc-300 flex items-center justify-between">
-              <span>Select Recipient Merchant</span>
-              <span v-if="isSearchingMerchants" class="text-[10px] text-emerald-400 flex items-center gap-1">
-                <UIcon name="i-lucide-loader-2" class="size-3 animate-spin" /> Searching...
-              </span>
-            </label>
-            <div class="flex gap-2">
-              <UInput
-                v-model="merchantSearch"
-                placeholder="Search by name or email..."
-                size="sm"
-                class="flex-1"
-                @keyup.enter="searchMerchants"
-              />
-              <UButton label="Search" icon="i-lucide-search" color="neutral" variant="soft" size="sm" @click="searchMerchants" />
-            </div>
-
-            <!-- Merchant dropdown list -->
-            <select
-              v-model="grantForm.user_id"
-              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 mt-1"
-            >
-              <option value="" disabled>-- Select a merchant --</option>
-              <option
-                v-for="m in merchantsList"
-                :key="m.user_id"
-                :value="m.user_id"
-              >
-                {{ m.fullname }} ({{ m.email }})
-              </option>
-            </select>
-          </div>
-
-          <!-- Plan Tier -->
-          <div class="flex flex-col gap-1.5">
-            <label class="font-medium text-zinc-300">Target Plan Tier</label>
-            <select
-              v-model="grantForm.plan_slug"
-              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-            >
-              <option
-                v-for="p in plans"
-                :key="p.slug"
-                :value="p.slug"
-              >
-                {{ p.name }} ({{ p.slug }}) - ₦{{ (p.price / 100).toLocaleString() }}/mo
-              </option>
-            </select>
-          </div>
-
-          <!-- Duration in Days & Presets -->
-          <div class="flex flex-col gap-1.5">
-            <label class="font-medium text-zinc-300 flex items-center justify-between">
-              <span>Duration (Days)</span>
-              <span class="text-[10px] text-zinc-500">Free access period length</span>
-            </label>
-            <div class="flex gap-1.5 mb-1.5 flex-wrap">
-              <button
-                type="button"
-                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition"
-                :class="grantForm.duration_days === 14 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200'"
-                @click="grantForm.duration_days = 14; grantForm.description = 'Referral reward: 2 weeks complimentary access'"
-              >
-                14 Days (Referral)
-              </button>
-              <button
-                type="button"
-                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition"
-                :class="grantForm.duration_days === 30 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200'"
-                @click="grantForm.duration_days = 30; grantForm.description = 'VIP Promo: 1 month complimentary access'"
-              >
-                30 Days
-              </button>
-              <button
-                type="button"
-                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition"
-                :class="grantForm.duration_days === 90 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200'"
-                @click="grantForm.duration_days = 90; grantForm.description = 'Quarterly Early Adopter Offer (90 Days)'"
-              >
-                90 Days
-              </button>
-              <button
-                type="button"
-                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition"
-                :class="grantForm.duration_days === 365 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200'"
-                @click="grantForm.duration_days = 365; grantForm.description = 'Annual Founder VIP Grant (1 Year)'"
-              >
-                1 Year
-              </button>
-            </div>
-            <UInput v-model.number="grantForm.duration_days" type="number" min="1" max="3650" size="sm" />
-          </div>
-
-          <!-- Audit Reason / Description -->
-          <div class="flex flex-col gap-1.5">
-            <label class="font-medium text-zinc-300 flex items-center justify-between">
-              <span>Audit Reason / Description (Required)</span>
-              <span class="text-[10px] text-zinc-500">Visible to merchant & logged in audit</span>
-            </label>
-            <textarea
-              v-model="grantForm.description"
-              rows="2"
-              placeholder="e.g. Referral reward: 2 weeks Premium for referring Store ABC"
-              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-emerald-500 resize-none"
+      <div class="flex flex-col gap-4 text-xs">
+        <!-- Merchant Selection -->
+        <div class="flex flex-col gap-1.5">
+          <label class="font-medium text-zinc-300 flex items-center justify-between">
+            <span>Select Recipient Merchant</span>
+            <span v-if="isSearchingMerchants" class="text-[10px] text-emerald-400 flex items-center gap-1">
+              <UIcon name="i-lucide-loader-2" class="size-3 animate-spin" /> Searching...
+            </span>
+          </label>
+          <div class="flex gap-2">
+            <UInput
+              v-model="merchantSearch"
+              placeholder="Search by name or email..."
+              size="sm"
+              class="flex-1"
+              @keyup.enter="searchMerchants"
             />
+            <UButton label="Search" icon="i-lucide-search" color="neutral" variant="soft" size="sm" @click="searchMerchants" />
           </div>
 
-          <!-- Custom Billed Amount (Naira, default 0) -->
-          <div class="flex flex-col gap-1.5">
-            <label class="font-medium text-zinc-300 flex items-center justify-between">
-              <span>Billed Amount (₦ NGN)</span>
-              <span class="text-[10px] text-zinc-500">0 for free/complimentary grants</span>
-            </label>
-            <UInput v-model.number="grantForm.amountNaira" type="number" min="0" size="sm" placeholder="0" />
-          </div>
+          <!-- Merchant dropdown list -->
+          <select
+            v-model="grantForm.user_id"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 mt-1"
+          >
+            <option value="" disabled>-- Select a merchant --</option>
+            <option
+              v-for="m in merchantsList"
+              :key="m.user_id"
+              :value="m.user_id"
+            >
+              {{ m.fullname }} ({{ m.email }})
+            </option>
+          </select>
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-4">
+        <!-- Plan Tier -->
+        <div class="flex flex-col gap-1.5">
+          <label class="font-medium text-zinc-300">Target Plan Tier</label>
+          <select
+            v-model="grantForm.plan_slug"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+          >
+            <option
+              v-for="p in plans"
+              :key="p.slug"
+              :value="p.slug"
+            >
+              {{ p.name }} ({{ p.slug }}) - ₦{{ (p.price / 100).toLocaleString() }}/mo
+            </option>
+          </select>
+        </div>
+
+        <!-- Duration in Days & Presets -->
+        <div class="flex flex-col gap-1.5">
+          <label class="font-medium text-zinc-300 flex items-center justify-between">
+            <span>Duration (Days)</span>
+            <span class="text-[10px] text-zinc-500">Free access period length</span>
+          </label>
+          <div class="flex gap-1.5 mb-1.5 flex-wrap">
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition"
+              :class="grantForm.duration_days === 14 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200'"
+              @click="grantForm.duration_days = 14; grantForm.description = 'Referral reward: 2 weeks complimentary access'"
+            >
+              14 Days (Referral)
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition"
+              :class="grantForm.duration_days === 30 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200'"
+              @click="grantForm.duration_days = 30; grantForm.description = 'VIP Promo: 1 month complimentary access'"
+            >
+              30 Days
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition"
+              :class="grantForm.duration_days === 90 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200'"
+              @click="grantForm.duration_days = 90; grantForm.description = 'Quarterly Early Adopter Offer (90 Days)'"
+            >
+              90 Days
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition"
+              :class="grantForm.duration_days === 365 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200'"
+              @click="grantForm.duration_days = 365; grantForm.description = 'Annual Founder VIP Grant (1 Year)'"
+            >
+              1 Year
+            </button>
+          </div>
+          <UInput v-model.number="grantForm.duration_days" type="number" min="1" max="3650" size="sm" />
+        </div>
+
+        <!-- Audit Reason / Description -->
+        <div class="flex flex-col gap-1.5">
+          <label class="font-medium text-zinc-300 flex items-center justify-between">
+            <span>Audit Reason / Description (Required)</span>
+            <span class="text-[10px] text-zinc-500">Visible to merchant & logged in audit</span>
+          </label>
+          <textarea
+            v-model="grantForm.description"
+            rows="2"
+            placeholder="e.g. Referral reward: 2 weeks Premium for referring Store ABC"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-emerald-500 resize-none"
+          />
+        </div>
+
+        <!-- Custom Billed Amount (Naira, default 0) -->
+        <div class="flex flex-col gap-1.5">
+          <label class="font-medium text-zinc-300 flex items-center justify-between">
+            <span>Billed Amount (₦ NGN)</span>
+            <span class="text-[10px] text-zinc-500">0 for free/complimentary grants</span>
+          </label>
+          <UInput v-model.number="grantForm.amountNaira" type="number" min="0" size="sm" placeholder="0" />
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isGrantOpen = false" />
           <UButton
             label="Activate Offer"
@@ -1009,7 +971,7 @@ onMounted(() => {
             @click="handleGrantOffer"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminBottomSheet>
   </div>
 </template>

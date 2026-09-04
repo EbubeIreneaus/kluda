@@ -225,166 +225,147 @@ onMounted(() => {
       </div>
     </div>
 
-    <div
-      v-if="isDetailOpen && selectedAdmin"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
-      @click="isDetailOpen = false"
+    <AdminFullScreenModal
+      v-if="selectedAdmin"
+      v-model="isDetailOpen"
+      :title="selectedAdmin.fullname"
+      :description="selectedAdmin.company_email"
+      max-width="max-w-xl"
     >
-      <div
-        class="w-full max-w-lg bg-zinc-900 border-l border-zinc-800 h-full p-6 flex flex-col justify-between overflow-y-auto"
-        @click.stop
-      >
-        <div class="flex flex-col gap-5">
-          <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
-            <div>
-              <h2 class="text-base font-bold text-white">{{ selectedAdmin.fullname }}</h2>
-              <div class="text-[11px] text-zinc-400 font-mono mt-0.5">{{ selectedAdmin.company_email }}</div>
-            </div>
-            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" @click="isDetailOpen = false" />
-          </div>
-
-          <div class="flex flex-col gap-4">
-            <div
-              v-if="isEditingSelf && !isSuperAdmin"
-              class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 flex items-center gap-2"
-            >
-              <UIcon name="i-lucide-shield-alert" class="size-4 shrink-0" />
-              <span>You cannot modify your own role, status, or permissions.</span>
-            </div>
-
-            <div
-              v-else-if="isTargetSuperAdmin && !isSuperAdmin"
-              class="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 flex items-center gap-2"
-            >
-              <UIcon name="i-lucide-shield-check" class="size-4 shrink-0" />
-              <span>Only Super Admins can modify a Super Admin account.</span>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Role</label>
-              <select
-                v-model="selectedAdmin.role"
-                :disabled="!canEditPermissionsAndRole"
-                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="MODERATOR">Moderator</option>
-                <option value="ADMIN">Admin</option>
-                <option v-if="isSuperAdmin" value="SUPER_ADMIN">Super Admin</option>
-              </select>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-zinc-300">Status</label>
-              <select
-                v-model="selectedAdmin.status"
-                :disabled="!canEditPermissionsAndRole"
-                class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="ACTIVE">Active</option>
-                <option value="SUSPENDED">Suspended</option>
-              </select>
-            </div>
-
-            <div class="flex flex-col gap-2">
-              <label class="text-xs font-medium text-zinc-300">Permissions Matrix</label>
-              <div
-                class="grid grid-cols-1 gap-2 bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 max-h-60 overflow-y-auto"
-                :class="{ 'opacity-60 pointer-events-none': !canEditPermissionsAndRole }"
-              >
-                <label
-                  v-for="p in allPermissions"
-                  :key="p.value"
-                  class="flex items-center gap-2 text-xs text-zinc-300"
-                  :class="canEditPermissionsAndRole ? 'cursor-pointer' : 'cursor-not-allowed'"
-                >
-                  <input
-                    type="checkbox"
-                    :disabled="!canEditPermissionsAndRole"
-                    :checked="selectedAdmin.permission?.includes(p.value)"
-                    class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0 disabled:opacity-50"
-                    @change="togglePermission(selectedAdmin, p.value)"
-                  >
-                  <span>{{ p.label }}</span>
-                </label>
-              </div>
-            </div>
-          </div>
+      <div class="flex flex-col gap-4">
+        <div
+          v-if="isEditingSelf && !isSuperAdmin"
+          class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 flex items-center gap-2"
+        >
+          <UIcon name="i-lucide-shield-alert" class="size-4 shrink-0" />
+          <span>You cannot modify your own role, status, or permissions.</span>
         </div>
 
-        <div class="border-t border-zinc-800 pt-4 flex gap-2">
-          <UButton label="Cancel" color="neutral" variant="ghost" block size="sm" @click="isDetailOpen = false" />
+        <div
+          v-else-if="isTargetSuperAdmin && !isSuperAdmin"
+          class="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 flex items-center gap-2"
+        >
+          <UIcon name="i-lucide-shield-check" class="size-4 shrink-0" />
+          <span>Only Super Admins can modify a Super Admin account.</span>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Role</label>
+          <select
+            v-model="selectedAdmin.role"
+            :disabled="!canEditPermissionsAndRole"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="MODERATOR">Moderator</option>
+            <option value="ADMIN">Admin</option>
+            <option v-if="isSuperAdmin" value="SUPER_ADMIN">Super Admin</option>
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Status</label>
+          <select
+            v-model="selectedAdmin.status"
+            :disabled="!canEditPermissionsAndRole"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="ACTIVE">Active</option>
+            <option value="SUSPENDED">Suspended</option>
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-xs font-medium text-zinc-300">Permissions Matrix</label>
+          <div
+            class="grid grid-cols-1 gap-2 bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 max-h-60 overflow-y-auto"
+            :class="{ 'opacity-60 pointer-events-none': !canEditPermissionsAndRole }"
+          >
+            <label
+              v-for="p in allPermissions"
+              :key="p.value"
+              class="flex items-center gap-2 text-xs text-zinc-300"
+              :class="canEditPermissionsAndRole ? 'cursor-pointer' : 'cursor-not-allowed'"
+            >
+              <input
+                type="checkbox"
+                :disabled="!canEditPermissionsAndRole"
+                :checked="selectedAdmin.permission?.includes(p.value)"
+                class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0 disabled:opacity-50"
+                @change="togglePermission(selectedAdmin, p.value)"
+              >
+              <span>{{ p.label }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isDetailOpen = false" />
           <UButton
             label="Save Changes"
             icon="i-lucide-save"
             color="primary"
-            block
             size="sm"
             :disabled="!canManageAdmins"
             :loading="isSaving"
             @click="handleUpdateAdmin"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminFullScreenModal>
 
-    <div
-      v-if="isInviteOpen"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-      @click="isInviteOpen = false"
+    <AdminFullScreenModal
+      v-model="isInviteOpen"
+      title="Invite Administrator"
+      description="Send an invitation email to a new team member."
+      max-width="max-w-xl"
     >
-      <div
-        class="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-6 shadow-2xl"
-        @click.stop
-      >
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
-          <h2 class="text-base font-bold text-white">Invite Administrator</h2>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isInviteOpen = false" />
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Full Name</label>
+          <UInput v-model="inviteForm.fullname" placeholder="John Doe" size="sm" />
         </div>
 
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Full Name</label>
-            <UInput v-model="inviteForm.fullname" placeholder="John Doe" size="sm" />
-          </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Personal Recovery Email</label>
+          <UInput v-model="inviteForm.personal_email" placeholder="john.doe@gmail.com" size="sm" />
+        </div>
 
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Personal Recovery Email</label>
-            <UInput v-model="inviteForm.personal_email" placeholder="john.doe@gmail.com" size="sm" />
-          </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Admin Role</label>
+          <select
+            v-model="inviteForm.role"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+          >
+            <option value="MODERATOR">Moderator</option>
+            <option value="ADMIN">Admin</option>
+            <option v-if="isSuperAdmin" value="SUPER_ADMIN">Super Admin</option>
+          </select>
+        </div>
 
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Admin Role</label>
-            <select
-              v-model="inviteForm.role"
-              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+        <div class="flex flex-col gap-2">
+          <label class="text-xs font-medium text-zinc-300">Permissions Matrix</label>
+          <div class="grid grid-cols-1 gap-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800 max-h-60 overflow-y-auto">
+            <label
+              v-for="p in allPermissions"
+              :key="p.value"
+              class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"
             >
-              <option value="MODERATOR">Moderator</option>
-              <option value="ADMIN">Admin</option>
-              <option v-if="isSuperAdmin" value="SUPER_ADMIN">Super Admin</option>
-            </select>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <label class="text-xs font-medium text-zinc-300">Permissions Matrix</label>
-            <div class="grid grid-cols-1 gap-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800 max-h-48 overflow-y-auto">
-              <label
-                v-for="p in allPermissions"
-                :key="p.value"
-                class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"
+              <input
+                type="checkbox"
+                :checked="inviteForm.permission.includes(p.value)"
+                class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0"
+                @change="togglePermission(inviteForm, p.value)"
               >
-                <input
-                  type="checkbox"
-                  :checked="inviteForm.permission.includes(p.value)"
-                  class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0"
-                  @change="togglePermission(inviteForm, p.value)"
-                >
-                <span>{{ p.label }}</span>
-              </label>
-            </div>
+              <span>{{ p.label }}</span>
+            </label>
           </div>
         </div>
+      </div>
 
-        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-4">
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isInviteOpen = false" />
           <UButton
             label="Send Invitation"
@@ -395,7 +376,7 @@ onMounted(() => {
             @click="handleInviteAdmin"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminFullScreenModal>
   </div>
 </template>

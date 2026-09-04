@@ -152,65 +152,54 @@ watch([search, selectedStatus], () => {
       </div>
     </div>
 
-    <div
-      v-if="isDetailOpen && selectedStore"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
-      @click="isDetailOpen = false"
+    <AdminFullScreenModal
+      v-if="selectedStore"
+      v-model="isDetailOpen"
+      :title="selectedStore.name"
+      :description="'Store ID: ' + selectedStore.store_id"
+      max-width="max-w-lg"
     >
-      <div
-        class="w-full max-w-lg bg-zinc-900 border-l border-zinc-800 h-full p-6 flex flex-col justify-between overflow-y-auto"
-        @click.stop
-      >
-        <div class="flex flex-col gap-6">
-          <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
-            <div>
-              <h2 class="text-base font-bold text-white">{{ selectedStore.name }}</h2>
-              <div class="text-[11px] text-zinc-400 font-mono mt-0.5">Store ID: {{ selectedStore.store_id }}</div>
-            </div>
-            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" @click="isDetailOpen = false" />
-          </div>
-
-          <div class="flex flex-col gap-3 text-xs">
-            <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between items-center">
-              <span class="text-zinc-400">Store Owner</span>
-              <div class="text-right">
-                <div class="font-medium text-zinc-100">{{ selectedStore.owner_name || 'N/A' }}</div>
-                <div class="text-[11px] text-emerald-400 font-mono">{{ selectedStore.owner_email }}</div>
-              </div>
-            </div>
-
-            <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
-              <span class="text-zinc-400">Address / Location</span>
-              <span class="font-medium text-zinc-200">{{ selectedStore.address || 'Not specified' }}</span>
-            </div>
-
-            <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
-              <span class="text-zinc-400">Category & Currency</span>
-              <span class="font-medium text-zinc-200">{{ selectedStore.category || 'General' }} ({{ selectedStore.currency }})</span>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2.5">
-              <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-1">
-                <span class="text-[11px] text-zinc-400">Staff Cashiers</span>
-                <span class="font-bold text-base text-zinc-100 font-mono">{{ selectedStore.staff_count }}</span>
-              </div>
-              <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-1">
-                <span class="text-[11px] text-zinc-400">Catalog Products</span>
-                <span class="font-bold text-base text-zinc-100 font-mono">{{ selectedStore.product_count }}</span>
-              </div>
-            </div>
-
-            <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between items-center">
-              <div>
-                <div class="text-zinc-400">Gross Sales Processed</div>
-                <div class="text-[11px] text-zinc-400 mt-0.5">{{ selectedStore.total_sales_count }} sales transactions</div>
-              </div>
-              <span class="font-mono font-bold text-base text-emerald-400">₦{{ Number(selectedStore.total_revenue || 0).toLocaleString() }}</span>
-            </div>
+      <div class="flex flex-col gap-3 text-xs">
+        <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between items-center">
+          <span class="text-zinc-400">Store Owner</span>
+          <div class="text-right">
+            <div class="font-medium text-zinc-100">{{ selectedStore.owner_name || 'N/A' }}</div>
+            <div class="text-[11px] text-emerald-400 font-mono">{{ selectedStore.owner_email }}</div>
           </div>
         </div>
 
-        <div class="border-t border-zinc-800 pt-4 flex gap-2">
+        <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
+          <span class="text-zinc-400">Address / Location</span>
+          <span class="font-medium text-zinc-200">{{ selectedStore.address || 'Not specified' }}</span>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between">
+          <span class="text-zinc-400">Category & Currency</span>
+          <span class="font-medium text-zinc-200">{{ selectedStore.category || 'General' }} ({{ selectedStore.currency }})</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-1">
+            <span class="text-[11px] text-zinc-400">Staff Cashiers</span>
+            <span class="font-bold text-base text-zinc-100 font-mono">{{ selectedStore.staff_count }}</span>
+          </div>
+          <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-1">
+            <span class="text-[11px] text-zinc-400">Catalog Products</span>
+            <span class="font-bold text-base text-zinc-100 font-mono">{{ selectedStore.product_count }}</span>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between items-center">
+          <div>
+            <div class="text-zinc-400">Gross Sales Processed</div>
+            <div class="text-[11px] text-zinc-400 mt-0.5">{{ selectedStore.total_sales_count }} sales transactions</div>
+          </div>
+          <span class="font-mono font-bold text-base text-emerald-400">₦{{ Number(selectedStore.total_revenue || 0).toLocaleString() }}</span>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex gap-2">
           <UButton
             v-if="selectedStore.status !== 'ACTIVE'"
             label="Activate Store"
@@ -232,7 +221,7 @@ watch([search, selectedStatus], () => {
             @click="setStoreStatus('SUSPENDED')"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminFullScreenModal>
   </div>
 </template>

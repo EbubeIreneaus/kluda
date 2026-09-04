@@ -490,138 +490,94 @@ watch(search, () => {
       Select a conversation from the list to view message history.
     </div>
 
-    <Teleport to="body">
-      <div
-        v-if="isComposeOpen"
-        class="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex justify-center items-center overflow-y-auto p-4 sm:p-6 md:p-8"
-      >
-        <div
-          class="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col shadow-2xl h-[88vh] max-h-[760px] my-auto"
-        >
-          <div
-            class="flex items-center justify-between border-b border-zinc-800 pb-3 shrink-0"
-          >
-            <div>
-              <h2 class="text-base font-bold text-white">
-                Compose Outbound Email
-              </h2>
-              <p class="text-xs text-zinc-400">
-                Dispatch direct email communication to user or customer
-              </p>
-            </div>
-            <UButton
-              icon="i-lucide-x"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              @click="isComposeOpen = false"
-            />
-          </div>
-
-          <div
-            class="flex flex-col gap-3.5 overflow-y-auto pr-1.5 py-3 flex-1 min-h-0"
-          >
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-zinc-300"
-                  >From Mailbox</label
+    <AdminFullScreenModal
+      v-model="isComposeOpen"
+      title="Compose Outbound Email"
+      description="Dispatch direct email communication to user or customer"
+      max-width="max-w-3xl"
+    >
+      <div class="flex flex-col gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300">From Mailbox</label>
+            <select
+              v-model="composeForm.mailbox_id"
+              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+            >
+              <optgroup v-if="myPersonalMailbox" label="My Personal Mailbox">
+                <option :value="myPersonalMailbox.mailbox_id">
+                  {{ myPersonalMailbox.name }} ({{ myPersonalMailbox.email }})
+                </option>
+              </optgroup>
+              <optgroup v-if="sharedMailboxes.length > 0" label="Public / Shared Mailboxes">
+                <option
+                  v-for="mb in sharedMailboxes"
+                  :key="mb.mailbox_id"
+                  :value="mb.mailbox_id"
                 >
-                <select
-                  v-model="composeForm.mailbox_id"
-                  class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-                >
-                  <optgroup
-                    v-if="myPersonalMailbox"
-                    label="My Personal Mailbox"
-                  >
-                    <option :value="myPersonalMailbox.mailbox_id">
-                      {{ myPersonalMailbox.name }} ({{
-                        myPersonalMailbox.email
-                      }})
-                    </option>
-                  </optgroup>
-                  <optgroup
-                    v-if="sharedMailboxes.length > 0"
-                    label="Public / Shared Mailboxes"
-                  >
-                    <option
-                      v-for="mb in sharedMailboxes"
-                      :key="mb.mailbox_id"
-                      :value="mb.mailbox_id"
-                    >
-                      {{ mb.name }} ({{ mb.email }})
-                    </option>
-                  </optgroup>
-                  <optgroup
-                    v-if="
-                      !myPersonalMailbox &&
-                      sharedMailboxes.length === 0 &&
-                      mailboxes.length > 0
-                    "
-                    label="Available Mailboxes"
-                  >
-                    <option
-                      v-for="mb in mailboxes"
-                      :key="mb.mailbox_id"
-                      :value="mb.mailbox_id"
-                    >
-                      {{ mb.name }} ({{ mb.email }})
-                    </option>
-                  </optgroup>
-                </select>
-              </div>
-
-              <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-zinc-300"
-                  >To Recipient Email</label
-                >
-                <UInput
-                  v-model="composeForm.to_email"
-                  placeholder="client@example.com or user@kluda.app"
-                  size="sm"
-                />
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-zinc-300">Subject</label>
-              <UInput
-                v-model="composeForm.subject"
-                placeholder="Assistance regarding your retail store..."
-                size="sm"
-              />
-            </div>
-
-            <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-zinc-300"
-                >Visual Message Body</label
+                  {{ mb.name }} ({{ mb.email }})
+                </option>
+              </optgroup>
+              <optgroup
+                v-if="!myPersonalMailbox && sharedMailboxes.length === 0 && mailboxes.length > 0"
+                label="Available Mailboxes"
               >
-              <TiptapEditor v-model="composeForm.body" />
-            </div>
+                <option
+                  v-for="mb in mailboxes"
+                  :key="mb.mailbox_id"
+                  :value="mb.mailbox_id"
+                >
+                  {{ mb.name }} ({{ mb.email }})
+                </option>
+              </optgroup>
+            </select>
           </div>
 
-          <div
-            class="flex justify-end gap-2 border-t border-zinc-800 pt-3 shrink-0"
-          >
-            <UButton
-              label="Cancel"
-              color="neutral"
-              variant="ghost"
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-zinc-300">To Recipient Email</label>
+            <UInput
+              v-model="composeForm.to_email"
+              placeholder="client@example.com or user@kluda.app"
               size="sm"
-              @click="isComposeOpen = false"
-            />
-            <UButton
-              label="Send Message"
-              icon="i-lucide-send"
-              color="primary"
-              size="sm"
-              :disabled="!canManageEmails"
-              :loading="isComposing"
-              @click="handleComposeSend"
             />
           </div>
         </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Subject</label>
+          <UInput
+            v-model="composeForm.subject"
+            placeholder="Assistance regarding your retail store..."
+            size="sm"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Visual Message Body</label>
+          <TiptapEditor v-model="composeForm.body" />
+        </div>
       </div>
-    </Teleport>
+
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <UButton
+            label="Cancel"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="isComposeOpen = false"
+          />
+          <UButton
+            label="Send Message"
+            icon="i-lucide-send"
+            color="primary"
+            size="sm"
+            :disabled="!canManageEmails"
+            :loading="isComposing"
+            @click="handleComposeSend"
+          />
+        </div>
+      </template>
+    </AdminFullScreenModal>
   </div>
 </template>

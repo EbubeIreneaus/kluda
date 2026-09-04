@@ -137,73 +137,66 @@ onMounted(() => {
       </div>
     </div>
 
-    <div
-      v-if="isBroadcastOpen"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-      @click="isBroadcastOpen = false"
+    <AdminBottomSheet
+      v-model="isBroadcastOpen"
+      title="Broadcast Push Notification"
+      description="Send instant announcements and alerts to merchants or staff"
+      max-width="max-w-lg"
     >
-      <div
-        class="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-5 shadow-2xl"
-        @click.stop
-      >
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
-          <h2 class="text-base font-bold text-white">Broadcast Push Notification</h2>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isBroadcastOpen = false" />
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Notification Title</label>
+          <UInput v-model="broadcastForm.title" placeholder="System Maintenance Notice" size="sm" />
         </div>
 
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Notification Title</label>
-            <UInput v-model="broadcastForm.title" placeholder="System Maintenance Notice" size="sm" />
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Message Content</label>
-            <textarea
-              v-model="broadcastForm.message"
-              rows="3"
-              class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500"
-              placeholder="Important update details..."
-            />
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Target Scope</label>
-            <select
-              v-model="broadcastForm.scope"
-              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-            >
-              <option value="global">All Platform Users & Cashiers</option>
-              <option value="store">Specific Retail Store</option>
-              <option value="personal">Specific Individual Staff Member</option>
-            </select>
-          </div>
-
-          <div v-if="broadcastForm.scope === 'store'" class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Select Store</label>
-            <select
-              v-model="broadcastForm.target_id"
-              class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
-            >
-              <option value="" disabled>Choose a store...</option>
-              <option v-for="s in stores" :key="s.store_id" :value="s.store_id">
-                {{ s.name }} ({{ s.owner_email || 'N/A' }})
-              </option>
-            </select>
-          </div>
-
-          <div v-else-if="broadcastForm.scope === 'personal'" class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Target User / Staff UUID</label>
-            <UInput v-model="broadcastForm.target_id" placeholder="00000000-0000-0000-0000-000000000000" size="sm" />
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Action Deep-Link URL (Optional)</label>
-            <UInput v-model="broadcastForm.action_url" placeholder="/inventory or https://..." size="sm" />
-          </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Message Content</label>
+          <textarea
+            v-model="broadcastForm.message"
+            rows="3"
+            class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500"
+            placeholder="Important update details..."
+          />
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-3">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Target Scope</label>
+          <select
+            v-model="broadcastForm.scope"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+          >
+            <option value="global">All Platform Users & Cashiers</option>
+            <option value="store">Specific Retail Store</option>
+            <option value="personal">Specific Individual Staff Member</option>
+          </select>
+        </div>
+
+        <div v-if="broadcastForm.scope === 'store'" class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Select Store</label>
+          <select
+            v-model="broadcastForm.target_id"
+            class="bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+          >
+            <option value="" disabled>Choose a store...</option>
+            <option v-for="s in stores" :key="s.store_id" :value="s.store_id">
+              {{ s.name }} ({{ s.owner_email || 'N/A' }})
+            </option>
+          </select>
+        </div>
+
+        <div v-else-if="broadcastForm.scope === 'personal'" class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Target User / Staff UUID</label>
+          <UInput v-model="broadcastForm.target_id" placeholder="00000000-0000-0000-0000-000000000000" size="sm" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Action Deep-Link URL (Optional)</label>
+          <UInput v-model="broadcastForm.action_url" placeholder="/inventory or https://..." size="sm" />
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isBroadcastOpen = false" />
           <UButton
             label="Dispatch Broadcast"
@@ -215,7 +208,7 @@ onMounted(() => {
             @click="handleSendBroadcast"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminBottomSheet>
   </div>
 </template>

@@ -598,65 +598,58 @@ onMounted(() => {
       </div>
     </div>
 
-    <div
-      v-if="isMailboxModalOpen"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-      @click="isMailboxModalOpen = false"
+    <AdminBottomSheet
+      v-model="isMailboxModalOpen"
+      title="Create Public / Shared Mailbox"
+      description="Create a shared inbox address for your team"
+      max-width="max-w-lg"
     >
-      <div
-        class="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-5 shadow-2xl"
-        @click.stop
-      >
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
-          <h2 class="text-base font-bold text-white">Create Public / Shared Mailbox</h2>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isMailboxModalOpen = false" />
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Mailbox Display Name</label>
+          <UInput v-model="mailboxForm.name" placeholder="Billing & Subscriptions" size="sm" />
         </div>
 
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Mailbox Display Name</label>
-            <UInput v-model="mailboxForm.name" placeholder="Billing & Subscriptions" size="sm" />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Email Address Prefix</label>
+          <div class="flex items-center">
+            <UInput
+              v-model="mailboxForm.emailPrefix"
+              placeholder="billing"
+              size="sm"
+              class="flex-1 rounded-r-none"
+            />
+            <span class="px-3 py-1.5 bg-zinc-950 border border-l-0 border-zinc-800 text-xs font-mono text-zinc-400 rounded-r-lg">
+              @{{ domain }}
+            </span>
           </div>
+        </div>
 
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Email Address Prefix</label>
-            <div class="flex items-center">
-              <UInput
-                v-model="mailboxForm.emailPrefix"
-                placeholder="billing"
-                size="sm"
-                class="flex-1 rounded-r-none"
-              />
-              <span class="px-3 py-1.5 bg-zinc-950 border border-l-0 border-zinc-800 text-xs font-mono text-zinc-400 rounded-r-lg">
-                @{{ domain }}
-              </span>
-            </div>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-zinc-300">Allowed Admins with Access</label>
+            <span class="text-[11px] text-zinc-500">Leave empty for All Admins</span>
           </div>
-
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-medium text-zinc-300">Allowed Admins with Access</label>
-              <span class="text-[11px] text-zinc-500">Leave empty for All Admins</span>
-            </div>
-            <div class="grid grid-cols-1 gap-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800 max-h-48 overflow-y-auto">
-              <label
-                v-for="adm in admins"
-                :key="adm.admin_id"
-                class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"
+          <div class="grid grid-cols-1 gap-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800 max-h-48 overflow-y-auto">
+            <label
+              v-for="adm in admins"
+              :key="adm.admin_id"
+              class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                :checked="mailboxForm.allowed_admin_ids.includes(adm.admin_id)"
+                class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0"
+                @change="toggleAdminAccess(adm.admin_id)"
               >
-                <input
-                  type="checkbox"
-                  :checked="mailboxForm.allowed_admin_ids.includes(adm.admin_id)"
-                  class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0"
-                  @change="toggleAdminAccess(adm.admin_id)"
-                >
-                <span>{{ adm.fullname }} ({{ adm.company_email }})</span>
-              </label>
-            </div>
+              <span>{{ adm.fullname }} ({{ adm.company_email }})</span>
+            </label>
           </div>
         </div>
+      </div>
 
-        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-3">
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isMailboxModalOpen = false" />
           <UButton
             label="Create Public Mailbox"
@@ -668,65 +661,56 @@ onMounted(() => {
             @click="handleCreatePublicMailbox"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminBottomSheet>
 
-    <div
-      v-if="isEditMailboxModalOpen && editingMailbox"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-      @click="isEditMailboxModalOpen = false"
+    <AdminBottomSheet
+      v-if="editingMailbox"
+      v-model="isEditMailboxModalOpen"
+      title="Manage Mailbox Access"
+      :description="editingMailbox.email"
+      max-width="max-w-lg"
     >
-      <div
-        class="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-5 shadow-2xl"
-        @click.stop
-      >
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
-          <div>
-            <h2 class="text-base font-bold text-white">Manage Mailbox Access</h2>
-            <p class="text-xs text-zinc-400">{{ editingMailbox.email }}</p>
-          </div>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="isEditMailboxModalOpen = false" />
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-zinc-300">Mailbox Display Name</label>
+          <UInput v-model="editingMailboxForm.name" placeholder="Support Desk" size="sm" />
         </div>
 
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Mailbox Display Name</label>
-            <UInput v-model="editingMailboxForm.name" placeholder="Support Desk" size="sm" />
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-zinc-300">Assigned Admins</label>
+            <button
+              type="button"
+              class="text-[11px] text-emerald-400 hover:underline"
+              @click="editingMailboxForm.allowed_admin_ids = []"
+            >
+              Reset to All Admins
+            </button>
           </div>
-
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-medium text-zinc-300">Assigned Admins</label>
-              <button
-                type="button"
-                class="text-[11px] text-emerald-400 hover:underline"
-                @click="editingMailboxForm.allowed_admin_ids = []"
+          <div class="grid grid-cols-1 gap-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800 max-h-48 overflow-y-auto">
+            <label
+              v-for="adm in admins"
+              :key="adm.admin_id"
+              class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                :checked="editingMailboxForm.allowed_admin_ids.includes(adm.admin_id)"
+                class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0"
+                @change="toggleEditAdminAccess(adm.admin_id)"
               >
-                Reset to All Admins
-              </button>
-            </div>
-            <div class="grid grid-cols-1 gap-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800 max-h-48 overflow-y-auto">
-              <label
-                v-for="adm in admins"
-                :key="adm.admin_id"
-                class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  :checked="editingMailboxForm.allowed_admin_ids.includes(adm.admin_id)"
-                  class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0"
-                  @change="toggleEditAdminAccess(adm.admin_id)"
-                >
-                <span>{{ adm.fullname }} ({{ adm.company_email }})</span>
-              </label>
-            </div>
-            <p class="text-[11px] text-zinc-500">
-              {{ editingMailboxForm.allowed_admin_ids.length === 0 ? 'Currently accessible by All Admins.' : `Restricted to ${editingMailboxForm.allowed_admin_ids.length} selected admin(s).` }}
-            </p>
+              <span>{{ adm.fullname }} ({{ adm.company_email }})</span>
+            </label>
           </div>
+          <p class="text-[11px] text-zinc-500">
+            {{ editingMailboxForm.allowed_admin_ids.length === 0 ? 'Currently accessible by All Admins.' : `Restricted to ${editingMailboxForm.allowed_admin_ids.length} selected admin(s).` }}
+          </p>
         </div>
+      </div>
 
-        <div class="flex justify-end gap-2 border-t border-zinc-800 pt-3">
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isEditMailboxModalOpen = false" />
           <UButton
             label="Save Access Permissions"
@@ -738,57 +722,53 @@ onMounted(() => {
             @click="handleUpdateMailbox"
           />
         </div>
-      </div>
-    </div>
+      </template>
+    </AdminBottomSheet>
 
-    <div
+    <AdminFullScreenModal
       v-if="selectedAuditLog"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
-      @click="selectedAuditLog = null"
+      :model-value="!!selectedAuditLog"
+      title="Audit Event Details"
+      :description="selectedAuditLog.log_id"
+      max-width="max-w-lg"
+      @close="selectedAuditLog = null"
     >
-      <div
-        class="w-full max-w-md bg-zinc-900 border-l border-zinc-800 h-full p-6 flex flex-col gap-5 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-200"
-        @click.stop
-      >
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+      <div class="flex flex-col gap-4 text-xs">
+        <div class="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-zinc-950 border border-zinc-800">
           <div>
-            <h2 class="text-base font-bold text-white">Audit Event Details</h2>
-            <p class="text-[11px] text-zinc-400 font-mono">{{ selectedAuditLog.log_id }}</p>
+            <span class="text-zinc-500 block text-[10px] uppercase font-bold">Action</span>
+            <span class="font-mono text-emerald-400 font-bold">{{ selectedAuditLog.action }}</span>
           </div>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="selectedAuditLog = null" />
+          <div>
+            <span class="text-zinc-500 block text-[10px] uppercase font-bold">Target</span>
+            <span class="font-medium text-zinc-200 uppercase">{{ selectedAuditLog.target_type }}</span>
+          </div>
+          <div>
+            <span class="text-zinc-500 block text-[10px] uppercase font-bold">Performed By</span>
+            <span class="font-medium text-zinc-200">{{ selectedAuditLog.admin_name || 'System' }}</span>
+          </div>
+          <div>
+            <span class="text-zinc-500 block text-[10px] uppercase font-bold">IP Address</span>
+            <span class="font-mono text-zinc-400">{{ selectedAuditLog.ip_address || '—' }}</span>
+          </div>
         </div>
 
-        <div class="flex flex-col gap-4 text-xs">
-          <div class="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-zinc-950 border border-zinc-800">
-            <div>
-              <span class="text-zinc-500 block text-[10px] uppercase font-bold">Action</span>
-              <span class="font-mono text-emerald-400 font-bold">{{ selectedAuditLog.action }}</span>
-            </div>
-            <div>
-              <span class="text-zinc-500 block text-[10px] uppercase font-bold">Target</span>
-              <span class="font-medium text-zinc-200 uppercase">{{ selectedAuditLog.target_type }}</span>
-            </div>
-            <div>
-              <span class="text-zinc-500 block text-[10px] uppercase font-bold">Performed By</span>
-              <span class="font-medium text-zinc-200">{{ selectedAuditLog.admin_name || 'System' }}</span>
-            </div>
-            <div>
-              <span class="text-zinc-500 block text-[10px] uppercase font-bold">IP Address</span>
-              <span class="font-mono text-zinc-400">{{ selectedAuditLog.ip_address || '—' }}</span>
-            </div>
-          </div>
+        <div class="flex flex-col gap-1.5">
+          <span class="text-zinc-400 font-semibold text-[11px]">Event Payload & Metadata</span>
+          <pre class="bg-zinc-950 p-4 rounded-xl border border-zinc-800 font-mono text-[11px] text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">{{ JSON.stringify(selectedAuditLog.details, null, 2) || '{}' }}</pre>
+        </div>
 
-          <div class="flex flex-col gap-1.5">
-            <span class="text-zinc-400 font-semibold text-[11px]">Event Payload & Metadata</span>
-            <pre class="bg-zinc-950 p-4 rounded-xl border border-zinc-800 font-mono text-[11px] text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">{{ JSON.stringify(selectedAuditLog.details, null, 2) || '{}' }}</pre>
-          </div>
-
-          <div class="flex flex-col gap-1 text-[11px] text-zinc-500">
-            <span>Timestamp: {{ new Date(selectedAuditLog.created_at).toLocaleString() }}</span>
-            <span v-if="selectedAuditLog.target_id">Target ID: {{ selectedAuditLog.target_id }}</span>
-          </div>
+        <div class="flex flex-col gap-1 text-[11px] text-zinc-500">
+          <span>Timestamp: {{ new Date(selectedAuditLog.created_at).toLocaleString() }}</span>
+          <span v-if="selectedAuditLog.target_id">Target ID: {{ selectedAuditLog.target_id }}</span>
         </div>
       </div>
-    </div>
+
+      <template #footer>
+        <div class="flex items-center justify-end">
+          <UButton label="Close" color="neutral" variant="ghost" size="sm" @click="selectedAuditLog = null" />
+        </div>
+      </template>
+    </AdminFullScreenModal>
   </div>
 </template>
