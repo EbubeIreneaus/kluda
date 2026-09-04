@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 const { apiFetch } = useAdminApi()
 const { canManageMerchants, canManageStores } = useAdminPermission()
 
@@ -213,7 +213,7 @@ watch([search, selectedStatus], () => {
 </script>
 
 <template>
-  <div class="p-6 md:p-8 flex flex-col gap-6 max-w-7xl w-full mx-auto">
+  <div class="overflow-y-auto p-6 md:p-8 flex flex-col gap-6 max-w-7xl w-full mx-auto">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-xl font-bold tracking-tight text-white">Merchant Accounts</h1>

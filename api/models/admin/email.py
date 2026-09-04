@@ -52,7 +52,7 @@ class EmailThread(Base):
     snippet: MappedColumn[str | None] = mapped_column(String(500), nullable=True)
     status: MappedColumn[EmailThreadStatus] = mapped_column(Enum(EmailThreadStatus), default=EmailThreadStatus.UNREAD, index=True)
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    last_message_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True)
+    last_message_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     messages: MappedColumn[list["EmailMessages"]] = relationship(back_populates="thread", cascade="all, delete-orphan")
 
 

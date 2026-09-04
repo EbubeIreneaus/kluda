@@ -33,6 +33,16 @@ const editingMailboxForm = ref({
 
 const selectedAuditLog = ref<any>(null)
 
+// Full audit log modal state
+const isAuditModalOpen = ref(false)
+const auditModalLogs = ref<any[]>([])
+const auditModalPage = ref(1)
+const auditModalPageSize = 25
+const auditModalTotal = ref(0)
+const auditModalLoading = ref(false)
+const auditModalLoadingMore = ref(false)
+const auditModalScrollContainer = ref<HTMLElement | null>(null)
+
 const toast = useToast()
 
 const {
@@ -96,7 +106,7 @@ async function fetchData() {
   try {
     const [sets, logs, mbs, admList] = await Promise.all([
       apiFetch<any[]>('/admin/settings'),
-      apiFetch<any[]>('/admin/audit'),
+      apiFetch<any[]>('/admin/audit?limit=10'),
       apiFetch<any[]>('/admin/mailboxes'),
       apiFetch<any[]>('/admin/admins')
     ])
@@ -287,6 +297,50 @@ async function handleDeleteMailbox(id: string) {
   }
 }
 
+// ---- Full Audit Log Modal ----
+async function openAuditModal() {
+  isAuditModalOpen.value = true
+  auditModalLogs.value = []
+  auditModalPage.value = 1
+  auditModalTotal.value = 0
+  await fetchAuditPage()
+}
+
+async function fetchAuditPage() {
+  if (auditModalLoading.value || auditModalLoadingMore.value) return
+  const isFirst = auditModalPage.value === 1
+  if (isFirst) auditModalLoading.value = true
+  else auditModalLoadingMore.value = true
+  try {
+    const data = await apiFetch<any>(`/admin/audit/paginated?page=${auditModalPage.value}&size=${auditModalPageSize}`)
+    auditModalLogs.value = [...auditModalLogs.value, ...(data.items || [])]
+    auditModalTotal.value = data.total ?? 0
+    auditModalPage.value += 1
+  } catch {
+    // ignore
+  } finally {
+    auditModalLoading.value = false
+    auditModalLoadingMore.value = false
+  }
+}
+
+const hasMoreAudit = computed(() => auditModalLogs.value.length < auditModalTotal.value)
+
+function onAuditScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (!el) return
+  const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 120
+  if (nearBottom && hasMoreAudit.value && !auditModalLoadingMore.value) {
+    fetchAuditPage()
+  }
+}
+
+function closeAuditModal() {
+  isAuditModalOpen.value = false
+  auditModalLogs.value = []
+  auditModalPage.value = 1
+}
+
 onMounted(() => {
   fetchData()
   checkPushStatus()
@@ -294,7 +348,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6 md:p-8 flex flex-col gap-8 max-w-7xl w-full mx-auto">
+  <div class="overflow-y-auto p-6 md:p-8 flex flex-col gap-8 max-w-7xl w-full mx-auto">
     <div>
       <h1 class="text-xl font-bold tracking-tight text-white">System Settings & Infrastructure Control</h1>
       <p class="text-xs text-zinc-400 mt-0.5">Dynamic platform configurations, shared email mailboxes, and audit trails</p>
@@ -530,13 +584,24 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Audit Trail Card (preview: 10 rows) -->
     <div class="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl flex flex-col gap-4 backdrop-blur-sm">
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-sm font-bold text-white">Security & Administrative Audit Trail</h2>
-          <p class="text-xs text-zinc-400 mt-0.5">Click on any record to inspect structured event details</p>
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <UIcon name="i-lucide-shield-check" class="w-4 h-4 text-emerald-400" />
+            Security &amp; Administrative Audit Trail
+          </h2>
+          <p class="text-xs text-zinc-400 mt-0.5">Recent admin actions — click any row to inspect, or view the full log</p>
         </div>
-        <span class="text-[11px] text-zinc-400 font-mono">{{ auditLogs.length }} recorded events</span>
+        <UButton
+          label="View All"
+          icon="i-lucide-external-link"
+          color="neutral"
+          variant="outline"
+          size="xs"
+          @click="openAuditModal"
+        />
       </div>
 
       <div class="overflow-x-auto">
@@ -559,7 +624,7 @@ onMounted(() => {
               <td colspan="6" class="px-4 py-6 text-center text-zinc-500">No audit events recorded yet.</td>
             </tr>
             <tr
-              v-for="l in auditLogs"
+              v-for="l in auditLogs.slice(0, 10)"
               v-else
               :key="l.log_id"
               class="hover:bg-zinc-800/40 transition-colors cursor-pointer"
@@ -596,7 +661,160 @@ onMounted(() => {
           </tbody>
         </table>
       </div>
+
+      <!-- Show More footer -->
+      <div class="flex items-center justify-between pt-1 border-t border-zinc-800/50">
+        <span class="text-[11px] text-zinc-500">Showing last {{ Math.min(10, auditLogs.length) }} events</span>
+        <UButton
+          label="View Full Audit Log →"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          @click="openAuditModal"
+        />
+      </div>
     </div>
+
+    <!-- Full-Screen Audit Log Modal with Infinite Scroll -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="isAuditModalOpen"
+          class="fixed inset-0 z-50 flex items-stretch justify-end"
+        >
+          <!-- Backdrop -->
+          <div class="fixed inset-0 bg-black/70 backdrop-blur-xs" @click="closeAuditModal" />
+
+          <!-- Slide-in Panel -->
+          <Transition
+            appear
+            enter-active-class="transition-transform duration-300 ease-out"
+            enter-from-class="translate-x-full"
+            enter-to-class="translate-x-0"
+            leave-active-class="transition-transform duration-200 ease-in"
+            leave-from-class="translate-x-0"
+            leave-to-class="translate-x-full"
+          >
+            <div
+              v-if="isAuditModalOpen"
+              class="relative z-10 w-full max-w-5xl bg-zinc-900 border-l border-zinc-800 flex flex-col h-screen shadow-2xl rounded-l-3xl"
+            >
+              <!-- Header -->
+              <div class="shrink-0 px-6 py-4.5 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900">
+                <div>
+                  <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <UIcon name="i-lucide-shield-check" class="size-5 text-emerald-400" />
+                    Full Audit Trail
+                  </h3>
+                  <p class="text-xs text-zinc-400 mt-0.5">
+                    {{ auditModalTotal }} total recorded events · scroll down to load more
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition shrink-0 cursor-pointer"
+                  @click="closeAuditModal"
+                >
+                  <UIcon name="i-lucide-x" class="size-5" />
+                </button>
+              </div>
+
+              <!-- Scrollable Table Area -->
+              <div
+                class="flex-1 overflow-y-auto"
+                @scroll="onAuditScroll"
+              >
+                <!-- Initial Loading -->
+                <div v-if="auditModalLoading" class="py-20 flex flex-col items-center gap-3 text-zinc-500 text-xs">
+                  <UIcon name="i-lucide-loader-2" class="size-6 animate-spin text-emerald-400" />
+                  Loading audit events...
+                </div>
+
+                <div v-else>
+                  <table class="w-full text-left text-xs">
+                    <thead class="sticky top-0 bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-800 text-zinc-400 font-semibold uppercase text-[10px] z-10">
+                      <tr>
+                        <th class="px-5 py-3">Action</th>
+                        <th class="px-5 py-3">Target</th>
+                        <th class="px-5 py-3">Performed By</th>
+                        <th class="px-5 py-3">IP Address</th>
+                        <th class="px-5 py-3">Timestamp</th>
+                        <th class="px-5 py-3 text-right">Inspect</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-800/40">
+                      <tr v-if="auditModalLogs.length === 0">
+                        <td colspan="6" class="px-5 py-10 text-center text-zinc-500">No audit events recorded yet.</td>
+                      </tr>
+                      <tr
+                        v-for="l in auditModalLogs"
+                        :key="l.log_id"
+                        class="hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                        @click="selectedAuditLog = l"
+                      >
+                        <td class="px-5 py-3">
+                          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            {{ l.action }}
+                          </span>
+                        </td>
+                        <td class="px-5 py-3 text-zinc-300">
+                          <span class="capitalize text-[11px] font-medium">{{ l.target_type }}</span>
+                          <span v-if="l.target_id" class="text-zinc-500 font-mono text-[10px] ml-1">#{{ String(l.target_id).slice(0, 8) }}</span>
+                        </td>
+                        <td class="px-5 py-3 text-zinc-200">
+                          <div class="font-medium">{{ l.admin_name || 'System / Automated' }}</div>
+                          <div v-if="l.admin_email" class="text-[10px] text-zinc-500">{{ l.admin_email }}</div>
+                        </td>
+                        <td class="px-5 py-3 font-mono text-[11px] text-zinc-400">{{ l.ip_address || '—' }}</td>
+                        <td class="px-5 py-3 text-zinc-500 text-[11px] font-mono whitespace-nowrap">
+                          {{ new Date(l.created_at).toLocaleString() }}
+                        </td>
+                        <td class="px-5 py-3 text-right">
+                          <UButton
+                            icon="i-lucide-eye"
+                            color="neutral"
+                            variant="ghost"
+                            size="xs"
+                            @click.stop="selectedAuditLog = l"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <!-- Load More Indicator -->
+                  <div class="py-6 flex flex-col items-center gap-2">
+                    <div v-if="auditModalLoadingMore" class="flex items-center gap-2 text-xs text-zinc-400">
+                      <UIcon name="i-lucide-loader-2" class="size-4 animate-spin text-emerald-400" />
+                      Loading more events...
+                    </div>
+                    <div v-else-if="!hasMoreAudit && auditModalLogs.length > 0" class="text-[11px] text-zinc-600">
+                      All {{ auditModalTotal }} events loaded
+                    </div>
+                    <UButton
+                      v-else-if="hasMoreAudit && !auditModalLoadingMore"
+                      label="Load More"
+                      icon="i-lucide-chevron-down"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      @click="fetchAuditPage"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
 
     <AdminBottomSheet
       v-model="isMailboxModalOpen"

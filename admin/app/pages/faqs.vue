@@ -166,7 +166,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl w-full min-w-0 mx-auto">
+  <div class="overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl w-full min-w-0 mx-auto">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5 min-w-0">
       <div class="min-w-0">

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 const { apiFetch } = useAdminApi()
 const { adminUser } = useAdminAuth()
 
@@ -67,7 +67,7 @@ const kpiCards = computed(() => [
 </script>
 
 <template>
-  <div class="p-6 md:p-8 flex flex-col gap-8 max-w-7xl w-full mx-auto">
+  <div class="overflow-y-auto p-6 md:p-8 flex flex-col gap-8 max-w-7xl w-full mx-auto">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800/80 pb-6">
       <div>
         <div class="flex items-center gap-2">
