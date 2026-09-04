@@ -293,78 +293,88 @@ onMounted(async () => {
       </div>
     </div>
 
-    <UModal v-model:open="showDetailModal" title="Sale Details">
-      <template #body>
-        <div v-if="selectedSale" class="p-5 space-y-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="font-mono text-sm text-(--ui-text-muted)">{{ selectedSale.sale_id }}</p>
-              <p class="text-xs text-(--ui-text-dimmed)">{{ selectedSale.date }}</p>
-            </div>
-            <UBadge :color="statusColors[selectedSale.status] as any" variant="subtle">
-              {{ selectedSale.status }}
+    <AppFullScreenModal
+      v-model="showDetailModal"
+      title="Sale Details"
+      description="Detailed transaction summary and receipt breakdown."
+    >
+      <div v-if="selectedSale" class="space-y-4">
+        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-(--ui-bg-accented)/30 border border-(--ui-border)">
+          <div>
+            <p class="font-mono text-xs font-bold text-emerald-400">{{ selectedSale.sale_id }}</p>
+            <p class="text-xs text-(--ui-text-dimmed) mt-0.5">{{ selectedSale.date }}</p>
+          </div>
+          <UBadge :color="statusColors[selectedSale.status] as any" variant="subtle">
+            {{ selectedSale.status }}
+          </UBadge>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-(--ui-bg-accented)/20 border border-(--ui-border) text-sm">
+          <div>
+            <p class="text-xs text-(--ui-text-dimmed)">Customer</p>
+            <p class="font-medium text-(--ui-text-highlighted) truncate">{{ selectedSale.customer || 'Walk-in' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-(--ui-text-dimmed)">Staff Member</p>
+            <p class="font-medium text-(--ui-text-highlighted) truncate">{{ selectedSale.staff }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-(--ui-text-dimmed)">Payment Method</p>
+            <UBadge :color="methodColors[selectedSale.method] as any" variant="subtle" size="xs" class="mt-1">
+              {{ selectedSale.method }}
             </UBadge>
           </div>
+        </div>
 
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p class="text-xs text-(--ui-text-dimmed)">Customer</p>
-              <p class="font-medium text-(--ui-text-highlighted)">{{ selectedSale.customer || 'Walk-in' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-(--ui-text-dimmed)">Staff</p>
-              <p class="font-medium text-(--ui-text-highlighted)">{{ selectedSale.staff }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-(--ui-text-dimmed)">Payment Method</p>
-              <UBadge :color="methodColors[selectedSale.method] as any" variant="subtle" size="xs" class="mt-1">
-                {{ selectedSale.method }}
-              </UBadge>
-            </div>
-          </div>
-
-          <div class="border-t border-(--ui-border) pt-3">
-            <p class="text-xs font-medium text-(--ui-text-dimmed) uppercase mb-2">Items</p>
-            <div class="space-y-2">
-              <div
-                v-for="(item, idx) in selectedSale.items"
-                :key="idx"
-                class="flex justify-between text-sm p-2 rounded-lg bg-(--ui-bg-accented)/50"
-              >
-                <div>
-                  <span class="text-(--ui-text-highlighted)">{{ item.name }}</span>
-                  <span class="text-(--ui-text-dimmed) ml-2">× {{ item.qty }}</span>
-                </div>
-                <span class="font-medium text-(--ui-text-highlighted)">{{ format(item.price * item.qty) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex justify-between font-bold text-lg pt-2 border-t border-(--ui-border)">
-            <span class="text-(--ui-text-highlighted)">Total</span>
-            <span class="text-green-600 dark:text-green-400">{{ format(selectedSale.total) }}</span>
-          </div>
-
-          <div v-if="selectedSale.note" class="text-sm p-3 rounded-lg bg-(--ui-bg-accented)/50">
-            <p class="text-xs text-(--ui-text-dimmed) mb-1">Staff Note</p>
-            <p class="text-(--ui-text-muted)">{{ selectedSale.note }}</p>
-          </div>
-
-          <div class="pt-3 border-t border-(--ui-border)">
-            <UButton
-              block
-              color="primary"
-              variant="outline"
-              :loading="isPrinting"
-              @click="reprintSale(selectedSale)"
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-(--ui-text-dimmed) uppercase tracking-wider">Items Breakdown</p>
+          <div class="space-y-2">
+            <div
+              v-for="(item, idx) in selectedSale.items"
+              :key="idx"
+              class="flex items-center justify-between text-sm p-3 rounded-xl bg-(--ui-bg-accented)/30 border border-(--ui-border)/50"
             >
-              <UIcon name="i-lucide-printer" class="w-4 h-4 mr-1 text-emerald-400" />
-              Print Thermal Receipt
-            </UButton>
+              <div>
+                <span class="text-sm font-medium text-(--ui-text-highlighted)">{{ item.name }}</span>
+                <span class="text-xs text-(--ui-text-dimmed) ml-2 font-mono">× {{ item.qty }}</span>
+              </div>
+              <span class="font-bold text-sm text-(--ui-text-highlighted)">{{ format(item.price * item.qty) }}</span>
+            </div>
           </div>
         </div>
+
+        <div class="flex justify-between items-center font-black text-xl p-4 rounded-2xl bg-(--ui-bg-accented)/40 border border-(--ui-border)">
+          <span class="text-(--ui-text-highlighted)">Total Amount</span>
+          <span class="text-emerald-400">{{ format(selectedSale.total) }}</span>
+        </div>
+
+        <div v-if="selectedSale.note" class="text-sm p-3.5 rounded-xl bg-(--ui-bg-accented)/30 border border-(--ui-border)">
+          <p class="text-xs text-(--ui-text-dimmed) mb-1 font-bold">Staff Note</p>
+          <p class="text-xs text-(--ui-text-muted)">{{ selectedSale.note }}</p>
+        </div>
+      </div>
+
+      <template #footer>
+        <div v-if="selectedSale" class="flex items-center justify-end gap-2.5">
+          <UButton
+            variant="outline"
+            color="neutral"
+            @click="showDetailModal = false"
+          >
+            Close
+          </UButton>
+          <UButton
+            color="primary"
+            :loading="isPrinting"
+            class="font-bold"
+            @click="reprintSale(selectedSale)"
+          >
+            <UIcon name="i-lucide-printer" class="w-4 h-4 mr-1" />
+            Print Receipt
+          </UButton>
+        </div>
       </template>
-    </UModal>
+    </AppFullScreenModal>
 
     <!-- Printer Hardware Pairing Modal -->
     <PosPrinterSettingsModal v-model:open="showPrinterModal" />

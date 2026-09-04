@@ -23,6 +23,13 @@ const apiBase = config.public.apiBase
 const staffList = ref<StaffMember[]>([])
 const isLoading = ref(false)
 const search = ref('')
+const showAddStaffModal = ref(false)
+
+const canAddStaff = computed(() => {
+  if (auth.isOwner) return true
+  const perms = auth.staff?.permission || []
+  return perms.includes('create:staff') || perms.includes('manage:all') || perms.includes('manage:staff')
+})
 
 const statusColors: Record<string, string> = {
   active: 'success',
@@ -122,11 +129,15 @@ onMounted(() => {
           Refresh
         </UButton>
 
-        <NuxtLink v-if="auth.isOwner" :to="`/marchant/stores/${auth.store_id || ''}`">
-          <UButton color="primary" icon="i-lucide-user-plus" class="font-bold px-3 py-2">
-            Manage & Add Staff
-          </UButton>
-        </NuxtLink>
+        <UButton
+          v-if="canAddStaff"
+          color="primary"
+          icon="i-lucide-user-plus"
+          class="font-bold px-3 py-2 cursor-pointer"
+          @click="showAddStaffModal = true"
+        >
+          Add Staff
+        </UButton>
       </div>
     </div>
 
@@ -339,5 +350,11 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <StaffCreateModal
+      v-model="showAddStaffModal"
+      :store-id="auth.store_id || auth.staff?.store_id"
+      @created="fetchStaffs"
+    />
   </div>
 </template>

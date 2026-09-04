@@ -314,7 +314,7 @@ watch([showAddModal, showEditSlideover], () => {
         <h2 class="text-xl font-bold text-(--ui-text-highlighted)">Products & Inventory</h2>
         <p class="text-sm text-(--ui-text-muted)">{{ products.length }} products in stock</p>
       </div>
-      <UButton class="p-2.5" v-if="auth.hasPermission('manage:product')" icon="i-lucide-plus" @click="showAddModal = true">
+      <UButton class="p-2.5" v-if="auth.hasPermission('create:product') || auth.hasPermission('manage:product')" icon="i-lucide-plus" @click="showAddModal = true">
         Add Product
       </UButton>
     </div>
@@ -364,11 +364,11 @@ watch([showAddModal, showEditSlideover], () => {
                 </UBadge>
               </td>
               <td class="py-3 px-4 text-right">
-                <div v-if="auth.hasPermission('manage:product')" class="flex items-center justify-end gap-1">
-                  <UButton variant="ghost" color="primary" size="xs" icon="i-lucide-boxes" title="Adjust Stock" @click="openAdjust(product)" />
-                  <UButton variant="ghost" color="neutral" size="xs" icon="i-lucide-history" title="Stock History" @click="openHistory(product)" />
-                  <UButton variant="ghost" color="neutral" size="xs" icon="i-lucide-pencil" title="Edit" @click="openEdit(product)" />
-                  <UButton variant="ghost" color="error" size="xs" icon="i-lucide-trash-2" title="Delete" @click="confirmDelete(product)" />
+                <div v-if="auth.hasPermission('manage:product') || auth.hasPermission('edit:product') || auth.hasPermission('delete:product') || auth.hasPermission('adjust:stock')" class="flex items-center justify-end gap-1">
+                  <UButton v-if="auth.hasPermission('adjust:stock') || auth.hasPermission('manage:product')" variant="ghost" color="primary" size="xs" icon="i-lucide-boxes" title="Adjust Stock" @click="openAdjust(product)" />
+                  <UButton v-if="auth.hasPermission('view:product') || auth.hasPermission('manage:product')" variant="ghost" color="neutral" size="xs" icon="i-lucide-history" title="Stock History" @click="openHistory(product)" />
+                  <UButton v-if="auth.hasPermission('edit:product') || auth.hasPermission('manage:product')" variant="ghost" color="neutral" size="xs" icon="i-lucide-pencil" title="Edit" @click="openEdit(product)" />
+                  <UButton v-if="auth.hasPermission('delete:product') || auth.hasPermission('manage:product')" variant="ghost" color="error" size="xs" icon="i-lucide-trash-2" title="Delete" @click="confirmDelete(product)" />
                 </div>
                 <span v-else class="text-xs text-(--ui-text-dimmed)">—</span>
               </td>
@@ -427,8 +427,9 @@ watch([showAddModal, showEditSlideover], () => {
         </div>
 
         <!-- Bottom: Action Buttons for Mobile -->
-        <div v-if="auth.hasPermission('manage:product')" class="grid grid-cols-4 gap-1.5 pt-1">
+        <div v-if="auth.hasPermission('manage:product') || auth.hasPermission('edit:product') || auth.hasPermission('delete:product') || auth.hasPermission('adjust:stock')" class="grid grid-cols-4 gap-1.5 pt-1">
           <UButton
+            v-if="auth.hasPermission('adjust:stock') || auth.hasPermission('manage:product')"
             variant="outline"
             color="primary"
             size="xs"
@@ -439,6 +440,7 @@ watch([showAddModal, showEditSlideover], () => {
             Adjust
           </UButton>
           <UButton
+            v-if="auth.hasPermission('view:product') || auth.hasPermission('manage:product')"
             variant="outline"
             color="neutral"
             size="xs"
@@ -449,6 +451,7 @@ watch([showAddModal, showEditSlideover], () => {
             History
           </UButton>
           <UButton
+            v-if="auth.hasPermission('edit:product') || auth.hasPermission('manage:product')"
             variant="outline"
             color="neutral"
             size="xs"
@@ -459,6 +462,7 @@ watch([showAddModal, showEditSlideover], () => {
             Edit
           </UButton>
           <UButton
+            v-if="auth.hasPermission('delete:product') || auth.hasPermission('manage:product')"
             variant="outline"
             color="error"
             size="xs"
@@ -516,189 +520,195 @@ watch([showAddModal, showEditSlideover], () => {
       </div>
     </div>
 
-    <UModal v-model:open="showAddModal" title="Add New Product">
-      <template #body>
-        <form class="p-5 space-y-4" @submit.prevent="handleAddProduct">
-          <UFormField label="Product Name" required>
-            <UInput v-model="newProduct.name" placeholder="e.g. Golden Penny Spaghetti 500g" />
+    <AppBottomSheet
+      v-model="showAddModal"
+      title="Add New Product"
+      description="Enter product details and barcode to add to inventory."
+    >
+      <form class="space-y-4" @submit.prevent="handleAddProduct">
+        <UFormField label="Product Name" required>
+          <UInput v-model="newProduct.name" placeholder="e.g. Golden Penny Spaghetti 500g" />
+        </UFormField>
+        <UFormField label="Price (₦)" required>
+          <UInput v-model.number="newProduct.price" type="number" placeholder="0.00" />
+        </UFormField>
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Unit">
+            <USelect v-model="newProduct.unit" :items="units" />
           </UFormField>
-          <UFormField label="Price (₦)" required>
-            <UInput v-model.number="newProduct.price" type="number" placeholder="0.00" />
+          <UFormField label="Quantity">
+            <UInput v-model.number="newProduct.quantity" type="number" placeholder="0" />
           </UFormField>
-          <div class="grid grid-cols-2 gap-4">
-            <UFormField label="Unit">
-              <USelect v-model="newProduct.unit" :items="units" />
-            </UFormField>
-            <UFormField label="Quantity">
-              <UInput v-model.number="newProduct.quantity" type="number" placeholder="0" />
-            </UFormField>
-          </div>
+        </div>
 
-          <div
-            v-if="isCameraActive && activeScanningField === 'add'"
-            class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
-          >
-            <video
-              ref="addVideoRef"
-              class="w-full h-full object-cover"
-              autoplay
-              playsinline
-              muted
-            />
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div class="w-3/4 h-1/2 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative">
-                <div class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" style="top: 50%" />
-              </div>
+        <div
+          v-if="isCameraActive && activeScanningField === 'add'"
+          class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
+        >
+          <video
+            ref="addVideoRef"
+            class="w-full h-full object-cover"
+            autoplay
+            playsinline
+            muted
+          />
+          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-3/4 h-1/2 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative">
+              <div class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" style="top: 50%" />
             </div>
-          </div>
-          <UFormField label="Barcode ID">
-            <div class="flex gap-1.5 w-full">
-              <UInput v-model="newProduct.barcode_id" placeholder="5901234123457" class="flex-1" />
-              <UButton
-                type="button"
-                :color="isCameraActive && activeScanningField === 'add' ? 'error' : 'primary'"
-                variant="solid"
-                :icon="isCameraActive && activeScanningField === 'add' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
-                @click="isCameraActive && activeScanningField === 'add' ? stopCameraScanner() : startCameraScanner('add')"
-              />
-            </div>
-          </UFormField>
-          <UFormField label="Description">
-            <UTextarea v-model="newProduct.description" placeholder="Product description..." :rows="2" />
-          </UFormField>
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton variant="outline" color="neutral" @click="showAddModal = false">Cancel</UButton>
-            <UButton type="submit">Add Product</UButton>
-          </div>
-        </form>
-      </template>
-    </UModal>
-
-    <USlideover v-model:open="showEditSlideover" title="Edit Product" side="right">
-      <template #body>
-        <form v-if="editingProduct" class="p-5 space-y-4" @submit.prevent="saveEdit">
-          <UFormField label="Product Name">
-            <UInput v-model="editingProduct.name" />
-          </UFormField>
-          <UFormField label="Price (₦)">
-            <UInput v-model.number="editingProduct.price" type="number" />
-          </UFormField>
-          <UFormField label="Barcode ID">
-            <div class="flex gap-1.5 w-full">
-              <UInput v-model="editingProduct.barcode_id" class="flex-1" />
-              <UButton
-                type="button"
-                :color="isCameraActive && activeScanningField === 'edit' ? 'error' : 'primary'"
-                variant="solid"
-                :icon="isCameraActive && activeScanningField === 'edit' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
-                @click="isCameraActive && activeScanningField === 'edit' ? stopCameraScanner() : startCameraScanner('edit')"
-              />
-            </div>
-          </UFormField>
-
-          <div
-            v-if="isCameraActive && activeScanningField === 'edit'"
-            class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
-          >
-            <video
-              ref="editVideoRef"
-              class="w-full h-full object-cover"
-              autoplay
-              playsinline
-              muted
-            />
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div class="w-3/4 h-1/2 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative">
-                <div class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" style="top: 50%" />
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <UFormField label="Quantity (Locked)">
-                <UInput :model-value="editingProduct.quantity" type="number" disabled class="opacity-60 cursor-not-allowed" />
-              </UFormField>
-              <p class="text-xs text-amber-500 font-medium">For quantity update use stock history</p>
-            </div>
-            <UFormField label="Unit">
-              <USelect v-model="editingProduct.unit" :items="units" />
-            </UFormField>
-          </div>
-          <UFormField label="Description">
-            <UTextarea v-model="editingProduct.description" :rows="3" />
-          </UFormField>
-          <div class="flex justify-end gap-2 pt-4">
-            <UButton variant="outline" color="neutral" @click="showEditSlideover = false">Cancel</UButton>
-            <UButton type="submit">Save Changes</UButton>
-          </div>
-        </form>
-      </template>
-    </USlideover>
-
-    <UModal v-model:open="showAdjustModal" title="Adjust Stock">
-      <template #body>
-        <div v-if="adjustingProduct" class="p-5 space-y-4">
-          <div class="p-3.5 rounded-lg bg-(--ui-bg-accented)/50 border border-(--ui-border) flex items-center justify-between">
-            <div>
-              <p class="font-semibold text-(--ui-text-highlighted)">{{ adjustingProduct.name }}</p>
-              <p class="text-xs text-(--ui-text-muted)">Current Stock: <span class="font-bold text-(--ui-text-highlighted)">{{ adjustingProduct.quantity }} {{ adjustingProduct.unit }}</span></p>
-            </div>
-            <UBadge :color="getStockBadge(adjustingProduct.quantity).color" variant="subtle" size="xs">
-              {{ getStockBadge(adjustingProduct.quantity).label }}
-            </UBadge>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <UButton
-              type="button"
-              :variant="adjustForm.action_type === 'addition' ? 'solid' : 'outline'"
-              :color="adjustForm.action_type === 'addition' ? 'primary' : 'neutral'"
-              icon="i-lucide-plus"
-              class="justify-center"
-              @click="adjustForm.action_type = 'addition'; adjustForm.reason = 'restock'"
-            >
-              Add Stock
-            </UButton>
-            <UButton
-              type="button"
-              :variant="adjustForm.action_type === 'subtract' ? 'solid' : 'outline'"
-              :color="adjustForm.action_type === 'subtract' ? 'error' : 'neutral'"
-              icon="i-lucide-minus"
-              class="justify-center"
-              @click="adjustForm.action_type = 'subtract'; adjustForm.reason = 'damage'"
-            >
-              Deduct Stock
-            </UButton>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <UFormField label="Quantity to Adjust" required>
-              <UInput v-model.number="adjustForm.quantity" type="number" min="0.01" step="any" placeholder="0" />
-            </UFormField>
-            <UFormField label="Reason" required>
-              <USelect
-                v-model="adjustForm.reason"
-                :items="reasons"
-                value-key="value"
-                label-key="label"
-              />
-            </UFormField>
-          </div>
-
-          <UFormField label="Notes / Reference">
-            <UInput v-model="adjustForm.note" placeholder="e.g. Invoice #4812, Damaged during offloading..." />
-          </UFormField>
-
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton variant="outline" color="neutral" @click="showAdjustModal = false">Cancel</UButton>
-            <UButton :color="adjustForm.action_type === 'addition' ? 'primary' : 'error'" @click="proceedToConfirm">
-              Review Adjustment
-            </UButton>
           </div>
         </div>
-      </template>
-    </UModal>
+        <UFormField label="Barcode ID">
+          <div class="flex gap-1.5 w-full">
+            <UInput v-model="newProduct.barcode_id" placeholder="5901234123457" class="flex-1" />
+            <UButton
+              type="button"
+              :color="isCameraActive && activeScanningField === 'add' ? 'error' : 'primary'"
+              variant="solid"
+              :icon="isCameraActive && activeScanningField === 'add' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
+              @click="isCameraActive && activeScanningField === 'add' ? stopCameraScanner() : startCameraScanner('add')"
+            />
+          </div>
+        </UFormField>
+        <UFormField label="Description">
+          <UTextarea v-model="newProduct.description" placeholder="Product description..." :rows="2" />
+        </UFormField>
+        <div class="flex justify-end gap-2 pt-2">
+          <UButton variant="outline" color="neutral" @click="showAddModal = false">Cancel</UButton>
+          <UButton type="submit">Add Product</UButton>
+        </div>
+      </form>
+    </AppBottomSheet>
+
+    <AppBottomSheet
+      v-model="showEditSlideover"
+      title="Edit Product"
+      description="Update pricing, barcode, or details for this item."
+    >
+      <form v-if="editingProduct" class="space-y-4" @submit.prevent="saveEdit">
+        <UFormField label="Product Name">
+          <UInput v-model="editingProduct.name" />
+        </UFormField>
+        <UFormField label="Price (₦)">
+          <UInput v-model.number="editingProduct.price" type="number" />
+        </UFormField>
+        <UFormField label="Barcode ID">
+          <div class="flex gap-1.5 w-full">
+            <UInput v-model="editingProduct.barcode_id" class="flex-1" />
+            <UButton
+              type="button"
+              :color="isCameraActive && activeScanningField === 'edit' ? 'error' : 'primary'"
+              variant="solid"
+              :icon="isCameraActive && activeScanningField === 'edit' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
+              @click="isCameraActive && activeScanningField === 'edit' ? stopCameraScanner() : startCameraScanner('edit')"
+            />
+          </div>
+        </UFormField>
+
+        <div
+          v-if="isCameraActive && activeScanningField === 'edit'"
+          class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
+        >
+          <video
+            ref="editVideoRef"
+            class="w-full h-full object-cover"
+            autoplay
+            playsinline
+            muted
+          />
+          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-3/4 h-1/2 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative">
+              <div class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" style="top: 50%" />
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <UFormField label="Quantity (Locked)">
+              <UInput :model-value="editingProduct.quantity" type="number" disabled class="opacity-60 cursor-not-allowed" />
+            </UFormField>
+            <p class="text-xs text-amber-500 font-medium">For quantity update use stock history</p>
+          </div>
+          <UFormField label="Unit">
+            <USelect v-model="editingProduct.unit" :items="units" />
+          </UFormField>
+        </div>
+        <UFormField label="Description">
+          <UTextarea v-model="editingProduct.description" :rows="3" />
+        </UFormField>
+        <div class="flex justify-end gap-2 pt-4">
+          <UButton variant="outline" color="neutral" @click="showEditSlideover = false">Cancel</UButton>
+          <UButton type="submit">Save Changes</UButton>
+        </div>
+      </form>
+    </AppBottomSheet>
+
+    <AppBottomSheet
+      v-model="showAdjustModal"
+      title="Adjust Stock"
+      description="Add or deduct inventory quantity for this product."
+    >
+      <div v-if="adjustingProduct" class="space-y-4">
+        <div class="p-3.5 rounded-lg bg-(--ui-bg-accented)/50 border border-(--ui-border) flex items-center justify-between">
+          <div>
+            <p class="font-semibold text-(--ui-text-highlighted)">{{ adjustingProduct.name }}</p>
+            <p class="text-xs text-(--ui-text-muted)">Current Stock: <span class="font-bold text-(--ui-text-highlighted)">{{ adjustingProduct.quantity }} {{ adjustingProduct.unit }}</span></p>
+          </div>
+          <UBadge :color="getStockBadge(adjustingProduct.quantity).color" variant="subtle" size="xs">
+            {{ getStockBadge(adjustingProduct.quantity).label }}
+          </UBadge>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <UButton
+            type="button"
+            :variant="adjustForm.action_type === 'addition' ? 'solid' : 'outline'"
+            :color="adjustForm.action_type === 'addition' ? 'primary' : 'neutral'"
+            icon="i-lucide-plus"
+            class="justify-center"
+            @click="adjustForm.action_type = 'addition'; adjustForm.reason = 'restock'"
+          >
+            Add Stock
+          </UButton>
+          <UButton
+            type="button"
+            :variant="adjustForm.action_type === 'subtract' ? 'solid' : 'outline'"
+            :color="adjustForm.action_type === 'subtract' ? 'error' : 'neutral'"
+            icon="i-lucide-minus"
+            class="justify-center"
+            @click="adjustForm.action_type = 'subtract'; adjustForm.reason = 'damage'"
+          >
+            Deduct Stock
+          </UButton>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Quantity to Adjust" required>
+            <UInput v-model.number="adjustForm.quantity" type="number" min="0.01" step="any" placeholder="0" />
+          </UFormField>
+          <UFormField label="Reason" required>
+            <USelect
+              v-model="adjustForm.reason"
+              :items="reasons"
+              value-key="value"
+              label-key="label"
+            />
+          </UFormField>
+        </div>
+
+        <UFormField label="Notes / Reference">
+          <UInput v-model="adjustForm.note" placeholder="e.g. Invoice #4812, Damaged during offloading..." />
+        </UFormField>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <UButton variant="outline" color="neutral" @click="showAdjustModal = false">Cancel</UButton>
+          <UButton :color="adjustForm.action_type === 'addition' ? 'primary' : 'error'" @click="proceedToConfirm">
+            Review Adjustment
+          </UButton>
+        </div>
+      </div>
+    </AppBottomSheet>
 
     <UModal v-model:open="showConfirmDialog" title="Confirm Stock Adjustment">
       <template #body>
@@ -736,41 +746,45 @@ watch([showAddModal, showEditSlideover], () => {
       </template>
     </UModal>
 
-    <UModal v-model:open="showHistoryModal" :title="`Stock History - ${historyProduct?.name || ''}`">
-      <template #body>
-        <div class="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
-          <div v-if="isLoadingHistory" class="py-10 text-center text-sm text-(--ui-text-muted)">
-            Loading history...
-          </div>
-          <div v-else-if="historyList.length === 0" class="py-10 text-center text-sm text-(--ui-text-muted)">
-            No stock adjustments recorded yet for this product.
-          </div>
-          <div v-else class="space-y-2">
-            <div
-              v-for="item in historyList"
-              :key="item.sid"
-              class="p-3 rounded-lg border border-(--ui-border) bg-(--ui-bg-accented)/30 flex items-center justify-between"
-            >
-              <div>
-                <div class="flex items-center gap-2">
-                  <UBadge :color="item.action_type === 'addition' ? 'success' : 'error'" variant="subtle" size="xs">
-                    {{ item.action_type === 'addition' ? '+' : '-' }}{{ item.quantity }}
-                  </UBadge>
-                  <span class="text-xs font-semibold uppercase tracking-wider text-(--ui-text-highlighted)">{{ item.reason }}</span>
-                </div>
-                <p v-if="item.note" class="text-xs text-(--ui-text-muted) mt-1">{{ item.note }}</p>
+    <AppFullScreenModal
+      v-model="showHistoryModal"
+      :title="`Stock History - ${historyProduct?.name || ''}`"
+      description="Audit log of all stock increases and decreases for this product."
+    >
+      <div class="space-y-4">
+        <div v-if="isLoadingHistory" class="py-10 text-center text-sm text-(--ui-text-muted)">
+          Loading history...
+        </div>
+        <div v-else-if="historyList.length === 0" class="py-10 text-center text-sm text-(--ui-text-muted)">
+          No stock adjustments recorded yet for this product.
+        </div>
+        <div v-else class="space-y-2">
+          <div
+            v-for="item in historyList"
+            :key="item.sid"
+            class="p-3 rounded-lg border border-(--ui-border) bg-(--ui-bg-accented)/30 flex items-center justify-between"
+          >
+            <div>
+              <div class="flex items-center gap-2">
+                <UBadge :color="item.action_type === 'addition' ? 'success' : 'error'" variant="subtle" size="xs">
+                  {{ item.action_type === 'addition' ? '+' : '-' }}{{ item.quantity }}
+                </UBadge>
+                <span class="text-xs font-semibold uppercase tracking-wider text-(--ui-text-highlighted)">{{ item.reason }}</span>
               </div>
-              <div class="text-right text-xs text-(--ui-text-dimmed)">
-                <p>{{ new Date(item.created_at).toLocaleDateString() }}</p>
-                <p>{{ new Date(item.created_at).toLocaleTimeString() }}</p>
-              </div>
+              <p v-if="item.note" class="text-xs text-(--ui-text-muted) mt-1">{{ item.note }}</p>
+            </div>
+            <div class="text-right text-xs text-(--ui-text-dimmed)">
+              <p>{{ new Date(item.created_at).toLocaleDateString() }}</p>
+              <p>{{ new Date(item.created_at).toLocaleTimeString() }}</p>
             </div>
           </div>
-          <div class="flex justify-end pt-2">
-            <UButton variant="outline" color="neutral" @click="showHistoryModal = false">Close</UButton>
-          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end">
+          <UButton variant="outline" color="neutral" @click="showHistoryModal = false">Close</UButton>
         </div>
       </template>
-    </UModal>
+    </AppFullScreenModal>
   </div>
 </template>

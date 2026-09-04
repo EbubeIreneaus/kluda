@@ -458,7 +458,7 @@ async def get_sales(
         description="Filter sales by date (YYYY-MM-DD). Defaults to today.",
     ),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(StaffPermission.VIEW_SALES)),
 ):
     target = sale_date or datetime.now(timezone.utc).date()
     day_start = datetime(target.year, target.month, target.day, tzinfo=timezone.utc)
@@ -480,7 +480,7 @@ async def get_sales(
 async def get_sale(
     sale_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(StaffPermission.VIEW_SALES)),
 ):
     res = await db.execute(
         select(Sale)
@@ -525,7 +525,7 @@ async def update_sale(
 async def delete_sale(
     sale_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.RECORD_SALES)),
+    _: User = Depends(require_permission(StaffPermission.CANCEL_SALES)),
 ):
     res = await db.execute(select(Sale).where(Sale.sale_id == sale_id))
     sale = res.scalar_one_or_none()

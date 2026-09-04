@@ -120,7 +120,7 @@ async def seed_data(db_session: AsyncSession):
         user_id=staff_user_2.user_id,
         role="manager",
         display_name="Bob",
-        permission=[StaffPermission.RECORD_SALES.value, StaffPermission.MANAGE_PRODUCT.value, StaffPermission.MANAGE_STAFF.value],
+        permission=[StaffPermission.RECORD_SALES.value, StaffPermission.EDIT_PRODUCT.value, StaffPermission.EDIT_STAFF.value, StaffPermission.MANAGE_ALL.value],
         status=StaffStatus.ACTIVE
     )
     db_session.add_all([member_1, member_2])

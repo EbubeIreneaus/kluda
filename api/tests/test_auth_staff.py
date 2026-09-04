@@ -12,7 +12,8 @@ from libs.security import (
     hash_token,
 )
 from schemas.user import StaffPermission, StaffStatus, UserStatus
-from models.user import User, UserSession
+from models.user import User, UserSession, StoreMember
+from models.business import Store
 from libs.deps import get_user, require_permission
 
 
@@ -52,7 +53,13 @@ def test_parse_device_info():
 
 
 def test_permission_enum():
-    assert StaffPermission.MANAGE_STAFF.value == "manage:staff"
+    assert StaffPermission.VIEW_STAFF.value == "view:staff"
+    assert StaffPermission.EDIT_STAFF.value == "edit:staff"
+    assert StaffPermission.CREATE_STAFF.value == "create:staff"
+    assert StaffPermission.DELETE_STAFF.value == "delete:staff"
+    assert StaffPermission.EDIT_PRODUCT.value == "edit:product"
+    assert StaffPermission.CREATE_PRODUCT.value == "create:product"
+    assert StaffPermission.DELETE_PRODUCT.value == "delete:product"
     assert StaffPermission.MANAGE_ALL.value == "manage:all"
 
 
@@ -119,7 +126,7 @@ async def test_get_user_suspended_account():
 
 
 @pytest.mark.anyio
-async def test_require_permission():
+async def test_require_permission_fallback():
     user = User(
         user_id=uuid.uuid4(),
         fullname="Test User",
@@ -128,6 +135,142 @@ async def test_require_permission():
         status=UserStatus.ACTIVE
     )
 
-    checker = require_permission(StaffPermission.MANAGE_STAFF)
+    checker = require_permission(StaffPermission.EDIT_PRODUCT)
     res = await checker(user=user)
+    assert res == user
+
+
+@pytest.mark.anyio
+async def test_require_permission_manage_all_grants_access():
+    user_id = uuid.uuid4()
+    store_id = uuid.uuid4()
+    user = User(
+        user_id=user_id,
+        fullname="Staff User",
+        email="staff@example.com",
+        password="hash",
+        status=UserStatus.ACTIVE
+    )
+    store = Store(
+        store_id=store_id,
+        user_id=uuid.uuid4(),
+        name="Test Store"
+    )
+    member = StoreMember(
+        store_id=store_id,
+        user_id=user_id,
+        role="manager",
+        permission=["manage:all"],
+        status=StaffStatus.ACTIVE
+    )
+
+    db = AsyncMock()
+    db.scalar.side_effect = [store, member]
+
+    request = MagicMock(spec=Request)
+    request.path_params = {"store_id": str(store_id)}
+
+    checker = require_permission(StaffPermission.EDIT_PRODUCT)
+    res = await checker(request=request, db=db, user=user)
+    assert res == user
+
+
+@pytest.mark.anyio
+async def test_require_permission_specific_grant():
+    user_id = uuid.uuid4()
+    store_id = uuid.uuid4()
+    user = User(
+        user_id=user_id,
+        fullname="Staff User",
+        email="staff@example.com",
+        password="hash",
+        status=UserStatus.ACTIVE
+    )
+    store = Store(
+        store_id=store_id,
+        user_id=uuid.uuid4(),
+        name="Test Store"
+    )
+    member = StoreMember(
+        store_id=store_id,
+        user_id=user_id,
+        role="cashier",
+        permission=["edit:product"],
+        status=StaffStatus.ACTIVE
+    )
+
+    db = AsyncMock()
+    db.scalar.side_effect = [store, member]
+
+    request = MagicMock(spec=Request)
+    request.path_params = {"store_id": str(store_id)}
+
+    checker = require_permission(StaffPermission.EDIT_PRODUCT)
+    res = await checker(request=request, db=db, user=user)
+    assert res == user
+
+
+@pytest.mark.anyio
+async def test_require_permission_denied():
+    user_id = uuid.uuid4()
+    store_id = uuid.uuid4()
+    user = User(
+        user_id=user_id,
+        fullname="Staff User",
+        email="staff@example.com",
+        password="hash",
+        status=UserStatus.ACTIVE
+    )
+    store = Store(
+        store_id=store_id,
+        user_id=uuid.uuid4(),
+        name="Test Store"
+    )
+    member = StoreMember(
+        store_id=store_id,
+        user_id=user_id,
+        role="cashier",
+        permission=["view:product"],
+        status=StaffStatus.ACTIVE
+    )
+
+    db = AsyncMock()
+    db.scalar.side_effect = [store, member]
+
+    request = MagicMock(spec=Request)
+    request.path_params = {"store_id": str(store_id)}
+
+    checker = require_permission(StaffPermission.EDIT_PRODUCT)
+    with pytest.raises(HTTPException) as exc_info:
+        await checker(request=request, db=db, user=user)
+
+    assert exc_info.value.status_code == 403
+    assert "Permission denied" in exc_info.value.detail
+
+
+@pytest.mark.anyio
+async def test_require_permission_owner():
+    user_id = uuid.uuid4()
+    store_id = uuid.uuid4()
+    user = User(
+        user_id=user_id,
+        fullname="Owner User",
+        email="owner@example.com",
+        password="hash",
+        status=UserStatus.ACTIVE
+    )
+    store = Store(
+        store_id=store_id,
+        user_id=user_id,
+        name="Owner Store"
+    )
+
+    db = AsyncMock()
+    db.scalar.side_effect = [store]
+
+    request = MagicMock(spec=Request)
+    request.path_params = {"store_id": str(store_id)}
+
+    checker = require_permission(StaffPermission.DELETE_PRODUCT)
+    res = await checker(request=request, db=db, user=user)
     assert res == user

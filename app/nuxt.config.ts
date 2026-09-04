@@ -7,7 +7,7 @@ export default defineNuxtConfig({
     "@vueuse/nuxt",
     "nuxt-qrcode",
     "@pinia/nuxt",
-    "@vite-pwa/nuxt",
+    "@vite-pwa/nuxt"
   ],
 
   devtools: {
@@ -158,6 +158,6 @@ export default defineNuxtConfig({
           },
         },
       ],
-    },
-  },
+    }
+  }
 });

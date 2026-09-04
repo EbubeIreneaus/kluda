@@ -54,14 +54,96 @@ const editStaffForm = ref({
   status: 'active'
 })
 
-const permissionList = [
-  { label: 'POS Terminal & Record Sales', value: 'record:sales' },
-  { label: 'View Products & Inventory', value: 'view:product' },
-  { label: 'Manage Products (Add/Edit)', value: 'manage:product' },
-  { label: 'Manage Customers & Debts', value: 'manage:user' },
-  { label: 'View Analytics & Reports', value: 'view:analytics' },
-  { label: 'Manage Staff Members', value: 'manage:staff' }
+const permissionGroups = [
+  {
+    id: 'product',
+    title: 'Product & Inventory',
+    icon: 'i-lucide-package',
+    permissions: [
+      { label: 'View Products', value: 'view:product' },
+      { label: 'Create Products', value: 'create:product' },
+      { label: 'Edit Products', value: 'edit:product' },
+      { label: 'Delete Products', value: 'delete:product' },
+      { label: 'Adjust Stock', value: 'adjust:stock' },
+      { label: 'Restore Products', value: 'restore:product' }
+    ]
+  },
+  {
+    id: 'sales',
+    title: 'Sales & POS Terminal',
+    icon: 'i-lucide-shopping-cart',
+    permissions: [
+      { label: 'Record Sales', value: 'record:sales' },
+      { label: 'View Sales', value: 'view:sales' },
+      { label: 'Cancel Sales', value: 'cancel:sales' },
+      { label: 'Apply Discount', value: 'apply:discount' }
+    ]
+  },
+  {
+    id: 'staff',
+    title: 'Staff Management',
+    icon: 'i-lucide-users',
+    permissions: [
+      { label: 'View Staff', value: 'view:staff' },
+      { label: 'Create Staff', value: 'create:staff' },
+      { label: 'Edit Staff', value: 'edit:staff' },
+      { label: 'Delete Staff', value: 'delete:staff' },
+      { label: 'Staff Permissions', value: 'staff:permission' }
+    ]
+  },
+  {
+    id: 'customers',
+    title: 'Customers & Debts',
+    icon: 'i-lucide-user-check',
+    permissions: [
+      { label: 'View Customers', value: 'view:customer' },
+      { label: 'Create Customers', value: 'create:customer' },
+      { label: 'Edit Customers', value: 'edit:customer' },
+      { label: 'Delete Customers', value: 'delete:customer' },
+      { label: 'Record Debt', value: 'record:debt' },
+      { label: 'View Debt', value: 'view:debt' },
+      { label: 'Settle Debt', value: 'settle:debt' }
+    ]
+  },
+  {
+    id: 'store',
+    title: 'Store & Analytics',
+    icon: 'i-lucide-bar-chart-3',
+    permissions: [
+      { label: 'View Analytics', value: 'view:analytics' },
+      { label: 'Export Reports', value: 'export:report' },
+      { label: 'View Audit Logs', value: 'view:audit-log' },
+      { label: 'View App Settings', value: 'view:app-settings' },
+      { label: 'Edit App Settings', value: 'edit:app-settings' },
+      { label: 'Full Access (Super Manager)', value: 'manage:all' }
+    ]
+  }
 ]
+
+function isEditGroupAllSelected(group: any): boolean {
+  return group.permissions.every((p: any) => editStaffForm.value.permissions.includes(p.value))
+}
+
+function toggleEditGroupAll(group: any) {
+  const allValues = group.permissions.map((p: any) => p.value)
+  const allSelected = isEditGroupAllSelected(group)
+  if (allSelected) {
+    editStaffForm.value.permissions = editStaffForm.value.permissions.filter((p: string) => !allValues.includes(p))
+  } else {
+    const combined = new Set([...editStaffForm.value.permissions, ...allValues])
+    editStaffForm.value.permissions = Array.from(combined)
+  }
+}
+
+function toggleEditPermission(permVal: string) {
+  const idx = editStaffForm.value.permissions.indexOf(permVal)
+  if (idx > -1) {
+    editStaffForm.value.permissions.splice(idx, 1)
+  } else {
+    editStaffForm.value.permissions.push(permVal)
+  }
+}
+
 
 const roles = [
   { label: 'Cashier / Staff', value: 'staff' },
@@ -604,205 +686,178 @@ function copyStoreId() {
       </form>
     </div>
 
-    <UModal v-model:open="showAddStaffModal" title="Add Cashier / Staff Member">
-      <template #body>
-        <form class="p-6 space-y-4" @submit.prevent="handleCreateStaff">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-(--ui-text-highlighted)">First Name *</label>
-              <input
-                v-model="newStaff.first_name"
-                type="text"
-                required
-                class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-              />
-            </div>
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-(--ui-text-highlighted)">Last Name *</label>
-              <input
-                v-model="newStaff.last_name"
-                type="text"
-                required
-                class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-              />
-            </div>
-          </div>
+    <StaffCreateModal
+      v-model="showAddStaffModal"
+      :store-id="storeId"
+      @created="fetchStoreStaff"
+    />
 
-          <div class="space-y-1">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Email Address *</label>
-            <input
-              v-model="newStaff.email"
-              type="email"
-              required
-              class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-            />
-            <p class="text-[11px] text-(--ui-text-dimmed)">Staff member can reset password via email upon login.</p>
-          </div>
+    <AppFullScreenModal
+      v-model="showEditStaffModal"
+      title="Edit Staff Member"
+      description="Update staff profile and assigned permissions."
+      max-width="max-w-3xl"
+    >
+      <form id="edit-staff-form" class="space-y-6" @submit.prevent="handleUpdateStaff">
+        <div class="p-4 rounded-2xl bg-(--ui-bg-accented)/30 border border-(--ui-border) space-y-4">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-(--ui-text-dimmed)">
+            Staff Information
+          </h4>
 
-          <div class="space-y-1">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Phone Number</label>
-            <input
-              v-model="newStaff.phone"
-              type="tel"
-              class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-            />
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-(--ui-text-highlighted)">Role</label>
-              <select
-                v-model="newStaff.role"
-                class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-              >
-                <option v-for="r in roles" :key="r.value" :value="r.value">{{ r.label }}</option>
-              </select>
-            </div>
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-(--ui-text-highlighted)">Status</label>
-              <select
-                v-model="newStaff.status"
-                class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-              >
-                <option v-for="st in statusOptions" :key="st.value" :value="st.value">{{ st.label }}</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="space-y-2 pt-2">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Permissions</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label
-                v-for="perm in permissionList"
-                :key="perm.value"
-                class="flex items-center gap-2 p-2.5 rounded-xl border border-(--ui-border) bg-(--ui-bg-accented)/20 cursor-pointer text-xs font-medium text-(--ui-text-highlighted)"
-              >
-                <input
-                  v-model="newStaff.permissions"
-                  type="checkbox"
-                  :value="perm.value"
-                  class="rounded border-zinc-700 text-amber-500 focus:ring-0"
-                />
-                <span>{{ perm.label }}</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-end gap-3 pt-4 border-t border-(--ui-border)">
-            <UButton
-              type="button"
-              variant="ghost"
-              color="neutral"
-              @click="showAddStaffModal = false"
-            >
-              Cancel
-            </UButton>
-            <UButton
-              type="submit"
-              color="primary"
-              :loading="isSubmittingStaff"
-              class="font-bold px-5 py-2"
-            >
-              Add Staff
-            </UButton>
-          </div>
-        </form>
-      </template>
-    </UModal>
-
-    <UModal v-model:open="showEditStaffModal" title="Edit Staff Member">
-      <template #body>
-        <form class="p-6 space-y-4" @submit.prevent="handleUpdateStaff">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-(--ui-text-highlighted)">First Name</label>
-              <input
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <UFormField label="First Name" required>
+              <UInput
                 v-model="editStaffForm.first_name"
-                type="text"
-                required
-                class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
+                class="w-full"
               />
-            </div>
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-(--ui-text-highlighted)">Last Name</label>
-              <input
+            </UFormField>
+
+            <UFormField label="Last Name" required>
+              <UInput
                 v-model="editStaffForm.last_name"
-                type="text"
-                required
-                class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
+                class="w-full"
               />
-            </div>
-          </div>
+            </UFormField>
 
-          <div class="space-y-1">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Phone Number</label>
-            <input
-              v-model="editStaffForm.phone"
-              type="tel"
-              class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-            />
-          </div>
+            <UFormField label="Other Name (Optional)">
+              <UInput
+                v-model="editStaffForm.other_name"
+                class="w-full"
+              />
+            </UFormField>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-(--ui-text-highlighted)">Role</label>
-              <select
+            <UFormField label="Phone Number">
+              <UInput
+                v-model="editStaffForm.phone"
+                type="tel"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField label="Role">
+              <USelect
                 v-model="editStaffForm.role"
-                class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-              >
-                <option v-for="r in roles" :key="r.value" :value="r.value">{{ r.label }}</option>
-              </select>
-            </div>
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-(--ui-text-highlighted)">Status</label>
-              <select
+                :items="roles"
+                value-key="value"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField label="Account Status">
+              <USelect
                 v-model="editStaffForm.status"
-                class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-              >
-                <option v-for="st in statusOptions" :key="st.value" :value="st.value">{{ st.label }}</option>
-              </select>
+                :items="statusOptions"
+                value-key="value"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h4 class="text-sm font-bold text-(--ui-text-highlighted)">
+                Assigned Store Permissions
+              </h4>
+              <p class="text-xs text-(--ui-text-muted) mt-0.5">
+                Enable or revoke specific permissions for this team member.
+              </p>
             </div>
+
+            <span class="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+              {{ editStaffForm.permissions.length }} selected
+            </span>
           </div>
 
-          <div class="space-y-2 pt-2">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Permissions</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label
-                v-for="perm in permissionList"
-                :key="perm.value"
-                class="flex items-center gap-2 p-2.5 rounded-xl border border-(--ui-border) bg-(--ui-bg-accented)/20 cursor-pointer text-xs font-medium text-(--ui-text-highlighted)"
-              >
-                <input
-                  v-model="editStaffForm.permissions"
-                  type="checkbox"
-                  :value="perm.value"
-                  class="rounded border-zinc-700 text-amber-500 focus:ring-0"
-                />
-                <span>{{ perm.label }}</span>
-              </label>
+          <div class="space-y-4">
+            <div
+              v-for="group in permissionGroups"
+              :key="group.id"
+              class="rounded-2xl border border-(--ui-border) bg-(--ui-bg-accented)/20 overflow-hidden"
+            >
+              <div class="flex items-center justify-between px-4 py-3 bg-(--ui-bg-accented)/40 border-b border-(--ui-border)/60">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <UIcon :name="group.icon" class="size-4 text-emerald-400 shrink-0" />
+                  <h5 class="text-xs font-bold text-(--ui-text-highlighted) truncate">
+                    {{ group.title }}
+                  </h5>
+                </div>
+
+                <button
+                  type="button"
+                  class="text-[11px] font-bold text-emerald-400 hover:underline px-2 py-1 shrink-0 cursor-pointer"
+                  @click="toggleEditGroupAll(group)"
+                >
+                  {{ isEditGroupAllSelected(group) ? 'Deselect All' : 'Select All' }}
+                </button>
+              </div>
+
+              <div class="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div
+                  v-for="perm in group.permissions"
+                  :key="perm.value"
+                  class="flex items-start gap-2.5 p-2.5 rounded-xl border transition cursor-pointer select-none"
+                  :class="[
+                    editStaffForm.permissions.includes(perm.value)
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-(--ui-text-highlighted)'
+                      : 'border-(--ui-border)/50 hover:bg-(--ui-bg-accented)/40 text-(--ui-text-muted)'
+                  ]"
+                  @click="toggleEditPermission(perm.value)"
+                >
+                  <div
+                    class="size-4 rounded-md mt-0.5 flex items-center justify-center shrink-0 border transition"
+                    :class="[
+                      editStaffForm.permissions.includes(perm.value)
+                        ? 'bg-emerald-500 border-emerald-500 text-black'
+                        : 'border-(--ui-border) bg-(--ui-bg)'
+                    ]"
+                  >
+                    <UIcon
+                      v-if="editStaffForm.permissions.includes(perm.value)"
+                      name="i-lucide-check"
+                      class="size-3 font-bold"
+                    />
+                  </div>
+
+                  <div class="min-w-0 flex-1">
+                    <div class="text-xs font-bold leading-tight">
+                      {{ perm.label }}
+                    </div>
+                    <div class="text-[9px] font-mono text-(--ui-text-dimmed) mt-1 opacity-70">
+                      {{ perm.value }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </form>
 
-          <div class="flex items-center justify-end gap-3 pt-4 border-t border-(--ui-border)">
-            <UButton
-              type="button"
-              variant="ghost"
-              color="neutral"
-              @click="showEditStaffModal = false"
-            >
-              Cancel
-            </UButton>
-            <UButton
-              type="submit"
-              color="primary"
-              :loading="isEditingStaff"
-              class="font-bold px-5 py-2"
-            >
-              Save Changes
-            </UButton>
-          </div>
-        </form>
+      <template #footer>
+        <div class="flex items-center justify-end gap-2.5">
+          <UButton
+            type="button"
+            variant="outline"
+            color="neutral"
+            :disabled="isEditingStaff"
+            @click="showEditStaffModal = false"
+          >
+            Cancel
+          </UButton>
+
+          <UButton
+            type="submit"
+            form="edit-staff-form"
+            color="primary"
+            :loading="isEditingStaff"
+            class="font-bold"
+          >
+            Save Changes
+          </UButton>
+        </div>
       </template>
-    </UModal>
+    </AppFullScreenModal>
   </div>
 </template>

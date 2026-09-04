@@ -79,6 +79,9 @@ const navItems = computed(() => {
   if (auth.isOwner || auth.hasPermission('manage:staff')) {
     items.push({ label: 'Staff', icon: 'i-lucide-shield-check', to: '/staff' })
   }
+  if (auth.isOwner || auth.hasPermission('view:audit-log') || auth.hasPermission('manage:all')) {
+    items.push({ label: 'Audit Logs', icon: 'i-lucide-shield-alert', to: '/audit' })
+  }
   items.push({ label: 'Settings', icon: 'i-lucide-settings', to: '/settings' })
   return items
 })

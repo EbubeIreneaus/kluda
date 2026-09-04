@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 import secrets
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
 from sqlalchemy.orm import selectinload
@@ -20,9 +20,10 @@ from schemas.user import (
     StaffStatus,
     StaffSetPin,
 )
-from libs.security import hash_password
+from libs.security import hash_password, get_client_ip
 from libs.deps import require_permission, get_staff_store, get_current_user
 from libs.ws_manager import manager as ws_manager
+from libs.audit import record_store_audit
 
 router = APIRouter(prefix="/{store_id}/staff", tags=["Store Members"])
 
@@ -82,9 +83,10 @@ async def set_my_pin(
 async def create_staff(
     staff_data: StaffCreate,
     store_id: uuid.UUID,
+    request: Request,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.MANAGE_STAFF)),
+    actor: User = Depends(require_permission(StaffPermission.CREATE_STAFF)),
 ):
     db_store = await db.scalar(select(Store).where(Store.store_id == store.store_id))
     owner_user_id = db_store.user_id if db_store else None
@@ -154,6 +156,24 @@ async def create_staff(
             p.value if hasattr(p, "value") else str(p) for p in staff_data.permission
         ]
         existing_member.display_name = f"{staff_data.first_name} {staff_data.last_name}".strip()
+
+        await record_store_audit(
+            db=db,
+            store_id=store.store_id,
+            action="staff.create",
+            target_type="staff",
+            actor=actor,
+            target_id=str(user_rec.user_id),
+            target_name=existing_member.display_name,
+            details={
+                "role": staff_data.role,
+                "email": clean_email,
+                "permission": [p.value if hasattr(p, "value") else str(p) for p in staff_data.permission],
+                "status": staff_data.status.value if hasattr(staff_data.status, "value") else str(staff_data.status),
+            },
+            ip_address=get_client_ip(request),
+        )
+
         await db.commit()
         await db.refresh(existing_member)
         return _format_member_response(existing_member, user_rec, store.store_id)
@@ -169,6 +189,24 @@ async def create_staff(
         status=staff_data.status,
     )
     db.add(member_rec)
+
+    await record_store_audit(
+        db=db,
+        store_id=store.store_id,
+        action="staff.create",
+        target_type="staff",
+        actor=actor,
+        target_id=str(user_rec.user_id),
+        target_name=member_rec.display_name,
+        details={
+            "role": staff_data.role,
+            "email": clean_email,
+            "permission": [p.value if hasattr(p, "value") else str(p) for p in staff_data.permission],
+            "status": staff_data.status.value if hasattr(staff_data.status, "value") else str(staff_data.status),
+        },
+        ip_address=get_client_ip(request),
+    )
+
     await db.commit()
     await db.refresh(member_rec)
 
@@ -182,7 +220,7 @@ async def get_staffs(
     status_filter: StaffStatus | None = Query(None, alias="status"),
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.MANAGE_STAFF)),
+    _: User = Depends(require_permission(StaffPermission.VIEW_STAFF)),
 ):
     query = (
         select(StoreMember)
@@ -202,7 +240,7 @@ async def get_staff_detail(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.MANAGE_STAFF)),
+    _: User = Depends(require_permission(StaffPermission.VIEW_STAFF)),
 ):
     try:
         user_uuid = uuid.UUID(staff_id)
@@ -226,9 +264,10 @@ async def update_staff(
     staff_id: str,
     update_data: StaffUpdate,
     store_id: uuid.UUID,
+    request: Request,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.MANAGE_STAFF)),
+    actor: User = Depends(require_permission(StaffPermission.EDIT_STAFF)),
 ):
     try:
         user_uuid = uuid.UUID(staff_id)
@@ -243,11 +282,20 @@ async def update_staff(
     if not member or not member.user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
 
+    changes = {}
     if update_data.role:
+        changes["role"] = {"old": member.role, "new": update_data.role}
         member.role = update_data.role
     if update_data.status:
+        old_status = member.status.value if hasattr(member.status, "value") else str(member.status)
+        new_status = update_data.status.value if hasattr(update_data.status, "value") else str(update_data.status)
+        changes["status"] = {"old": old_status, "new": new_status}
         member.status = update_data.status
     if update_data.permission is not None:
+        changes["permission"] = {
+            "old": member.permission,
+            "new": [p.value if hasattr(p, "value") else str(p) for p in update_data.permission],
+        }
         member.permission = [
             p.value if hasattr(p, "value") else str(p) for p in update_data.permission
         ]
@@ -255,6 +303,18 @@ async def update_staff(
         fn = update_data.first_name or ""
         ln = update_data.last_name or ""
         member.display_name = f"{fn} {ln}".strip()
+
+    await record_store_audit(
+        db=db,
+        store_id=store.store_id,
+        action="staff.update",
+        target_type="staff",
+        actor=actor,
+        target_id=staff_id,
+        target_name=member.display_name or member.user.fullname,
+        details={"changes": changes},
+        ip_address=get_client_ip(request),
+    )
 
     await db.commit()
     await db.refresh(member)
@@ -279,9 +339,10 @@ async def update_staff(
 async def delete_staff(
     staff_id: str,
     store_id: uuid.UUID,
+    request: Request,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.MANAGE_STAFF)),
+    actor: User = Depends(require_permission(StaffPermission.DELETE_STAFF)),
 ):
     try:
         user_uuid = uuid.UUID(staff_id)
@@ -295,6 +356,19 @@ async def delete_staff(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
 
     member.status = StaffStatus.TERMINATED
+
+    await record_store_audit(
+        db=db,
+        store_id=store.store_id,
+        action="staff.delete",
+        target_type="staff",
+        actor=actor,
+        target_id=staff_id,
+        target_name=member.display_name,
+        details={"status": "terminated"},
+        ip_address=get_client_ip(request),
+    )
+
     await db.commit()
 
     await ws_manager.broadcast(

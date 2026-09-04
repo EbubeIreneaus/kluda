@@ -110,10 +110,61 @@ async def get_optional_current_user(
 
 
 def require_permission(permission: StaffPermission | str):
+    perm_val = permission.value if hasattr(permission, "value") else str(permission)
+
     async def permission_checker(
+        request: Request = None,
+        db: AsyncSession = Depends(get_db),
         user: User = Depends(get_current_user),
     ) -> User:
-        return user
+        if user_perms := getattr(user, "permission", None):
+            user_perm_strs = [p.value if hasattr(p, "value") else str(p) for p in user_perms]
+            if StaffPermission.MANAGE_ALL.value in user_perm_strs or "manage:all" in user_perm_strs or perm_val in user_perm_strs:
+                return user
+
+        if request is None or not hasattr(request, "path_params") or db is None:
+            return user
+
+        raw_store_id = request.path_params.get("store_id")
+        if not raw_store_id:
+            return user
+
+        try:
+            req_store_id = uuid.UUID(str(raw_store_id)) if not isinstance(raw_store_id, uuid.UUID) else raw_store_id
+        except (ValueError, TypeError):
+            return user
+
+        store = await db.scalar(select(Store).where(Store.store_id == req_store_id))
+        if not store:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
+
+        if store.user_id == user.user_id:
+            return user
+
+        member = await db.scalar(
+            select(StoreMember).where(
+                StoreMember.store_id == req_store_id,
+                StoreMember.user_id == user.user_id,
+                StoreMember.status == StaffStatus.ACTIVE,
+            )
+        )
+        if not member:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: user does not belong to this store",
+            )
+
+        member_perms = [p.value if hasattr(p, "value") else str(p) for p in (member.permission or [])]
+        if StaffPermission.MANAGE_ALL.value in member_perms or "manage:all" in member_perms:
+            return user
+
+        if perm_val in member_perms:
+            return user
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission denied: {perm_val} required",
+        )
 
     return permission_checker
 

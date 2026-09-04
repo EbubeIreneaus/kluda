@@ -259,7 +259,7 @@ const debtStatusOptions = [
           <span class="text-amber-500 font-semibold">{{ format(totalOutstanding) }}</span>
         </p>
       </div>
-      <UButton class="p-2.5" v-if="customerStore && auth.hasPermission('manage:user')" icon="i-lucide-user-plus" @click="showAddModal = true">
+      <UButton class="p-2.5" v-if="customerStore && (auth.hasPermission('create:customer') || auth.hasPermission('manage:user'))" icon="i-lucide-user-plus" @click="showAddModal = true">
         Add Customer
       </UButton>
     </div>
@@ -579,58 +579,62 @@ const debtStatusOptions = [
       </div>
     </div>
 
-    <UModal v-model:open="showAddModal" title="Add Customer">
-      <template #body>
-        <form class="p-5 space-y-4" @submit.prevent="handleAddCustomer">
-          <UFormField label="Full Name" required>
-            <UInput v-model="newCustomer.fullname" placeholder="e.g. Adebayo Femi" />
+    <AppBottomSheet
+      v-model="showAddModal"
+      title="Add Customer"
+      description="Register a new customer for store sales and credit tracking."
+    >
+      <form class="space-y-4" @submit.prevent="handleAddCustomer">
+        <UFormField label="Full Name" required>
+          <UInput v-model="newCustomer.fullname" placeholder="e.g. Adebayo Femi" />
+        </UFormField>
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Email">
+            <UInput v-model="newCustomer.email" type="email" placeholder="email@example.com" />
           </UFormField>
-          <div class="grid grid-cols-2 gap-4">
-            <UFormField label="Email">
-              <UInput v-model="newCustomer.email" type="email" placeholder="email@example.com" />
-            </UFormField>
-            <UFormField label="Phone" required>
-              <UInput v-model="newCustomer.phone" placeholder="08012345678" />
-            </UFormField>
-          </div>
-          <UFormField label="Address">
-            <UTextarea v-model="newCustomer.address" placeholder="Customer address..." :rows="2" />
+          <UFormField label="Phone" required>
+            <UInput v-model="newCustomer.phone" placeholder="08012345678" />
           </UFormField>
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton variant="outline" color="neutral" @click="showAddModal = false">Cancel</UButton>
-            <UButton :loading="isAddingCustomer" type="submit">Add Customer</UButton>
-          </div>
-        </form>
-      </template>
-    </UModal>
+        </div>
+        <UFormField label="Address">
+          <UTextarea v-model="newCustomer.address" placeholder="Customer address..." :rows="2" />
+        </UFormField>
+        <div class="flex justify-end gap-2 pt-2">
+          <UButton variant="outline" color="neutral" @click="showAddModal = false">Cancel</UButton>
+          <UButton :loading="isAddingCustomer" type="submit">Add Customer</UButton>
+        </div>
+      </form>
+    </AppBottomSheet>
 
-    <UModal v-model:open="showEditModal" title="Edit Customer">
-      <template #body>
-        <form class="p-5 space-y-4" @submit.prevent="handleEditCustomer">
-          <UFormField label="Full Name" required>
-            <UInput v-model="editForm.fullname" placeholder="Full name" />
+    <AppBottomSheet
+      v-model="showEditModal"
+      title="Edit Customer"
+      description="Update contact details or customer status."
+    >
+      <form class="space-y-4" @submit.prevent="handleEditCustomer">
+        <UFormField label="Full Name" required>
+          <UInput v-model="editForm.fullname" placeholder="Full name" />
+        </UFormField>
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Email">
+            <UInput v-model="editForm.email" type="email" placeholder="email@example.com" />
           </UFormField>
-          <div class="grid grid-cols-2 gap-4">
-            <UFormField label="Email">
-              <UInput v-model="editForm.email" type="email" placeholder="email@example.com" />
-            </UFormField>
-            <UFormField label="Phone">
-              <UInput v-model="editForm.phone" placeholder="08012345678" />
-            </UFormField>
-          </div>
-          <UFormField label="Address">
-            <UTextarea v-model="editForm.address" placeholder="Customer address..." :rows="2" />
+          <UFormField label="Phone">
+            <UInput v-model="editForm.phone" placeholder="08012345678" />
           </UFormField>
-          <UFormField label="Status">
-            <USelect v-model="editForm.status" :options="statusOptions" value-key="value" label-key="label" />
-          </UFormField>
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton variant="outline" color="neutral" @click="showEditModal = false">Cancel</UButton>
-            <UButton :loading="loading" type="submit">Save Changes</UButton>
-          </div>
-        </form>
-      </template>
-    </UModal>
+        </div>
+        <UFormField label="Address">
+          <UTextarea v-model="editForm.address" placeholder="Customer address..." :rows="2" />
+        </UFormField>
+        <UFormField label="Status">
+          <USelect v-model="editForm.status" :options="statusOptions" value-key="value" label-key="label" />
+        </UFormField>
+        <div class="flex justify-end gap-2 pt-2">
+          <UButton variant="outline" color="neutral" @click="showEditModal = false">Cancel</UButton>
+          <UButton :loading="loading" type="submit">Save Changes</UButton>
+        </div>
+      </form>
+    </AppBottomSheet>
 
     <UModal v-model:open="showDeleteModal" title="Deactivate Customer">
       <template #body>
@@ -648,114 +652,119 @@ const debtStatusOptions = [
       </template>
     </UModal>
 
-    <UModal v-model:open="showEditDebtModal" title="Edit Debt">
-      <template #body>
-        <form class="p-5 space-y-4" @submit.prevent="handleEditDebt" v-if="editingDebt">
-          <UFormField label="Amount (Kobo)">
-            <UInput v-model.number="editingDebt.amount" type="number" min="0" />
-          </UFormField>
-          <UFormField label="Note">
-            <UInput v-model="editingDebt.note" placeholder="Optional staff note" />
-          </UFormField>
-          <UFormField label="Status">
-            <USelect v-model="editingDebt.status" :options="debtStatusOptions" value-key="value" label-key="label" />
-          </UFormField>
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton variant="outline" color="neutral" @click="showEditDebtModal = false">Cancel</UButton>
-            <UButton :loading="isSavingDebt" type="submit">Save Changes</UButton>
-          </div>
-        </form>
-      </template>
-    </UModal>
-
-    <USlideover
-      v-model:open="showDetailSlideover"
-      :title="selectedCustomer?.fullname || 'Customer'"
-      side="right"
+    <AppBottomSheet
+      v-model="showEditDebtModal"
+      title="Edit Debt"
+      description="Update customer balance or debt status."
     >
-      <template #body>
-        <div v-if="selectedCustomer" class="p-5 space-y-5">
-          <div class="flex items-center gap-4">
-            <UAvatar
-              :text="selectedCustomer.fullname.split(' ').map((n: string) => n[0]).join('')"
-              size="lg"
-            />
-            <div>
-              <h3 class="text-lg font-semibold text-(--ui-text-highlighted)">
-                {{ selectedCustomer.fullname }}
-              </h3>
-              <UBadge
-                :color="customerStatusColors[selectedCustomer.status] as any"
-                variant="subtle"
-                size="xs"
-              >{{ selectedCustomer.status }}</UBadge>
-            </div>
-          </div>
+      <form class="space-y-4" @submit.prevent="handleEditDebt" v-if="editingDebt">
+        <UFormField label="Amount (Kobo)">
+          <UInput v-model.number="editingDebt.amount" type="number" min="0" />
+        </UFormField>
+        <UFormField label="Note">
+          <UInput v-model="editingDebt.note" placeholder="Optional staff note" />
+        </UFormField>
+        <UFormField label="Status">
+          <USelect v-model="editingDebt.status" :options="debtStatusOptions" value-key="value" label-key="label" />
+        </UFormField>
+        <div class="flex justify-end gap-2 pt-2">
+          <UButton variant="outline" color="neutral" @click="showEditDebtModal = false">Cancel</UButton>
+          <UButton :loading="isSavingDebt" type="submit">Save Changes</UButton>
+        </div>
+      </form>
+    </AppBottomSheet>
 
-          <div class="space-y-3 text-sm">
-            <div class="flex items-center gap-3 text-(--ui-text-muted)">
-              <UIcon name="i-lucide-mail" class="w-4 h-4 text-(--ui-text-dimmed)" />
-              {{ selectedCustomer.email }}
-            </div>
-            <div class="flex items-center gap-3 text-(--ui-text-muted)">
-              <UIcon name="i-lucide-phone" class="w-4 h-4 text-(--ui-text-dimmed)" />
-              {{ selectedCustomer.phone }}
-            </div>
-            <div class="flex items-center gap-3 text-(--ui-text-muted)">
-              <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-(--ui-text-dimmed)" />
-              {{ selectedCustomer.address || "Not Provided" }}
-            </div>
-          </div>
-
-          <div class="flex gap-2">
-            <UButton
-              size="sm"
-              variant="soft"
-              color="primary"
-              icon="i-lucide-pencil"
-              @click="openEditCustomer(selectedCustomer); showDetailSlideover = false"
-            >
-              Edit
-            </UButton>
-            <UButton
-              size="sm"
-              variant="soft"
-              color="error"
-              icon="i-lucide-user-x"
-              @click="openDeleteCustomer(selectedCustomer.customer_id); showDetailSlideover = false"
-            >
-              Deactivate
-            </UButton>
-          </div>
-
+    <AppFullScreenModal
+      v-model="showDetailSlideover"
+      :title="selectedCustomer?.fullname || 'Customer'"
+      description="Customer profile and active debt records."
+    >
+      <div v-if="selectedCustomer" class="space-y-5">
+        <div class="flex items-center gap-4">
+          <UAvatar
+            :text="selectedCustomer.fullname.split(' ').map((n: string) => n[0]).join('')"
+            size="lg"
+          />
           <div>
-            <p class="text-xs font-medium text-(--ui-text-dimmed) uppercase mb-2">Active Debts</p>
-            <div class="space-y-2">
-              <div
-                v-for="debt in debts.filter(
-                  (d) => d.customer_id === selectedCustomer.customer_id && d.status !== 'paid'
-                )"
-                :key="debt.debtor_id"
-                class="flex items-center justify-between p-3 rounded-lg bg-(--ui-bg-accented)/50"
-              >
-                <div>
-                  <p class="text-sm font-medium text-(--ui-text-highlighted)">{{ format(debt.amount) }}</p>
-                  <p v-if="debt.note" class="text-xs text-(--ui-text-dimmed)">{{ debt.note }}</p>
-                </div>
-                <UBadge :color="debtStatusColors[debt.status] as any" variant="subtle" size="xs">
-                  {{ debt.status }}
-                </UBadge>
-              </div>
-              <p
-                v-if="!debts.filter((d) => d.customer_id === selectedCustomer.customer_id && d.status !== 'paid').length"
-                class="text-sm text-(--ui-text-dimmed) text-center py-4"
-              >
-                No active debts
-              </p>
-            </div>
+            <h3 class="text-lg font-semibold text-(--ui-text-highlighted)">
+              {{ selectedCustomer.fullname }}
+            </h3>
+            <UBadge
+              :color="customerStatusColors[selectedCustomer.status] as any"
+              variant="subtle"
+              size="xs"
+            >{{ selectedCustomer.status }}</UBadge>
           </div>
         </div>
+
+        <div class="space-y-3 text-sm">
+          <div class="flex items-center gap-3 text-(--ui-text-muted)">
+            <UIcon name="i-lucide-mail" class="w-4 h-4 text-(--ui-text-dimmed)" />
+            {{ selectedCustomer.email }}
+          </div>
+          <div class="flex items-center gap-3 text-(--ui-text-muted)">
+            <UIcon name="i-lucide-phone" class="w-4 h-4 text-(--ui-text-dimmed)" />
+            {{ selectedCustomer.phone }}
+          </div>
+          <div class="flex items-center gap-3 text-(--ui-text-muted)">
+            <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-(--ui-text-dimmed)" />
+            {{ selectedCustomer.address || "Not Provided" }}
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <UButton
+            size="sm"
+            variant="soft"
+            color="primary"
+            icon="i-lucide-pencil"
+            @click="openEditCustomer(selectedCustomer); showDetailSlideover = false"
+          >
+            Edit
+          </UButton>
+          <UButton
+            size="sm"
+            variant="soft"
+            color="error"
+            icon="i-lucide-user-x"
+            @click="openDeleteCustomer(selectedCustomer.customer_id); showDetailSlideover = false"
+          >
+            Deactivate
+          </UButton>
+        </div>
+
+        <div>
+          <p class="text-xs font-medium text-(--ui-text-dimmed) uppercase mb-2">Active Debts</p>
+          <div class="space-y-2">
+            <div
+              v-for="debt in debts.filter(
+                (d) => d.customer_id === selectedCustomer.customer_id && d.status !== 'paid'
+              )"
+              :key="debt.debtor_id"
+              class="flex items-center justify-between p-3 rounded-lg bg-(--ui-bg-accented)/50"
+            >
+              <div>
+                <p class="text-sm font-medium text-(--ui-text-highlighted)">{{ format(debt.amount) }}</p>
+                <p v-if="debt.note" class="text-xs text-(--ui-text-dimmed)">{{ debt.note }}</p>
+              </div>
+              <UBadge :color="debtStatusColors[debt.status] as any" variant="subtle" size="xs">
+                {{ debt.status }}
+              </UBadge>
+            </div>
+            <p
+              v-if="!debts.filter((d) => d.customer_id === selectedCustomer.customer_id && d.status !== 'paid').length"
+              class="text-sm text-(--ui-text-dimmed) text-center py-4"
+            >
+              No active debts
+            </p>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end">
+          <UButton variant="outline" color="neutral" @click="showDetailSlideover = false">Close</UButton>
+        </div>
       </template>
-    </USlideover>
+    </AppFullScreenModal>
   </div>
 </template>

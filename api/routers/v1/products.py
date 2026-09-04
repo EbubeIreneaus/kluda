@@ -1,7 +1,7 @@
 from schemas.business import StoreResponseMini
 import re
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from models.config import get_db
@@ -13,6 +13,8 @@ from schemas.stock import StockCreate, StockUpdate, StockResponse, StockHistoryC
 from schemas.user import StaffPermission
 from models.user import User
 from libs.deps import require_permission, get_staff_store, get_current_user
+from libs.audit import record_store_audit
+from libs.security import get_client_ip
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from libs.ws_manager import manager as ws_manager
@@ -33,10 +35,11 @@ def slugify(text: str, prefix="") -> str:
 async def create_stock(
     stock_data: StockCreate,
     store_id: uuid.UUID,
+    request: Request,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
     staff_id: str = Query(default="unknown", description="Staff ID for WS broadcast exclusion"),
-    _: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+    actor: User = Depends(require_permission(StaffPermission.CREATE_PRODUCT)),
 ):
     db_store = await db.scalar(select(Store).where(Store.store_id == store.store_id))
     owner_user_id = db_store.user_id if db_store else None
@@ -103,19 +106,39 @@ async def create_stock(
     await db.flush()
 
     await db.refresh(new_stock)
+
+    await record_store_audit(
+        db=db,
+        store_id=store.store_id,
+        action="product.create",
+        target_type="product",
+        actor=actor,
+        target_id=new_stock.slug,
+        target_name=new_stock.name,
+        details={
+            "price": float(new_stock.price) if new_stock.price is not None else None,
+            "quantities": float(new_stock.quantities) if new_stock.quantities is not None else None,
+            "cost_price": float(new_stock.cost_price) if new_stock.cost_price is not None else None,
+            "barcode_id": new_stock.barcode_id,
+        },
+        ip_address=get_client_ip(request),
+    )
+
     await ws_manager.broadcast(
         store.store_id,
         {"event": "add_product", "data": StockResponse.model_validate(new_stock).model_dump(mode="json")},
     )
     return new_stock
 
+
 @router.post("/stock-history", response_model=StockHistoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_stock_history(
     store_id: uuid.UUID,
     history_data: StockHistoryCreate,
+    request: Request,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+    user: User = Depends(require_permission(StaffPermission.ADJUST_STOCK)),
 ):
     res = await db.execute(
         select(Stock).where(
@@ -158,6 +181,25 @@ async def create_stock_history(
     await db.flush()
     await db.refresh(history_record)
     await db.refresh(product)
+
+    await record_store_audit(
+        db=db,
+        store_id=store.store_id,
+        action="stock.adjust",
+        target_type="stock",
+        actor=user,
+        target_id=product.slug,
+        target_name=product.name,
+        details={
+            "action_type": history_data.action_type,
+            "quantity": float(history_data.quantity),
+            "previous_quantity": current_qty,
+            "new_quantity": new_qty,
+            "reason": history_data.reason,
+            "note": history_data.note,
+        },
+        ip_address=get_client_ip(request),
+    )
 
     await ws_manager.broadcast(
         store.store_id,
@@ -256,10 +298,11 @@ async def update_stock(
     store_id: uuid.UUID,
     slug: str,
     update_data: StockUpdate,
+    request: Request,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
     staff_id: str = Query(default="unknown", description="Staff ID for WS broadcast exclusion"),
-    _: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+    actor: User = Depends(require_permission(StaffPermission.EDIT_PRODUCT)),
 ):
     res = await db.execute(select(Stock).where(Stock.slug == slug, Stock.store_id == store.store_id))
     stock = res.scalar_one_or_none()
@@ -290,7 +333,32 @@ async def update_stock(
 
     clean_values = {k: v for k, v in values.items() if v is not None or k == "barcode_id"}
     if clean_values:
+        old_values = {}
+        for k in clean_values.keys():
+            old_val = getattr(stock, k, None)
+            if isinstance(old_val, (int, float)) or hasattr(old_val, "as_tuple"):
+                old_values[k] = float(old_val)
+            else:
+                old_values[k] = str(old_val) if old_val is not None else None
+
+        changes = {}
+        for k, v in clean_values.items():
+            new_val = float(v) if isinstance(v, (int, float)) or hasattr(v, "as_tuple") else str(v) if v is not None else None
+            changes[k] = {"old": old_values.get(k), "new": new_val}
+
         await db.execute(update(Stock).values(**clean_values).where(Stock.slug == slug))
+
+        await record_store_audit(
+            db=db,
+            store_id=store.store_id,
+            action="product.update",
+            target_type="product",
+            actor=actor,
+            target_id=stock.slug,
+            target_name=stock.name,
+            details={"changes": changes},
+            ip_address=get_client_ip(request),
+        )
 
     await db.flush()
     await db.refresh(stock)
@@ -305,10 +373,11 @@ async def update_stock(
 async def delete_stock(
     slug: str,
     store_id: uuid.UUID,
+    request: Request,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
     staff_id: str = Query(default="unknown", description="Staff ID for WS broadcast exclusion"),
-    _: User = Depends(require_permission(StaffPermission.MANAGE_PRODUCT)),
+    actor: User = Depends(require_permission(StaffPermission.DELETE_PRODUCT)),
 ):
     res = await db.execute(select(Stock).where(Stock.slug == slug, Stock.store_id==store.store_id))
     stock = res.scalar_one_or_none()
@@ -322,6 +391,23 @@ async def delete_stock(
     stock.deleted = True
     stock.deleted_at = datetime.now(timezone.utc)
     await db.flush()
+
+    await record_store_audit(
+        db=db,
+        store_id=store.store_id,
+        action="product.delete",
+        target_type="product",
+        actor=actor,
+        target_id=stock.slug,
+        target_name=stock.name,
+        details={
+            "price": float(stock.price) if stock.price is not None else None,
+            "quantities": float(stock.quantities) if stock.quantities is not None else None,
+            "barcode_id": stock.barcode_id,
+        },
+        ip_address=get_client_ip(request),
+    )
+
     await ws_manager.broadcast(
         store.store_id,
         {"event": "delete_product", "data": {"slug": slug}},

@@ -245,80 +245,82 @@ function copyToClipboard(text: string) {
       </div>
     </div>
 
-    <UModal v-model:open="showCreateModal" title="Create Store Branch">
-      <template #body>
-        <form class="p-6 space-y-4" @submit.prevent="handleCreateStore">
-          <div class="space-y-1">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Store Name *</label>
-            <input
-              v-model="newStore.name"
-              type="text"
-              required
-              placeholder="e.g. Lekki Phase 1 Branch"
-              class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-            />
-          </div>
+    <AppBottomSheet
+      v-model="showCreateModal"
+      title="Create Store Branch"
+      description="Add a new store branch to your merchant account."
+    >
+      <form class="space-y-4" @submit.prevent="handleCreateStore">
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-(--ui-text-highlighted)">Store Name *</label>
+          <input
+            v-model="newStore.name"
+            type="text"
+            required
+            placeholder="e.g. Lekki Phase 1 Branch"
+            class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
+          />
+        </div>
 
-          <div class="space-y-1">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Business Category</label>
-            <select
-              v-model="newStore.category"
-              class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-            >
-              <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-          </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-(--ui-text-highlighted)">Business Category</label>
+          <select
+            v-model="newStore.category"
+            class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
+          >
+            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          </select>
+        </div>
 
-          <div class="space-y-1">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Branch Address</label>
-            <input
-              v-model="newStore.address"
-              type="text"
-              placeholder="e.g. 15 Admiralty Way, Lekki"
-              class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-            />
-          </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-(--ui-text-highlighted)">Branch Address</label>
+          <input
+            v-model="newStore.address"
+            type="text"
+            placeholder="e.g. 15 Admiralty Way, Lekki"
+            class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
+          />
+        </div>
 
-          <div class="space-y-1">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Branch Phone</label>
-            <input
-              v-model="newStore.phone"
-              type="tel"
-              placeholder="e.g. 08012345678"
-              class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-            />
-          </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-(--ui-text-highlighted)">Branch Phone</label>
+          <input
+            v-model="newStore.phone"
+            type="tel"
+            placeholder="e.g. 08012345678"
+            class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
+          />
+        </div>
 
-          <div class="space-y-1">
-            <label class="text-xs font-bold text-(--ui-text-highlighted)">Website / Social Link</label>
-            <input
-              v-model="newStore.website"
-              type="text"
-              placeholder="e.g. https://mystore.ng"
-              class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
-            />
-          </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-(--ui-text-highlighted)">Website / Social Link</label>
+          <input
+            v-model="newStore.website"
+            type="text"
+            placeholder="e.g. https://mystore.ng"
+            class="w-full bg-(--ui-bg) border border-(--ui-border) rounded-xl px-3.5 py-2.5 text-sm text-(--ui-text-highlighted) outline-none focus:border-amber-500"
+          />
+        </div>
 
-          <div class="flex items-center justify-end gap-3 pt-4 border-t border-(--ui-border)">
-            <UButton
-              type="button"
-              variant="ghost"
-              color="neutral"
-              @click="showCreateModal = false"
-            >
-              Cancel
-            </UButton>
-            <UButton
-              type="submit"
-              color="primary"
-              :loading="isSubmitting"
-              class="font-bold px-5 py-2"
-            >
-              Create Branch
-            </UButton>
-          </div>
-        </form>
-      </template>
-    </UModal>
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-(--ui-border)">
+          <UButton
+            type="button"
+            variant="ghost"
+            color="neutral"
+            @click="showCreateModal = false"
+          >
+            Cancel
+          </UButton>
+          <UButton
+            type="submit"
+            color="primary"
+            :loading="isSubmitting"
+            class="font-bold px-5 py-2"
+          >
+            Create Branch
+          </UButton>
+        </div>
+      </form>
+    </AppBottomSheet>
   </div>
 </template>

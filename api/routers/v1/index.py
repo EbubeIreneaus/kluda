@@ -25,6 +25,7 @@ from .admin.subscriptions import router as AdminSubscriptionRouter
 from .admin.webhook import router as InboundWebhookRouter
 from .admin.faqs import router as AdminFaqRouter
 from .faqs import router as FaqRouter
+from .audit import router as StoreAuditRouter
 
 
 router = APIRouter(prefix="/v1")
@@ -59,4 +60,5 @@ router.include_router(NotificationsRouter, tags=["Notifications"])
 router.include_router(SubscriptionsRouter, tags=["Subscriptions & Billing"])
 router.include_router(SSORouter, tags=["SSO"])
 router.include_router(FaqRouter, tags=["FAQs"])
+router.include_router(StoreAuditRouter, tags=["Store Audit Logs"])
 router.include_router(InboundWebhookRouter)

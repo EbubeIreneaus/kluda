@@ -847,137 +847,141 @@ function handleSearchBlur() {
       </div>
     </div>
 
-    <UModal v-model:open="showCustomerSearch" title="Link Customer">
-      <template #body>
-        <div class="space-y-4 p-4">
-          <UInput
-            v-model="customerSearch"
-            placeholder="Search customers..."
-            icon="i-lucide-search"
-          />
-          <div class="space-y-2 max-h-64 overflow-y-auto">
-            <button
-              v-for="customer in customerResults"
-              :key="customer.customer_id"
-              class="flex items-center gap-3 w-full p-3 rounded-lg text-left hover:bg-(--ui-bg-accented) transition"
-              @click="selectCustomer(customer)"
+    <AppBottomSheet
+      v-model="showCustomerSearch"
+      title="Link Customer"
+      description="Search and assign a registered customer to this order."
+    >
+      <div class="space-y-4">
+        <UInput
+          v-model="customerSearch"
+          placeholder="Search customers..."
+          icon="i-lucide-search"
+        />
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+          <button
+            v-for="customer in customerResults"
+            :key="customer.customer_id"
+            class="flex items-center gap-3 w-full p-3 rounded-lg text-left hover:bg-(--ui-bg-accented) transition"
+            @click="selectCustomer(customer)"
+          >
+            <UAvatar
+              :text="
+                customer.fullname
+                  .split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+              "
+              size="sm"
+            />
+            <div>
+              <p class="text-sm font-medium text-(--ui-text-highlighted)">
+                {{ customer.fullname }}
+              </p>
+              <p class="text-xs text-(--ui-text-dimmed)">
+                {{ customer.phone }} • {{ customer.email }}
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </AppBottomSheet>
+
+    <AppBottomSheet
+      v-model="showReceipt"
+      title="Receipt"
+      description="Order completed successfully."
+    >
+      <div class="space-y-4">
+        <div
+          class="text-center border-b border-dashed border-(--ui-border) pb-4"
+        >
+          <div
+            class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#090d16] border border-emerald-500/40 overflow-hidden mb-2"
+          >
+            <img
+              src="/kluda_icon.jpg"
+              alt="Kluda"
+              class="w-full h-full object-cover"
+            />
+          </div>
+          <h3
+            class="font-black text-lg tracking-wider text-(--ui-text-highlighted)"
+          >
+            KLUDA
+          </h3>
+          <p class="text-xs text-(--ui-text-dimmed)">
+            {{ new Date().toLocaleString() }}
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <div
+            v-for="item in cart.items"
+            :key="item.slug"
+            class="flex justify-between text-sm"
+          >
+            <span class="text-(--ui-text-muted)"
+              >{{ item.name }} × {{ item.quantity }}</span
             >
-              <UAvatar
-                :text="
-                  customer.fullname
-                    .split(' ')
-                    .map((n: string) => n[0])
-                    .join('')
-                "
-                size="sm"
-              />
-              <div>
-                <p class="text-sm font-medium text-(--ui-text-highlighted)">
-                  {{ customer.fullname }}
-                </p>
-                <p class="text-xs text-(--ui-text-dimmed)">
-                  {{ customer.phone }} • {{ customer.email }}
-                </p>
-              </div>
-            </button>
+            <span class="font-medium text-(--ui-text-highlighted)">{{
+              format(item.unit_price * item.quantity)
+            }}</span>
           </div>
         </div>
-      </template>
-    </UModal>
 
-    <UModal v-model:open="showReceipt" title="Receipt">
-      <template #body>
-        <div class="p-6 space-y-4">
-          <div
-            class="text-center border-b border-dashed border-(--ui-border) pb-4"
-          >
+        <div
+          class="border-t border-dashed border-(--ui-border) pt-3 space-y-1"
+        >
+          <div class="flex justify-between font-bold text-lg">
+            <span>Total</span>
+            <span class="text-green-600 dark:text-green-400">{{
+              format(cart.grandTotal)
+            }}</span>
+          </div>
+          <div class="flex justify-between text-sm text-(--ui-text-muted)">
+            <span>Payment</span>
+            <span class="capitalize">{{ cart.paymentMethod }}</span>
+          </div>
+        </div>
+
+        <div class="flex justify-center pt-2">
+          <div class="p-3 bg-white rounded-lg">
             <div
-              class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#090d16] border border-emerald-500/40 overflow-hidden mb-2"
-            >
-              <img
-                src="/kluda_icon.jpg"
-                alt="Kluda"
-                class="w-full h-full object-cover"
-              />
-            </div>
-            <h3
-              class="font-black text-lg tracking-wider text-(--ui-text-highlighted)"
-            >
-              KLUDA
-            </h3>
-            <p class="text-xs text-(--ui-text-dimmed)">
-              {{ new Date().toLocaleString() }}
-            </p>
-          </div>
-
-          <div class="space-y-2">
-            <div
-              v-for="item in cart.items"
-              :key="item.slug"
-              class="flex justify-between text-sm"
-            >
-              <span class="text-(--ui-text-muted)"
-                >{{ item.name }} × {{ item.quantity }}</span
-              >
-              <span class="font-medium text-(--ui-text-highlighted)">{{
-                format(item.unit_price * item.quantity)
-              }}</span>
-            </div>
-          </div>
-
-          <div
-            class="border-t border-dashed border-(--ui-border) pt-3 space-y-1"
-          >
-            <div class="flex justify-between font-bold text-lg">
-              <span>Total</span>
-              <span class="text-green-600 dark:text-green-400">{{
-                format(cart.grandTotal)
-              }}</span>
-            </div>
-            <div class="flex justify-between text-sm text-(--ui-text-muted)">
-              <span>Payment</span>
-              <span class="capitalize">{{ cart.paymentMethod }}</span>
-            </div>
-          </div>
-
-          <div class="flex justify-center pt-2">
-            <div class="p-3 bg-white rounded-lg">
-              <div
-                class="w-24 h-24 bg-gray-200 rounded flex items-center justify-center"
-              >
-                <UIcon
-                  name="i-lucide-qr-code"
-                  class="w-16 h-16 text-gray-600"
-                />
-              </div>
-            </div>
-          </div>
-
-          <p class="text-center text-xs text-(--ui-text-dimmed)">
-            Thank you for your purchase!
-          </p>
-
-          <div class="flex gap-2">
-            <UButton
-              block
-              variant="outline"
-              color="neutral"
-              :loading="isPrinting"
-              @click="handlePrintAndClose"
+              class="w-24 h-24 bg-gray-200 rounded flex items-center justify-center"
             >
               <UIcon
-                name="i-lucide-printer"
-                class="w-4 h-4 mr-1 text-emerald-400"
+                name="i-lucide-qr-code"
+                class="w-16 h-16 text-gray-600"
               />
-              {{ isPrinterConnected ? "Print & Close" : "Pair & Print" }}
-            </UButton>
-            <UButton block color="primary" @click="finalizeAndReset(false)">
-              Done
-            </UButton>
+            </div>
           </div>
         </div>
-      </template>
-    </UModal>
+
+        <p class="text-center text-xs text-(--ui-text-dimmed)">
+          Thank you for your purchase!
+        </p>
+
+        <div class="flex gap-2">
+          <UButton
+            block
+            variant="outline"
+            color="neutral"
+            :loading="isPrinting"
+            @click="handlePrintAndClose"
+          >
+            <UIcon
+              name="i-lucide-printer"
+              class="w-4 h-4 mr-1 text-emerald-400"
+            />
+            {{ isPrinterConnected ? "Print & Close" : "Pair & Print" }}
+          </UButton>
+          <UButton block color="primary" @click="finalizeAndReset(false)">
+            Done
+          </UButton>
+        </div>
+      </div>
+    </AppBottomSheet>
 
     <!-- Printer Hardware Pairing & Settings Modal -->
     <PosPrinterSettingsModal v-model:open="showPrinterModal" />

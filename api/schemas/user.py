@@ -25,11 +25,43 @@ class UserStatus(str, Enum):
 
 class StaffPermission(str, Enum):
     MANAGE_USER = "manage:user"
-    MANAGE_STAFF = "manage:staff"
+
+    VIEW_STAFF = "view:staff"
+    EDIT_STAFF = "edit:staff"
+    CREATE_STAFF = "create:staff"
+    DELETE_STAFF = "delete:staff"
+    STAFF_PERMISSION = "staff:permission"
+
     VIEW_ANALYTICS = "view:analytics"
-    VIEW_PRODUCT="view:product"
-    MANAGE_PRODUCT = "manage:product"
+
+    VIEW_PRODUCT = "view:product"
+    EDIT_PRODUCT = "edit:product"
+    CREATE_PRODUCT = "create:product"
+    DELETE_PRODUCT = "delete:product"
+    RESTORE_PRODUCT = "restore:product"
+    ADJUST_STOCK = "adjust:stock"
+
     RECORD_SALES = "record:sales"
+    VIEW_SALES = "view:sales"
+    CANCEL_SALES = "cancel:sales"
+    APPLY_DISCOUNT = "apply:discount"
+
+    VIEW_DEBT = "view:debt"
+    RECORD_DEBT = "record:debt"
+    SETTLE_DEBT = "settle:debt"
+
+    VIEW_AUDIT_LOG = "view:audit-log"
+
+    VIEW_CUSTOMER = "view:customer"
+    CREATE_CUSTOMER = "create:customer"
+    EDIT_CUSTOMER = "edit:customer"
+    DELETE_CUSTOMER = "delete:customer"
+
+    VIEW_APP_SETTINGS = "view:app-settings"
+    EDIT_APP_SETTINGS = "edit:app-settings"
+
+    EXPORT_REPORT = "export:report"
+
     MANAGE_ALL = "manage:all"
 
 
@@ -46,7 +78,7 @@ class StaffCreate(BaseModel):
     email: EmailStr
     password: str | None = None
     phone: str | None = None
-    permission: list[StaffPermission] = [StaffPermission.MANAGE_USER]
+    permission: list[StaffPermission] = [StaffPermission.RECORD_SALES, StaffPermission.VIEW_PRODUCT]
     status: StaffStatus = StaffStatus.ACTIVE
 
 class StaffUpdate(BaseModel):
