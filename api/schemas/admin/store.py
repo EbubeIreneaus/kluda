@@ -20,6 +20,19 @@ class AdminStoreListItem(BaseModel):
         from_attributes = True
 
 
+class AdminStoreStaffItem(BaseModel):
+    id: int
+    user_id: uuid.UUID
+    fullname: str
+    email: str
+    role: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class AdminStoreDetailResponse(BaseModel):
     id: int
     store_id: uuid.UUID
@@ -33,8 +46,10 @@ class AdminStoreDetailResponse(BaseModel):
     status: str
     staff_count: int = 0
     product_count: int = 0
+    customer_count: int = 0
     total_sales_count: int = 0
     total_revenue: int = 0
+    staff: list[AdminStoreStaffItem] = []
     created_at: datetime
     updated_at: datetime
 

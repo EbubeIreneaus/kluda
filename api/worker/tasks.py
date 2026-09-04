@@ -1,4 +1,5 @@
 import asyncio
+import re
 import json
 import time
 import uuid
@@ -368,13 +369,17 @@ async def process_inbound_resend_email(ctx: dict, email_id: str):
                 )
             )
 
+        clean_snippet_text = re.sub(r"<[^>]+>", " ", html_body)
+        clean_snippet_text = " ".join(clean_snippet_text.split())
+        clean_snippet = (clean_snippet_text[:150] + "...") if len(clean_snippet_text) > 150 else clean_snippet_text
+
         if not thread:
             thread = EmailThread(
                 mailbox_id=mailbox.mailbox_id if mailbox else None,
                 customer_email=from_email,
                 to=to_email,
                 subject=subject,
-                snippet=(html_body[:150] + "...") if len(html_body) > 150 else html_body,
+                snippet=clean_snippet,
                 status=EmailThreadStatus.UNREAD,
                 last_message_at=now,
             )
@@ -382,7 +387,7 @@ async def process_inbound_resend_email(ctx: dict, email_id: str):
             await db.flush()
             await db.refresh(thread)
         else:
-            thread.snippet = (html_body[:150] + "...") if len(html_body) > 150 else html_body
+            thread.snippet = clean_snippet
             thread.status = EmailThreadStatus.UNREAD
             thread.last_message_at = now
             if not thread.mailbox_id and mailbox:

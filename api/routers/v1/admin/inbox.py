@@ -22,6 +22,16 @@ from setting import settings
 from worker.config import get_arq_pool
 
 
+import re
+
+def clean_html_snippet(text: str | None, max_length: int = 150) -> str:
+    if not text:
+        return ""
+    clean = re.sub(r"<[^>]+>", " ", text)
+    clean = " ".join(clean.split())
+    return (clean[:max_length] + "...") if len(clean) > max_length else clean
+
+
 router = APIRouter(prefix="/inbox", tags=["Admin Email Inbox"])
 
 
@@ -36,7 +46,7 @@ async def list_threads(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(get_admin),
 ):
-    stmt = select(EmailThread).options(selectinload(EmailThread.messages))
+    stmt = select(EmailThread)
 
     if mailbox_id:
         stmt = stmt.where(EmailThread.mailbox_id == mailbox_id)
@@ -61,8 +71,15 @@ async def list_threads(
     elif folder == "spam":
         stmt = stmt.where(EmailThread.status == EmailThreadStatus.SPAM)
     elif folder == "sent":
-        stmt = stmt.where(EmailThread.status != EmailThreadStatus.SPAM)
+        stmt = stmt.where(
+            EmailThread.messages.any(EmailMessages.direction == "outgoing")
+        ).where(EmailThread.status != EmailThreadStatus.SPAM)
     else:
+        # Default 'inbox': Threads that have at least one incoming message
+        # and are not archived or spam
+        stmt = stmt.where(
+            EmailThread.messages.any(EmailMessages.direction == "incoming")
+        )
         if status_filter:
             stmt = stmt.where(EmailThread.status == status_filter)
         else:
@@ -80,8 +97,13 @@ async def list_threads(
         )
 
     stmt = stmt.order_by(EmailThread.last_message_at.desc()).limit(limit).offset(offset)
-    result = await db.scalars(stmt)
-    return result.all()
+    threads = (await db.scalars(stmt)).all()
+
+    for t in threads:
+        if t.snippet:
+            t.snippet = clean_html_snippet(t.snippet)
+
+    return threads
 
 
 @router.get("/threads/{thread_id}", response_model=EmailThreadResponse)
@@ -104,6 +126,13 @@ async def get_thread_detail(
     if thread.status == EmailThreadStatus.UNREAD:
         thread.status = EmailThreadStatus.READ
         await db.flush()
+
+    if thread.snippet:
+        thread.snippet = clean_html_snippet(thread.snippet)
+
+    # Chronological sort of messages
+    if thread.messages:
+        thread.messages.sort(key=lambda m: m.created_at)
 
     return thread
 
@@ -141,18 +170,28 @@ async def compose_new_email(
 
     resend_id = None
     
+    html_body = payload.body
+    if not html_body.strip().lower().startswith("<!doctype") and not html_body.strip().lower().startswith("<html"):
+        from libs.email_template import render_branded_email
+        html_to_send = render_branded_email(
+            subject=payload.subject,
+            body_html=payload.body,
+            recipient_email=payload.to_email,
+        )
+    else:
+        html_to_send = html_body
+
     try:
         send_res = resend_client.Emails.send(
             {
                 "from": f"{mailbox.name} <{mailbox.email}>",
                 "to": [payload.to_email],
                 "subject": payload.subject,
-                "html": payload.body,
+                "html": html_to_send,
             }
         )
-        resend_id =  send_res.get("id", None)
+        resend_id = send_res.get("id", None)
     except Exception as e:
-        
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         )
@@ -163,9 +202,7 @@ async def compose_new_email(
         customer_email=payload.to_email,
         to=mailbox.email,
         subject=payload.subject,
-        snippet=(
-            (payload.body[:150] + "...") if len(payload.body) > 150 else payload.body
-        ),
+        snippet=clean_html_snippet(payload.body),
         status=EmailThreadStatus.READ,
         last_message_at=now,
     )
@@ -201,11 +238,7 @@ async def compose_new_email(
             customer_email=mailbox.email,
             to=recipient_mailbox.email,
             subject=payload.subject,
-            snippet=(
-                (payload.body[:150] + "...")
-                if len(payload.body) > 150
-                else payload.body
-            ),
+            snippet=clean_html_snippet(payload.body),
             status=EmailThreadStatus.UNREAD,
             last_message_at=now,
         )
@@ -251,18 +284,35 @@ async def reply_to_thread(
     sender_email = thread.to if thread.to else f"support@{settings.DOMAIN_NAME}"
     resend_id = None
 
+    reply_body = payload.body
+    # Format reply as HTML if it's plain text
+    if "<p>" not in reply_body and "<div" not in reply_body:
+        formatted_html = "".join(f"<p>{p.strip()}</p>" for p in reply_body.split("\n\n") if p.strip())
+        if not formatted_html:
+            formatted_html = f"<p>{reply_body}</p>"
+    else:
+        formatted_html = reply_body
+
+    from libs.email_template import render_branded_email
+    subject_to_send = (
+        f"Re: {thread.subject}"
+        if not thread.subject.startswith("Re:")
+        else thread.subject
+    )
+    html_to_send = render_branded_email(
+        subject=subject_to_send,
+        body_html=formatted_html,
+        recipient_email=thread.customer_email,
+    )
+
     if hasattr(settings, "RESEND_API_KEY") and settings.RESEND_API_KEY:
         try:
             send_res = resend_client.Emails.send(
                 {
                     "from": f"Kluda Support <{sender_email}>",
                     "to": [thread.customer_email],
-                    "subject": (
-                        f"Re: {thread.subject}"
-                        if not thread.subject.startswith("Re:")
-                        else thread.subject
-                    ),
-                    "html": payload.body,
+                    "subject": subject_to_send,
+                    "html": html_to_send,
                 }
             )
             resend_id = (
@@ -279,15 +329,13 @@ async def reply_to_thread(
         resend_id=resend_id,
         recipients=thread.customer_email,
         sender=sender_email,
-        body=payload.body,
+        body=formatted_html,
         direction="outgoing",
         created_at=now,
     )
     db.add(new_message)
 
-    thread.snippet = (
-        (payload.body[:150] + "...") if len(payload.body) > 150 else payload.body
-    )
+    thread.snippet = clean_html_snippet(payload.body)
     thread.last_message_at = now
     await db.flush()
     await db.refresh(new_message)
@@ -320,3 +368,32 @@ async def update_thread_status(
     thread.status = status_val
     await db.flush()
     return {"status": "ok", "message": "Thread status updated"}
+
+
+@router.delete("/threads/{thread_id}")
+async def delete_thread(
+    thread_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: Admin = Depends(get_admin),
+):
+    thread = await db.scalar(
+        select(EmailThread).where(EmailThread.thread_id == thread_id)
+    )
+    if not thread:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found"
+        )
+
+    await db.delete(thread)
+    await db.flush()
+
+    from libs.audit import record_audit_log
+    await record_audit_log(
+        db=db,
+        admin_id=admin.admin_id,
+        action="EMAIL_THREAD_DELETED",
+        target_type="email_thread",
+        target_id=thread_id,
+        details={"subject": thread.subject, "customer_email": thread.customer_email},
+    )
+    return {"status": "ok", "message": "Email thread deleted successfully"}

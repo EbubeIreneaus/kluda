@@ -166,15 +166,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+  <div class="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl w-full min-w-0 mx-auto">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
-      <div>
-        <h1 class="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-          <UIcon name="i-lucide-help-circle" class="size-7 text-emerald-400" />
-          Frequently Asked Questions (CMS)
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5 min-w-0">
+      <div class="min-w-0">
+        <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5 wrap-break-word">
+          <UIcon name="i-lucide-help-circle" class="size-6 sm:size-7 text-emerald-400 shrink-0" />
+          <span>Frequently Asked Questions (CMS)</span>
         </h1>
-        <p class="text-xs text-zinc-400 mt-1">
+        <p class="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
           Manage questions and answers displayed on Kluda's marketing and pricing pages. Cached in Redis for instant performance.
         </p>
       </div>
@@ -183,7 +183,7 @@ onMounted(() => {
         v-if="hasPermission('manage:settings')"
         color="primary"
         icon="i-lucide-plus"
-        class="font-bold shrink-0 shadow-lg shadow-emerald-500/20"
+        class="font-bold shrink-0 self-start sm:self-auto shadow-lg shadow-emerald-500/20"
         @click="openCreateModal"
       >
         Add FAQ Item
@@ -191,11 +191,11 @@ onMounted(() => {
     </div>
 
     <!-- Filters & Search Bar -->
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full min-w-0">
+      <div class="flex items-center gap-1.5 overflow-x-auto max-w-full pb-2 sm:pb-0 scrollbar-none shrink min-w-0">
         <button
           type="button"
-          class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer"
+          class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
           :class="selectedCategory === 'all' ? 'bg-emerald-500 text-zinc-950 shadow-sm' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'"
           @click="selectedCategory = 'all'"
         >
@@ -205,7 +205,7 @@ onMounted(() => {
           v-for="cat in categories"
           :key="cat.value"
           type="button"
-          class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer"
+          class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
           :class="selectedCategory === cat.value ? 'bg-emerald-500 text-zinc-950 shadow-sm' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'"
           @click="selectedCategory = cat.value"
         >
@@ -213,25 +213,26 @@ onMounted(() => {
         </button>
       </div>
 
-      <div class="w-full sm:w-72">
+      <div class="w-full sm:w-72 shrink-0">
         <UInput
           v-model="searchQuery"
           icon="i-lucide-search"
           placeholder="Search questions..."
           size="sm"
+          class="w-full"
         />
       </div>
     </div>
 
     <!-- Loading Skeleton -->
-    <div v-if="isLoading" class="space-y-3">
+    <div v-if="isLoading" class="space-y-3 w-full min-w-0">
       <div v-for="i in 4" :key="i" class="h-24 rounded-2xl bg-zinc-900/50 border border-zinc-800 animate-pulse" />
     </div>
 
     <!-- Empty State -->
     <div
       v-else-if="filteredFaqs.length === 0"
-      class="text-center py-16 px-4 rounded-3xl border border-dashed border-zinc-800 bg-zinc-900/30"
+      class="text-center py-16 px-4 rounded-3xl border border-dashed border-zinc-800 bg-zinc-900/30 w-full"
     >
       <UIcon name="i-lucide-help-circle" class="size-12 text-zinc-600 mx-auto mb-3" />
       <h3 class="text-base font-bold text-zinc-300">No FAQs Found</h3>
@@ -241,23 +242,23 @@ onMounted(() => {
     </div>
 
     <!-- FAQ Items List -->
-    <div v-else class="space-y-3">
+    <div v-else class="space-y-3 w-full min-w-0">
       <div
         v-for="faq in filteredFaqs"
         :key="faq.id"
-        class="p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-900/70 transition flex flex-col sm:flex-row sm:items-start justify-between gap-4"
+        class="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-900/70 transition flex flex-col sm:flex-row sm:items-start justify-between gap-4 min-w-0 w-full"
       >
-        <div class="space-y-2 flex-1">
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-zinc-300 border border-zinc-700">
+        <div class="space-y-2 flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-zinc-300 border border-zinc-700 shrink-0">
               #{{ faq.display_order }}
             </span>
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
               {{ faq.category }}
             </span>
             <button
               type="button"
-              class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition border"
+              class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition border shrink-0"
               :class="faq.is_published ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/15 text-rose-300 border-rose-500/30'"
               @click="togglePublished(faq)"
             >
@@ -265,11 +266,11 @@ onMounted(() => {
             </button>
           </div>
 
-          <h3 class="text-sm font-bold text-white leading-snug">
+          <h3 class="text-sm font-bold text-white leading-snug wrap-break-word">
             {{ faq.question }}
           </h3>
 
-          <p class="text-xs text-zinc-400 leading-relaxed">
+          <p class="text-xs text-zinc-400 leading-relaxed wrap-break-word whitespace-pre-line">
             {{ faq.answer }}
           </p>
         </div>
@@ -303,7 +304,7 @@ onMounted(() => {
       <form id="faq-form" @submit.prevent="handleSaveFaq" class="space-y-4">
         <div class="space-y-1.5">
           <label class="text-xs font-medium text-zinc-300">Question <span class="text-rose-400">*</span></label>
-          <UInput v-model="form.question" placeholder="e.g. Can I use Kluda POS when my shop has no internet?" size="sm" required />
+          <UInput v-model="form.question" placeholder="e.g. Can I use Kluda POS when my shop has no internet?" size="sm" required class="w-full" />
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -321,7 +322,7 @@ onMounted(() => {
 
           <div class="space-y-1.5">
             <label class="text-xs font-medium text-zinc-300">Display Order</label>
-            <UInput v-model.number="form.display_order" type="number" min="1" size="sm" />
+            <UInput v-model.number="form.display_order" type="number" min="1" size="sm" class="w-full" />
           </div>
         </div>
 
@@ -331,7 +332,7 @@ onMounted(() => {
             v-model="form.answer"
             rows="4"
             placeholder="Provide a clear, reassuring answer for retail store merchants..."
-            class="w-full bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+            class="w-full max-w-full bg-zinc-950 border border-zinc-800 text-xs rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500 resize-y"
             required
           />
         </div>
@@ -341,11 +342,11 @@ onMounted(() => {
             <input
               v-model="form.is_published"
               type="checkbox"
-              class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4 cursor-pointer"
+              class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4 cursor-pointer shrink-0"
             />
             Publish to Website immediately
           </label>
-          <span class="text-[10px] text-zinc-500">
+          <span class="text-[10px] text-zinc-500 shrink-0">
             {{ form.is_published ? 'Visible to public' : 'Hidden from public' }}
           </span>
         </div>
