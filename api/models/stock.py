@@ -7,7 +7,7 @@ from sqlalchemy import Numeric
 from pydantic import EmailStr
 from .config import Base
 from sqlalchemy.orm import MappedColumn, mapped_column
-from sqlalchemy import DateTime, String, Enum, Integer, func, ForeignKey
+from sqlalchemy import DateTime, String, Enum, Integer, func, ForeignKey, Index, text
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -18,6 +18,15 @@ if TYPE_CHECKING:
 
 class Stock(Base):
     __tablename__ = "stocks"
+    __table_args__ = (
+        Index(
+            "uq_stocks_store_barcode",
+            "store_id",
+            "barcode_id",
+            unique=True,
+            postgresql_where=text("deleted = false AND barcode_id IS NOT NULL AND barcode_id != ''"),
+        ),
+    )
     id: MappedColumn[int] = mapped_column(Integer, primary_key=True)
     name: MappedColumn[str] = mapped_column(String)
     slug: MappedColumn[str] = mapped_column(String, unique=True)
@@ -27,7 +36,7 @@ class Stock(Base):
     )
     store: MappedColumn["Store"] = relationship(back_populates="stocks")
     barcode_id: MappedColumn[str | None] = mapped_column(
-        String, nullable=True, unique=True
+        String, nullable=True, index=True
     )
     unit_price: MappedColumn[int] = mapped_column(
         Integer, default=1000
