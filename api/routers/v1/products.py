@@ -118,7 +118,6 @@ async def create_stock(
         details={
             "unit_price": float(new_stock.unit_price) if new_stock.unit_price is not None else None,
             "quantities": float(new_stock.quantities) if new_stock.quantities is not None else None,
-            "cost_price": float(new_stock.cost_price) if new_stock.cost_price is not None else None,
             "barcode_id": new_stock.barcode_id,
         },
         ip_address=get_client_ip(request),
