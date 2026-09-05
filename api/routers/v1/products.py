@@ -116,7 +116,7 @@ async def create_stock(
         target_id=new_stock.slug,
         target_name=new_stock.name,
         details={
-            "price": float(new_stock.price) if new_stock.price is not None else None,
+            "unit_price": float(new_stock.unit_price) if new_stock.unit_price is not None else None,
             "quantities": float(new_stock.quantities) if new_stock.quantities is not None else None,
             "cost_price": float(new_stock.cost_price) if new_stock.cost_price is not None else None,
             "barcode_id": new_stock.barcode_id,
