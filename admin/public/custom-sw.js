@@ -6,7 +6,7 @@ self.addEventListener('push', function (event) {
     const options = {
       body: payload.body || '',
       icon: '/kluda-icons/192x192.png',
-      badge: '/kluda-icons/favicon-32x32-transparent.png',
+      badge: '/kluda-icons/192x192-transparent.png',
       data: payload.data || {},
       vibrate: [100, 50, 100]
     }
