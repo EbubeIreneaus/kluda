@@ -1,3 +1,4 @@
+from sqlalchemy.orm import selectinload
 from schemas.business import StoreResponseMini
 import uuid
 import logging
@@ -68,6 +69,7 @@ async def create_sales_batch(
 
     owner = await db.scalar(select(User).where(User.user_id == owner_user_id)) if owner_user_id else None
     current_sub = None
+
     if owner and owner.current_subscription_id:
         current_sub = await db.scalar(
             select(UserSubscription).where(
@@ -164,7 +166,7 @@ async def create_sales_batch(
 
                 for item_in in sale_data.items:
                     stk_res = await db.execute(
-                        select(Stock).where(Stock.slug == item_in.stock_slug)
+                        select(Stock).where(Stock.slug == item_in.stock_slug, Stock.store_id == store.store_id)
                     )
                     stock_item = stk_res.scalar_one_or_none()
                     if not stock_item:
@@ -176,6 +178,7 @@ async def create_sales_batch(
                             quantities=0,
                             unit_in="piece",
                             deleted=True,
+                            store_id=store.store_id,
                         )
                         db.add(stock_item)
                         await db.flush()
@@ -469,6 +472,7 @@ async def get_sales(
         .options(
             joinedload(Sale.items).joinedload(SaleItem.stock),
             joinedload(Sale.customer),
+            selectinload(Sale.user)
         )
         .where(and_(Sale.created_at >= day_start, Sale.created_at < day_end), Sale.store_id == store.store_id)
         .order_by(Sale.created_at.desc())

@@ -19,7 +19,7 @@ class NotificationManager:
     def __init__(self):
         self.public_key = settings.VAPID_PUBLIC_KEY
         self.private_key = settings.VAPID_PRIVATE_KEY
-        claim_email = settings.VAPID_CLAIM_EMAIL or "admin@kluda.app"
+        claim_email = settings.VAPID_CLAIM_EMAIL or "support@kluda.app"
         if not claim_email.startswith(("mailto:", "https://")):
             claim_email = f"mailto:{claim_email}"
         self.claims = {"sub": claim_email}

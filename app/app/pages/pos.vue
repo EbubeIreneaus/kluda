@@ -491,7 +491,6 @@ function handleSearchBlur() {
                 placeholder="Enter name or scan barcode..."
                 icon="i-lucide-scan-barcode"
                 size="xl"
-                autofocus
                 @focus="showSearchResults = true"
                 @blur="handleSearchBlur"
                 @keydown="onBarcodeKeydown"
@@ -983,7 +982,6 @@ function handleSearchBlur() {
       </div>
     </AppBottomSheet>
 
-    <!-- Printer Hardware Pairing & Settings Modal -->
     <PosPrinterSettingsModal v-model:open="showPrinterModal" />
 
     <div

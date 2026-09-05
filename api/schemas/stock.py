@@ -1,3 +1,4 @@
+from schemas.user import BaseStaffResponse
 from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
 from typing import Literal, Any
@@ -154,6 +155,7 @@ class SaleResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    user: BaseStaffResponse | None = None
 
 
 # --- Barcode Schemas ---

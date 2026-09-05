@@ -121,8 +121,12 @@ class StaffLogin(BaseModel):
 class BaseUser(BaseModel):
     fullname: str
     email: EmailStr
-    phone: str | None = Field(min_length=11, max_length=15)
-    
+    phone: str | None = Field(default=None, min_length=11, max_length=15)
+
+class BaseStaffResponse(BaseUser):
+    model_config = ConfigDict(from_attributes=True)
+    user_id: uuid.UUID
+    fullname:str
 
 class UserCreate(BaseUser):
     password: str = Field(min_length=6)

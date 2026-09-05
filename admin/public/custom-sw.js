@@ -5,8 +5,8 @@ self.addEventListener('push', function (event) {
     const title = payload.title || 'Kluda'
     const options = {
       body: payload.body || '',
-      icon: '/pwa-192x192.png',
-      badge: '/favicon.svg',
+      icon: '/kluda-icons/192x192.png',
+      badge: '/kluda-icons/favicon-32x32.png',
       data: payload.data || {},
       vibrate: [100, 50, 100]
     }
@@ -15,7 +15,7 @@ self.addEventListener('push', function (event) {
     event.waitUntil(
       self.registration.showNotification('Kluda', {
         body: event.data.text(),
-        icon: '/pwa-192x192.png'
+        icon: '/kluda-icons/192x192.png'
       })
     )
   }

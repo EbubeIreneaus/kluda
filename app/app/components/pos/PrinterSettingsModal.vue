@@ -1,15 +1,25 @@
 <script setup lang="ts">
-const props = defineProps<{
-  open: boolean;
-}>();
+interface Props {
+  open?: boolean;
+  modelValue?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  open: undefined,
+  modelValue: undefined,
+});
 
 const emit = defineEmits<{
   (e: "update:open", value: boolean): void;
+  (e: "update:modelValue", value: boolean): void;
 }>();
 
 const isOpen = computed({
-  get: () => props.open,
-  set: (v) => emit("update:open", v),
+  get: () => (props.open !== undefined ? props.open : !!props.modelValue),
+  set: (v: boolean) => {
+    emit("update:open", v);
+    emit("update:modelValue", v);
+  },
 });
 
 const {
@@ -52,9 +62,14 @@ async function handleConnectUsb() {
 </script>
 
 <template>
-  <UModal v-model:open="isOpen" title="Receipt Printer Hardware">
-    <template #body>
-      <div class="p-6 space-y-6">
+  <AppFullScreenModal
+    v-model="isOpen"
+    title="Receipt Printer Hardware"
+    description="Pair your Bluetooth or USB thermal receipt printer and configure paper width"
+    max-width="max-w-2xl"
+    z-index="z-[60]"
+  >
+    <div class="space-y-6">
         <!-- Header status pill -->
         <div
           class="flex items-center justify-between p-4 rounded-2xl border transition"
@@ -284,8 +299,19 @@ async function handleConnectUsb() {
               or PC.
             </p>
           </div>
-        </div>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="flex justify-end">
+        <UButton
+          color="neutral"
+          variant="outline"
+          @click="isOpen = false"
+        >
+          Close
+        </UButton>
       </div>
     </template>
-  </UModal>
+  </AppFullScreenModal>
 </template>

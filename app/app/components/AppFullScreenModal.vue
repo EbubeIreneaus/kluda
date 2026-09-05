@@ -7,6 +7,7 @@ interface Props {
   description?: string
   persistent?: boolean
   maxWidth?: string
+  zIndex?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -14,7 +15,8 @@ const props = withDefaults(defineProps<Props>(), {
   title: '',
   description: '',
   persistent: true,
-  maxWidth: 'max-w-2xl'
+  maxWidth: 'max-w-2xl',
+  zIndex: 'z-50'
 })
 
 const emit = defineEmits<{
@@ -47,8 +49,8 @@ function handleClose() {
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-50 flex"
-      :class="isMobile ? 'items-end justify-center' : 'items-stretch justify-end'"
+      class="fixed inset-0 flex"
+      :class="[zIndex, isMobile ? 'items-end justify-center' : 'items-stretch justify-end']"
     >
       <Transition
         appear

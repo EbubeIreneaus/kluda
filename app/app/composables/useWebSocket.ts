@@ -37,8 +37,8 @@ export const usePosSocket = () => {
 
   function connect() {
     if (!import.meta.client) return
-    const storeId = auth.store_id || auth.staff?.store_id
-    const staffId = auth.staff?.staff_id
+    const storeId = auth.store_id 
+    const staffId = auth.user?.user_id
     if (!storeId || !staffId) {
       scheduleReconnect()
       return
@@ -64,7 +64,7 @@ export const usePosSocket = () => {
       } catch {
         return
       }
-
+ 
       const { event: evtName, data, event_id } = payload
 
       if (event_id && isDuplicateEvent(event_id)) {

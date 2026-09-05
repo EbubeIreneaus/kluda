@@ -12,6 +12,8 @@ const { withPinAuth } = usePinAuth()
 
 const productStore = useProductsStore()
 
+const addingProductLoader = ref(false)
+
 const search = ref('')
 const showAddModal = ref(false)
 const showEditSlideover = ref(false)
@@ -194,6 +196,7 @@ async function saveEdit() {
 }
 
 async function handleAddProduct() {
+  addingProductLoader.value = true
   try {
     const addData = {
       name: newProduct.value.name,
@@ -209,6 +212,8 @@ async function handleAddProduct() {
     newProduct.value = { name: '', price: 0, barcode_id: '', quantity: 0, unit: 'piece', description: '' }
   } catch (err) {
     toast.add({ title: 'Error', description: 'Could not add product', color: 'error' })
+  } finally {
+    addingProductLoader.value = false
   }
 }
 
@@ -575,7 +580,7 @@ watch([showAddModal, showEditSlideover], () => {
         </UFormField>
         <div class="flex justify-end gap-2 pt-2">
           <UButton variant="outline" color="neutral" @click="showAddModal = false">Cancel</UButton>
-          <UButton type="submit">Add Product</UButton>
+          <UButton type="submit" :loading="addingProductLoader">Add Product</UButton>
         </div>
       </form>
     </AppBottomSheet>

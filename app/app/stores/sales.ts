@@ -87,7 +87,10 @@ export const useSalesStore = defineStore('sales', () => {
       total: totalKobo,
       method: pendingSale.payment_method,
       status: pendingSale.status || 'pending',
-      staff: 'Admin Staff',
+      staff: {
+        user_id: auth.user?.user_id || "",
+        fullname: auth.user?.fullname || ""
+      },
       note: pendingSale.staff_note || ''
     }
   }
@@ -132,7 +135,10 @@ export const useSalesStore = defineStore('sales', () => {
             total: totalKobo,
             method: sale.payment_method,
             status: sale.status,
-            staff: 'Admin Staff',
+            staff: {
+              user_id: sale.user.user_id,
+              fullname: sale.user.fullname
+            },
             note: sale.staff_note || ''
           }
         })

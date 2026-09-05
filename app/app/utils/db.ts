@@ -74,7 +74,10 @@ export interface LocalSale {
   total: number
   method: string
   status: string
-  staff: string
+  staff: {
+    user_id: string
+    fullname:string
+  }
   note: string
 }
 
