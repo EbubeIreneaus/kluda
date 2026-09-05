@@ -58,7 +58,7 @@ class WorkerSettings:
     poll_delay = 1
     cron_jobs = [
         cron(cron_cleanup_expired_sessions, minute=0),
-        cron(cron_generate_daily_metrics, hour=23, minute=55),
+        cron(cron_generate_daily_metrics, hour={6,9,12,15,18,21}, minute=1),
     ]
     redis_settings = REDIS_SETTINGS
     on_startup = startup
