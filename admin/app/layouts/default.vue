@@ -14,6 +14,7 @@ const allNavLinks = [
   { label: 'Support Tickets', to: '/support', icon: 'i-lucide-ticket', permission: 'manage:support' },
   { label: 'Notifications', to: '/notifications', icon: 'i-lucide-bell', permission: 'manage:admins' },
   { label: 'Admin Team', to: '/admins', icon: 'i-lucide-shield-check', permission: 'manage:admins' },
+  { label: 'Catalog Templates', to: '/catalog', icon: 'i-lucide-boxes', permission: 'manage:settings' },
   { label: 'FAQs CMS', to: '/faqs', icon: 'i-lucide-help-circle', permission: 'manage:settings' },
   { label: 'System Settings', to: '/settings', icon: 'i-lucide-sliders-horizontal', permission: 'manage:settings' }
 ]

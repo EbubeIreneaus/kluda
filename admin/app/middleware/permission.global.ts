@@ -26,6 +26,7 @@ export default defineNuxtRouteMiddleware((to) => {
     '/support': ['manage:support'],
     '/notifications': ['manage:admins', 'manage:emails'],
     '/admins': ['manage:admins'],
+    '/catalog': ['manage:settings'],
     '/settings': ['manage:settings', 'view:audit_logs']
   }
 

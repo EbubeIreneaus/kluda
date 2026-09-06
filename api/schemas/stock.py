@@ -25,6 +25,7 @@ class StockCreate(BaseModel):
     name: str
     barcode_id: str | None = None
     unit_price: int
+    cost_price: int | None = 0
     sku: str | None = None
     quantities: float = 1.0
     unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag'] = "piece"
@@ -47,6 +48,7 @@ class StockUpdate(BaseModel):
     name: str | None = None
     barcode_id: str | None = None
     unit_price: int | None = None
+    cost_price: int | None = None
     sku: str | None = None
     quantities: float | None = None
     unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag'] | None = None
@@ -73,6 +75,7 @@ class StockResponse(BaseModel):
     slug: str
     barcode_id: str | None = None
     unit_price: int
+    cost_price: int | None = 0
     sku: str | None = None
     quantities: float
     unit_in: str

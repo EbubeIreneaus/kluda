@@ -41,6 +41,9 @@ class Stock(Base):
     unit_price: MappedColumn[int] = mapped_column(
         Integer, default=1000
     )  # 100kobo * 10 = 10naira
+    cost_price: MappedColumn[int | None] = mapped_column(
+        Integer, default=0, nullable=True
+    )
     sku: MappedColumn[str | None] = mapped_column(String, nullable=True)
     quantities: MappedColumn[float] = mapped_column(
         Numeric(precision=8, scale=2), default=1

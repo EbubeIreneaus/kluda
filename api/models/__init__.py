@@ -12,3 +12,4 @@ from .subscription import UserSubscription
 from .notification import Notification, NotificationRead
 from .faq import FAQ
 from .store_audit import StoreAuditLog
+from .catalog import CatalogTemplate, CatalogItem
