@@ -61,7 +61,7 @@ class CatalogItem(Base):
     cost_price: MappedColumn[int] = mapped_column(Integer, default=0)
 
     unit_in: MappedColumn[
-        Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag"]
+        Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag", "sachet"]
     ] = mapped_column(String(10), default="piece")
 
     description: MappedColumn[str | None] = mapped_column(String, nullable=True)

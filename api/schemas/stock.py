@@ -28,7 +28,7 @@ class StockCreate(BaseModel):
     cost_price: int | None = 0
     sku: str | None = None
     quantities: float = 1.0
-    unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag'] = "piece"
+    unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag', 'sachet'] = "piece"
     max_discount: int = 0
     description: str | None = None
     staff_note: str | None = None
@@ -51,7 +51,7 @@ class StockUpdate(BaseModel):
     cost_price: int | None = None
     sku: str | None = None
     quantities: float | None = None
-    unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag'] | None = None
+    unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag', 'sachet'] | None = None
     max_discount: int | None = None
     description: str | None = None
     staff_note: str | None = None

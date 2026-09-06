@@ -49,7 +49,7 @@ class Stock(Base):
         Numeric(precision=8, scale=2), default=1
     )
     unit_in: MappedColumn[
-        Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag"]
+        Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag", "sachet"]
     ] = mapped_column(String(10), default="piece")
     max_discount: MappedColumn[int] = mapped_column(Integer, default=0)
     images: MappedColumn[list["Images"]] = relationship(cascade="all, delete-orphan")

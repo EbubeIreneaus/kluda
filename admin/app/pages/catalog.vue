@@ -87,6 +87,7 @@ const itemsPageSize = ref(15)
 const itemsTotal = ref(0)
 const itemsTotalPages = ref(1)
 const searchItem = ref('')
+const filterNoBarcode = ref(false)
 
 // Bottom sheet for single item detail
 const selectedItem = ref<CatalogProductItem | null>(null)
@@ -110,6 +111,7 @@ const itemForm = reactive({
 
 const supportedUnits = [
   { label: 'Piece (pcs)', value: 'piece' },
+  { label: 'Sachet', value: 'sachet' },
   { label: 'Pack', value: 'pack' },
   { label: 'Carton', value: 'carton' },
   { label: 'Kilogram (kg)', value: 'kg' },
@@ -257,6 +259,7 @@ async function openViewItems(template: CatalogTemplateItem) {
   selectedTemplate.value = template
   itemsPage.value = 1
   searchItem.value = ''
+  filterNoBarcode.value = false
   isViewItemsOpen.value = true
   await fetchItems()
 }
@@ -266,7 +269,8 @@ async function fetchItems() {
   isLoadingItems.value = true
   try {
     const q = searchItem.value.trim() ? `&search=${encodeURIComponent(searchItem.value.trim())}` : ''
-    const url = `/catalog-templates/${selectedTemplate.value.slug}/items?page=${itemsPage.value}&page_size=${itemsPageSize.value}${q}`
+    const barcodeQ = filterNoBarcode.value ? '&has_barcode=false' : ''
+    const url = `/catalog-templates/${selectedTemplate.value.slug}/items?page=${itemsPage.value}&page_size=${itemsPageSize.value}${q}${barcodeQ}`
     const res = await apiFetch<PaginatedItemsResponse>(url)
     items.value = res.items || []
     itemsTotal.value = res.total || 0
@@ -278,6 +282,12 @@ async function fetchItems() {
   } finally {
     isLoadingItems.value = false
   }
+}
+
+function toggleNoBarcodeFilter() {
+  filterNoBarcode.value = !filterNoBarcode.value
+  itemsPage.value = 1
+  fetchItems()
 }
 
 function handleItemSearch() {
@@ -608,7 +618,16 @@ onMounted(() => {
             />
           </div>
 
-          <div class="flex items-center gap-2 justify-between sm:justify-end">
+          <div class="flex items-center gap-2 justify-between sm:justify-end flex-wrap">
+            <UButton
+              :label="filterNoBarcode ? 'No Barcode (Active)' : 'No Barcode Only'"
+              :icon="filterNoBarcode ? 'i-lucide-alert-triangle' : 'i-lucide-scan-line'"
+              size="xs"
+              :color="filterNoBarcode ? 'warning' : 'neutral'"
+              :variant="filterNoBarcode ? 'solid' : 'outline'"
+              title="Filter items without a barcode"
+              @click="toggleNoBarcodeFilter"
+            />
             <UButton
               label="Search"
               size="xs"
@@ -643,7 +662,9 @@ onMounted(() => {
         >
           <UIcon name="i-lucide-inbox" class="size-8 text-zinc-500 mx-auto" />
           <p class="text-xs font-semibold text-white">No products found</p>
-          <p class="text-[11px] text-zinc-400">Try adjusting your search query or add new items.</p>
+          <p class="text-[11px] text-zinc-400">
+            {{ filterNoBarcode ? 'All products in this category currently have barcodes.' : 'Try adjusting your search query or add new items.' }}
+          </p>
         </div>
 
         <!-- Items List: Compact, Mobile-Friendly Cards/Rows -->
@@ -670,7 +691,10 @@ onMounted(() => {
                   <UIcon name="i-lucide-barcode" class="size-3.5 text-zinc-400" />
                   {{ item.barcode }}
                 </span>
-                <span v-else class="italic text-zinc-500 text-[10px]">No barcode</span>
+                <span v-else class="inline-flex items-center gap-1 font-medium text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 text-[10px]">
+                  <UIcon name="i-lucide-alert-circle" class="size-3 text-amber-400" />
+                  No Barcode
+                </span>
                 <span class="text-zinc-600">·</span>
                 <span class="capitalize">{{ item.unit_in }}</span>
               </div>
@@ -736,24 +760,44 @@ onMounted(() => {
           <span class="text-xs text-zinc-400 uppercase font-mono">Unit: {{ selectedItem.unit_in }}</span>
         </div>
 
-        <!-- Barcode with copy button -->
+        <!-- Barcode Banner -->
         <div class="bg-zinc-900/80 p-3 rounded-xl border border-zinc-800 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-barcode" class="size-5 text-emerald-400" />
+          <div class="flex items-center gap-2.5">
+            <UIcon
+              :name="selectedItem.barcode ? 'i-lucide-barcode' : 'i-lucide-alert-triangle'"
+              :class="selectedItem.barcode ? 'text-emerald-400' : 'text-amber-400'"
+              class="size-5"
+            />
             <div>
               <div class="text-[10px] uppercase font-semibold text-zinc-400">Barcode / SKU</div>
-              <div class="font-mono text-sm font-bold text-white">{{ selectedItem.barcode || 'None' }}</div>
+              <div v-if="selectedItem.barcode" class="font-mono text-sm font-bold text-white">
+                {{ selectedItem.barcode }}
+              </div>
+              <div v-else class="text-xs font-medium text-amber-400">
+                Unassigned (Click Edit to Add)
+              </div>
             </div>
           </div>
-          <UButton
-            v-if="selectedItem.barcode"
-            icon="i-lucide-copy"
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            title="Copy Barcode"
-            @click="copyBarcode(selectedItem.barcode)"
-          />
+          <div class="flex items-center gap-2">
+            <UButton
+              v-if="selectedItem.barcode"
+              icon="i-lucide-copy"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              title="Copy Barcode"
+              @click="copyBarcode(selectedItem.barcode)"
+            />
+            <UButton
+              v-else-if="canManage"
+              label="Add Barcode"
+              icon="i-lucide-plus"
+              size="xs"
+              color="warning"
+              variant="subtle"
+              @click="openEditItem(selectedItem)"
+            />
+          </div>
         </div>
 
         <!-- Pricing Grid -->

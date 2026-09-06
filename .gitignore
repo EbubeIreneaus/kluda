@@ -20,3 +20,5 @@ node_modules
 .vscode/settings.json
 api/en.openfoodfacts.org.products.csv.gz
 api/openproductfood/en.openfoodfacts.org.products.csv
+api/barcode_verification
+api/*_local.db

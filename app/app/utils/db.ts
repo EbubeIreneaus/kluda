@@ -22,6 +22,7 @@ export interface LocalProduct {
   slug: string
   name: string
   unit_price: number
+  cost_price?: number
   max_discount: number
   barcode_id: string
   quantities: number

@@ -108,13 +108,26 @@ const isLoadingHistory = ref(false)
 const newProduct = ref({
   name: '',
   price: 0,
+  cost_price: 0,
   barcode_id: "",
   quantity: 0,
   unit: 'piece',
   description: ''
 })
 
-const units = ['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag']
+const unitOptions = [
+  { label: 'Piece (pcs)', value: 'piece' },
+  { label: 'Sachet', value: 'sachet' },
+  { label: 'Pack', value: 'pack' },
+  { label: 'Carton', value: 'carton' },
+  { label: 'Kilogram (kg)', value: 'kg' },
+  { label: 'Gram (g)', value: 'g' },
+  { label: 'Litre (L)', value: 'litre' },
+  { label: 'Millilitre (ml)', value: 'ml' },
+  { label: 'Dozen', value: 'dozen' },
+  { label: 'Bag', value: 'bag' }
+]
+const units = unitOptions.map(u => u.value)
 const reasons = [
   { value: 'restock', label: 'Restock / New Shipment' },
   { value: 'return', label: 'Customer Return' },
@@ -128,6 +141,7 @@ const products = computed(() => {
     name: p.name,
     barcode_id: p.barcode_id || '',
     price: p.unit_price,
+    cost_price: p.cost_price || 0,
     quantity: p.quantities,
     unit: p.unit_in,
     status: p.deleted ? 'inactive' : 'active',
@@ -165,7 +179,11 @@ function getStockBadge(qty: number) {
 }
 
 function openEdit(product: any) {
-  editingProduct.value = { ...product, price: product.price / 100 }
+  editingProduct.value = {
+    ...product,
+    price: product.price / 100,
+    cost_price: product.cost_price ? product.cost_price / 100 : 0
+  }
   showEditSlideover.value = true
 }
 
@@ -249,6 +267,7 @@ async function saveEdit() {
         name: editingProduct.value.name,
         barcode_id: editingProduct.value.barcode_id || '',
         unit_price: Math.round(editingProduct.value.price * 100),
+        cost_price: Math.round((editingProduct.value.cost_price || 0) * 100),
         unit_in: editingProduct.value.unit,
         description: editingProduct.value.description || ''
       }
@@ -272,6 +291,7 @@ async function handleAddProduct() {
       name: newProduct.value.name,
       barcode_id: newProduct.value.barcode_id || '',
       unit_price: Math.round(newProduct.value.price * 100),
+      cost_price: Math.round((newProduct.value.cost_price || 0) * 100),
       quantities: newProduct.value.quantity,
       unit_in: newProduct.value.unit,
       description: newProduct.value.description || ''
@@ -279,7 +299,8 @@ async function handleAddProduct() {
     await productStore.addProduct(addData)
     toast.add({ title: 'Product added', description: newProduct.value.name, color: 'success' })
     showAddModal.value = false
-    newProduct.value = { name: '', price: 0, barcode_id: '', quantity: 0, unit: 'piece', description: '' }
+    newProduct.value = { name: '', price: 0, cost_price: 0, barcode_id: '', quantity: 0, unit: 'piece', description: '' }
+    catalogMatchInfo.value = null
   } catch (err) {
     toast.add({ title: 'Error', description: 'Could not add product', color: 'error' })
   } finally {
@@ -307,6 +328,78 @@ const addVideoRef = ref<HTMLVideoElement | null>(null)
 const editVideoRef = ref<HTMLVideoElement | null>(null)
 const activeScanningField = ref<'add' | 'edit' | null>(null)
 let codeReader: any = null
+
+// Scan-to-Add State & Logic
+const isLookingUpBarcode = ref(false)
+const catalogMatchInfo = ref<{
+  name: string
+  source: 'catalog' | 'community'
+  category?: string
+  suggested_price?: number
+} | null>(null)
+let lookupDebounceTimer: any = null
+
+async function lookupBarcode(barcode: string) {
+  const clean = barcode.trim()
+  if (!clean || clean.length < 3) {
+    catalogMatchInfo.value = null
+    return
+  }
+  isLookingUpBarcode.value = true
+  try {
+    const res = await api<any>(`/catalog-templates/lookup?barcode=${encodeURIComponent(clean)}`)
+    if (res?.found) {
+      newProduct.value.name = res.name
+      if (res.unit_in) newProduct.value.unit = res.unit_in
+      if (res.suggested_price && (!newProduct.value.price || newProduct.value.price === 0)) {
+        newProduct.value.price = res.suggested_price / 100
+      }
+      if (res.cost_price && (!newProduct.value.cost_price || newProduct.value.cost_price === 0)) {
+        newProduct.value.cost_price = res.cost_price / 100
+      }
+      if (res.description && !newProduct.value.description) {
+        newProduct.value.description = res.description
+      }
+      catalogMatchInfo.value = {
+        name: res.name,
+        source: res.source,
+        category: res.category,
+        suggested_price: res.suggested_price
+      }
+      toast.add({
+        title: 'Product Recognized!',
+        description: `${res.name} (${res.source === 'catalog' ? 'Global Catalog' : 'Community'})`,
+        color: 'success',
+        icon: 'i-lucide-sparkles'
+      })
+    } else {
+      catalogMatchInfo.value = null
+    }
+  } catch {
+    catalogMatchInfo.value = null
+  } finally {
+    isLookingUpBarcode.value = false
+  }
+}
+
+function handleBarcodeManualInput() {
+  clearTimeout(lookupDebounceTimer)
+  lookupDebounceTimer = setTimeout(() => {
+    const code = newProduct.value.barcode_id?.trim()
+    if (code && code.length >= 6) {
+      lookupBarcode(code)
+    } else {
+      catalogMatchInfo.value = null
+    }
+  }, 450)
+}
+
+function openAddProductModal() {
+  newProduct.value = { name: '', price: 0, cost_price: 0, barcode_id: '', quantity: 0, unit: 'piece', description: '' }
+  catalogMatchInfo.value = null
+  isLookingUpBarcode.value = false
+  showAddModal.value = true
+}
 
 async function startCameraScanner(field: 'add' | 'edit') {
   if (isCameraActive.value) {
@@ -344,6 +437,7 @@ async function startCameraScanner(field: 'add' | 'edit') {
           const code = result.getText()
           if (activeScanningField.value === 'add') {
             newProduct.value.barcode_id = code
+            lookupBarcode(code)
           } else if (activeScanningField.value === 'edit' && editingProduct.value) {
             editingProduct.value.barcode_id = code
           }
@@ -392,20 +486,9 @@ watch([showAddModal, showEditSlideover], () => {
       <div class="flex items-center gap-2">
         <UButton
           v-if="auth.hasPermission('create:product') || auth.hasPermission('manage:product')"
-          variant="outline"
-          color="neutral"
-          icon="i-lucide-package-plus"
-          class="p-2.5 font-medium"
-          @click="openImportModal"
-        >
-          <span class="hidden sm:inline">Import Starter Pack</span>
-          <span class="sm:hidden">Import</span>
-        </UButton>
-        <UButton
-          v-if="auth.hasPermission('create:product') || auth.hasPermission('manage:product')"
           class="p-2.5 font-medium"
           icon="i-lucide-plus"
-          @click="showAddModal = true"
+          @click="openAddProductModal"
         >
           Add Product
         </UButton>
@@ -440,25 +523,16 @@ watch([showAddModal, showEditSlideover], () => {
                 <UIcon name="i-lucide-package-search" class="size-10 text-(--ui-text-dimmed) mx-auto mb-2" />
                 <p class="text-sm font-semibold text-(--ui-text-highlighted)">No products in inventory</p>
                 <p class="text-xs text-(--ui-text-dimmed) max-w-sm mx-auto mt-1">
-                  Start in 30 seconds by importing a ready-made starter pack with barcodes and standard prices.
+                  Add products with barcode scanning or manual entry to start selling.
                 </p>
                 <div class="flex items-center justify-center gap-2 pt-3">
                   <UButton
                     v-if="auth.hasPermission('create:product') || auth.hasPermission('manage:product')"
-                    icon="i-lucide-package-plus"
-                    size="xs"
-                    color="primary"
-                    label="Import Starter Pack"
-                    @click="openImportModal"
-                  />
-                  <UButton
-                    v-if="auth.hasPermission('create:product') || auth.hasPermission('manage:product')"
                     icon="i-lucide-plus"
                     size="xs"
-                    variant="outline"
-                    color="neutral"
-                    label="Add Manually"
-                    @click="showAddModal = true"
+                    color="primary"
+                    label="Add Product"
+                    @click="openAddProductModal"
                   />
                 </div>
               </td>
@@ -508,25 +582,16 @@ watch([showAddModal, showEditSlideover], () => {
         <UIcon name="i-lucide-package-search" class="size-10 text-(--ui-text-dimmed) mx-auto" />
         <p class="text-sm font-semibold text-(--ui-text-highlighted)">No products in inventory</p>
         <p class="text-xs text-(--ui-text-dimmed) max-w-sm mx-auto">
-          Start in 30 seconds by importing a ready-made starter pack with barcodes and standard prices.
+          Add products with barcode scanning or manual entry to start selling.
         </p>
         <div class="flex items-center justify-center gap-2 pt-1">
           <UButton
             v-if="auth.hasPermission('create:product') || auth.hasPermission('manage:product')"
-            icon="i-lucide-package-plus"
-            size="xs"
-            color="primary"
-            label="Import Starter Pack"
-            @click="openImportModal"
-          />
-          <UButton
-            v-if="auth.hasPermission('create:product') || auth.hasPermission('manage:product')"
             icon="i-lucide-plus"
             size="xs"
-            variant="outline"
-            color="neutral"
-            label="Add Manually"
-            @click="showAddModal = true"
+            color="primary"
+            label="Add Product"
+            @click="openAddProductModal"
           />
         </div>
       </div>
@@ -665,24 +730,31 @@ watch([showAddModal, showEditSlideover], () => {
     <AppBottomSheet
       v-model="showAddModal"
       title="Add New Product"
-      description="Enter product details and barcode to add to inventory."
+      description="Scan a barcode to auto-fill product details or enter them manually."
     >
       <form class="space-y-4" @submit.prevent="handleAddProduct">
-        <UFormField label="Product Name" required>
-          <UInput v-model="newProduct.name" placeholder="e.g. Golden Penny Spaghetti 500g" />
+        <!-- 1. Barcode Field & Camera Scanner (At Top for Fast Scan-to-Add) -->
+        <UFormField label="Barcode / SKU">
+          <div class="flex gap-1.5 w-full">
+            <UInput
+              v-model="newProduct.barcode_id"
+              placeholder="Scan or enter barcode (e.g. 6291109120360)..."
+              class="flex-1"
+              :loading="isLookingUpBarcode"
+              @input="handleBarcodeManualInput"
+            />
+            <UButton
+              type="button"
+              :color="isCameraActive && activeScanningField === 'add' ? 'error' : 'primary'"
+              variant="solid"
+              :icon="isCameraActive && activeScanningField === 'add' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
+              :title="isCameraActive ? 'Stop Camera' : 'Scan with Camera'"
+              @click="isCameraActive && activeScanningField === 'add' ? stopCameraScanner() : startCameraScanner('add')"
+            />
+          </div>
         </UFormField>
-        <UFormField label="Price (₦)" required>
-          <UInput v-model.number="newProduct.price" type="number" placeholder="0.00" />
-        </UFormField>
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField label="Unit">
-            <USelect v-model="newProduct.unit" :items="units" />
-          </UFormField>
-          <UFormField label="Quantity">
-            <UInput v-model.number="newProduct.quantity" type="number" placeholder="0" />
-          </UFormField>
-        </div>
 
+        <!-- Camera Scanner Live Stream Box -->
         <div
           v-if="isCameraActive && activeScanningField === 'add'"
           class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
@@ -700,21 +772,80 @@ watch([showAddModal, showEditSlideover], () => {
             </div>
           </div>
         </div>
-        <UFormField label="Barcode ID">
-          <div class="flex gap-1.5 w-full">
-            <UInput v-model="newProduct.barcode_id" placeholder="5901234123457" class="flex-1" />
-            <UButton
-              type="button"
-              :color="isCameraActive && activeScanningField === 'add' ? 'error' : 'primary'"
-              variant="solid"
-              :icon="isCameraActive && activeScanningField === 'add' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
-              @click="isCameraActive && activeScanningField === 'add' ? stopCameraScanner() : startCameraScanner('add')"
-            />
+
+        <!-- Catalog Recognition Badge / Banner -->
+        <div
+          v-if="catalogMatchInfo"
+          class="p-3 rounded-xl bg-primary-500/10 border border-primary-500/30 flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1"
+        >
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="size-7 rounded-lg bg-primary-500/20 text-primary-500 flex items-center justify-center shrink-0">
+              <UIcon name="i-lucide-sparkles" class="size-4" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-(--ui-text-highlighted) truncate">
+                  {{ catalogMatchInfo.name }}
+                </span>
+              </div>
+              <p class="text-[11px] text-(--ui-text-muted) truncate">
+                Recognized from {{ catalogMatchInfo.source === 'catalog' ? 'Global Catalog' : 'Community' }}
+                <span v-if="catalogMatchInfo.suggested_price" class="font-mono text-emerald-500 font-semibold ml-1">
+                  · Suggested: ₦{{ (catalogMatchInfo.suggested_price / 100).toLocaleString() }}
+                </span>
+              </p>
+            </div>
           </div>
+          <UBadge color="primary" variant="subtle" size="xs" class="shrink-0">
+            Auto-Filled
+          </UBadge>
+        </div>
+
+        <!-- Product Name -->
+        <UFormField label="Product Name" required>
+          <UInput v-model="newProduct.name" placeholder="e.g. Golden Penny Spaghetti 500g" />
         </UFormField>
+
+        <!-- Pricing: Selling Price & Cost Price -->
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Selling Price (₦)" required>
+            <UInput v-model.number="newProduct.price" type="number" step="any" placeholder="0.00" />
+          </UFormField>
+          <UFormField label="Cost Price (₦)">
+            <UInput v-model.number="newProduct.cost_price" type="number" step="any" placeholder="0.00" />
+          </UFormField>
+        </div>
+
+        <!-- Inventory: Quantity on Hand & Unit -->
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Quantity on Hand">
+            <UInput v-model.number="newProduct.quantity" type="number" step="any" placeholder="0" />
+          </UFormField>
+          <UFormField label="Unit">
+            <div class="relative w-full">
+              <select
+                v-model="newProduct.unit"
+                class="w-full h-10 px-3 py-2 text-sm rounded-md bg-(--ui-bg) border border-(--ui-border) text-(--ui-text-highlighted) focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none pr-8 cursor-pointer font-medium"
+              >
+                <option v-if="newProduct.unit && !unitOptions.some(u => u.value === newProduct.unit)" :value="newProduct.unit">
+                  {{ newProduct.unit }}
+                </option>
+                <option v-for="u in unitOptions" :key="u.value" :value="u.value">
+                  {{ u.label }}
+                </option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-(--ui-text-dimmed)">
+                <UIcon name="i-lucide-chevron-down" class="size-4" />
+              </div>
+            </div>
+          </UFormField>
+        </div>
+
+        <!-- Description (Textarea) -->
         <UFormField label="Description">
-          <UTextarea v-model="newProduct.description" placeholder="Product description..." :rows="2" />
+          <UTextarea v-model="newProduct.description" placeholder="Product size, flavor, packaging details..." :rows="3" />
         </UFormField>
+
         <div class="flex justify-end gap-2 pt-2">
           <UButton variant="outline" color="neutral" @click="showAddModal = false">Cancel</UButton>
           <UButton type="submit" :loading="addingProductLoader">Add Product</UButton>
@@ -731,9 +862,14 @@ watch([showAddModal, showEditSlideover], () => {
         <UFormField label="Product Name">
           <UInput v-model="editingProduct.name" />
         </UFormField>
-        <UFormField label="Price (₦)">
-          <UInput v-model.number="editingProduct.price" type="number" />
-        </UFormField>
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Selling Price (₦)">
+            <UInput v-model.number="editingProduct.price" type="number" step="any" />
+          </UFormField>
+          <UFormField label="Cost Price (₦)">
+            <UInput v-model.number="editingProduct.cost_price" type="number" step="any" />
+          </UFormField>
+        </div>
         <UFormField label="Barcode ID">
           <div class="flex gap-1.5 w-full">
             <UInput v-model="editingProduct.barcode_id" class="flex-1" />
@@ -773,7 +909,22 @@ watch([showAddModal, showEditSlideover], () => {
             <p class="text-xs text-amber-500 font-medium">For quantity update use stock history</p>
           </div>
           <UFormField label="Unit">
-            <USelect v-model="editingProduct.unit" :items="units" />
+            <div class="relative w-full">
+              <select
+                v-model="editingProduct.unit"
+                class="w-full h-10 px-3 py-2 text-sm rounded-md bg-(--ui-bg) border border-(--ui-border) text-(--ui-text-highlighted) focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none pr-8 cursor-pointer font-medium"
+              >
+                <option v-if="editingProduct.unit && !unitOptions.some(u => u.value === editingProduct.unit)" :value="editingProduct.unit">
+                  {{ editingProduct.unit }}
+                </option>
+                <option v-for="u in unitOptions" :key="u.value" :value="u.value">
+                  {{ u.label }}
+                </option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-(--ui-text-dimmed)">
+                <UIcon name="i-lucide-chevron-down" class="size-4" />
+              </div>
+            </div>
           </UFormField>
         </div>
         <UFormField label="Description">
@@ -830,12 +981,19 @@ watch([showAddModal, showEditSlideover], () => {
             <UInput v-model.number="adjustForm.quantity" type="number" min="0.01" step="any" placeholder="0" />
           </UFormField>
           <UFormField label="Reason" required>
-            <USelect
-              v-model="adjustForm.reason"
-              :items="reasons"
-              value-key="value"
-              label-key="label"
-            />
+            <div class="relative w-full">
+              <select
+                v-model="adjustForm.reason"
+                class="w-full h-10 px-3 py-2 text-sm rounded-md bg-(--ui-bg) border border-(--ui-border) text-(--ui-text-highlighted) focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none pr-8 cursor-pointer font-medium"
+              >
+                <option v-for="r in reasons" :key="r.value" :value="r.value">
+                  {{ r.label }}
+                </option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-(--ui-text-dimmed)">
+                <UIcon name="i-lucide-chevron-down" class="size-4" />
+              </div>
+            </div>
           </UFormField>
         </div>
 
@@ -930,7 +1088,7 @@ watch([showAddModal, showEditSlideover], () => {
     </AppFullScreenModal>
 
     <!-- Import Starter Pack Bottom Sheet -->
-    <AppBottomSheet
+    <AppFullScreenModal
       v-model="showImportSheet"
       title="Import Starter Pack"
       description="Choose a pre-configured industry catalog to jumpstart your inventory with barcodes and standard retail prices."
@@ -996,7 +1154,7 @@ watch([showAddModal, showEditSlideover], () => {
         </div>
 
         <!-- Catalog List -->
-        <div v-else class="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+        <div v-else class="space-y-2.5 overflow-y-auto pr-1">
           <div
             v-for="template in catalogTemplates"
             :key="template.id"
@@ -1038,6 +1196,6 @@ watch([showAddModal, showEditSlideover], () => {
           </div>
         </div>
       </div>
-    </AppBottomSheet>
+    </AppFullScreenModal>
   </div>
 </template>

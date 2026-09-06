@@ -12,21 +12,52 @@ from models.config import LocalSession
 from models.catalog import CatalogTemplate, CatalogItem
 
 
-VALID_UNITS = {"piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag"}
+VALID_UNITS = {"piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag", "sachet"}
 
 
-async def seed_catalog():
-    json_path = Path(__file__).parent.parent / "catalog.json"
+async def seed_catalog(custom_path: str | None = None):
+    reset_mode = "--reset" in sys.argv or "--clean" in sys.argv
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+
+    if custom_path:
+        json_path = Path(custom_path)
+    elif args:
+        json_path = Path(args[0])
+    else:
+        json_path = Path(__file__).parent.parent / "catalog.json"
+        if not json_path.exists():
+            json_path = Path(__file__).parent.parent / "barcode_verification" / "catalog-2-verified.json"
+
     if not json_path.exists():
-        print(f"Error: Could not find catalog.json at {json_path}")
+        print(f"Error: Could not find catalog JSON at {json_path}")
         return
 
     with open(json_path, "r", encoding="utf-8") as f:
         catalog_data = json.load(f)
 
-    print(f"Loaded {len(catalog_data)} catalog groups from {json_path.name}\n")
+    print(f"Loaded {len(catalog_data)} catalog groups from {json_path.resolve()}\n")
 
     async with LocalSession() as db:
+        if reset_mode:
+            print("[!] Reset mode: Clearing existing catalog templates and items...")
+            all_templates = (await db.scalars(select(CatalogTemplate))).all()
+            for t in all_templates:
+                await db.delete(t)
+            await db.flush()
+            print("[+] Cleared existing templates.\n")
+        else:
+            # Remove obsolete templates not present in catalog_data
+            valid_slugs = {g.get("slug") for g in catalog_data if g.get("slug")}
+            stale_templates = (await db.scalars(
+                select(CatalogTemplate).where(~CatalogTemplate.slug.in_(valid_slugs))
+            )).all()
+            if stale_templates:
+                for st in stale_templates:
+                    print(f"[-] Removing obsolete template: '{st.name}' (slug: {st.slug})")
+                    await db.delete(st)
+                await db.flush()
+                print()
+
         total_created_templates = 0
         total_created_items = 0
         total_skipped_items = 0
@@ -76,8 +107,8 @@ async def seed_catalog():
                     unit_in = "piece"
 
                 # Prices stored in kobo (e.g. 250 Naira = 25000 kobo)
-                raw_suggested = item.get("suggested_price", 0)
-                raw_cost = item.get("cost_price", 0)
+                raw_suggested = item.get("suggested_price") or 0
+                raw_cost = item.get("cost_price") or 0
                 suggested_price = int(round(float(raw_suggested) * 100))
                 cost_price = int(round(float(raw_cost) * 100))
                 desc = item.get("description")

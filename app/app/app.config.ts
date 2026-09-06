@@ -22,6 +22,7 @@ export default defineAppConfig({
     select: {
       slots: {
         base: 'w-full min-h-10',
+        content: 'z-[100]'
       },
       defaultVariants: {
         size: 'xl'

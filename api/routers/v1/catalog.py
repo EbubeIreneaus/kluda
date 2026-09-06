@@ -6,6 +6,7 @@ from sqlalchemy import select, func, or_
 
 from models.config import get_db
 from models.catalog import CatalogTemplate, CatalogItem
+from models.stock import Stock
 from schemas.catalog import (
     CatalogTemplateResponse,
     CatalogItemResponse,
@@ -71,6 +72,85 @@ async def list_catalog_templates(
     return response_list
 
 
+@router.get("/lookup")
+async def lookup_product_by_barcode(
+    barcode: str = Query(..., min_length=2, description="Barcode or SKU to lookup"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Lookup product metadata by barcode for fast Scan-to-Add.
+    1. First searches Kluda verified master catalog.
+    2. If not found and barcode is standard manufacturer GTIN (8-14 digits),
+       searches community products for matching name & unit.
+    """
+    clean_barcode = barcode.strip()
+    if not clean_barcode:
+        return {"found": False}
+
+    cache_key = f"catalog:lookup:{clean_barcode}"
+    cached_data = await get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    # 1. Search Kluda Verified Master Catalog
+    catalog_stmt = (
+        select(CatalogItem)
+        .where(
+            CatalogItem.barcode == clean_barcode,
+            CatalogItem.is_active == True,
+        )
+        .order_by(CatalogItem.id.asc())
+        .limit(1)
+    )
+    catalog_item = await db.scalar(catalog_stmt)
+    if catalog_item:
+        result = {
+            "found": True,
+            "source": "catalog",
+            "name": catalog_item.name,
+            "barcode": catalog_item.barcode,
+            "category": catalog_item.category,
+            "suggested_price": catalog_item.suggested_price,  # in kobo
+            "cost_price": catalog_item.cost_price,            # in kobo
+            "unit_in": catalog_item.unit_in,
+            "description": catalog_item.description,
+        }
+        await set_cache(cache_key, result, expire_seconds=CACHE_TTL_ITEMS)
+        return result
+
+    # 2. Search Community Products (stocks) if barcode is a valid manufacturer GTIN
+    if clean_barcode.isdigit() and len(clean_barcode) in (8, 12, 13, 14):
+        stock_stmt = (
+            select(Stock)
+            .where(
+                Stock.barcode_id == clean_barcode,
+                Stock.deleted == False,
+                Stock.name.isnot(None),
+            )
+            .order_by(Stock.id.desc())
+            .limit(1)
+        )
+        stock_item = await db.scalar(stock_stmt)
+        if stock_item and stock_item.name:
+            result = {
+                "found": True,
+                "source": "community",
+                "name": stock_item.name.strip(),
+                "barcode": stock_item.barcode_id,
+                "category": "General",
+                "suggested_price": stock_item.unit_price or 0,  # community retail price in kobo
+                "unit_in": stock_item.unit_in or "piece",
+                "description": stock_item.description or None,
+            }
+            await set_cache(cache_key, result, expire_seconds=CACHE_TTL_ITEMS)
+            return result
+
+    # 3. Not found
+    result = {"found": False}
+    await set_cache(cache_key, result, expire_seconds=300)
+    return result
+
+
 @router.get("/{slug}", response_model=CatalogTemplateResponse)
 async def get_catalog_template(
     slug: str,
@@ -128,14 +208,16 @@ async def list_catalog_template_items(
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     search: Optional[str] = Query(default=None, description="Search by product name, barcode, or category"),
+    has_barcode: Optional[bool] = Query(default=None, description="Filter by barcode presence: true for with barcode, false for without barcode"),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get paginated items for a catalog template.
-    Cached in Redis using key '{slug}:items:{page}:{page_size}:{search}'.
+    Cached in Redis using key '{slug}:items:{page}:{page_size}:{search}:{has_barcode}'.
     """
     clean_search = search.strip().lower() if search and search.strip() else ""
-    cache_key = f"{slug}:items:{page}:{page_size}:{clean_search}"
+    barcode_filter_key = "all" if has_barcode is None else ("with" if has_barcode else "none")
+    cache_key = f"{slug}:items:{page}:{page_size}:{clean_search}:{barcode_filter_key}"
 
     cached_data = await get_cache(cache_key)
     if cached_data is not None:
@@ -164,6 +246,19 @@ async def list_catalog_template_items(
                 CatalogItem.name.ilike(term),
                 CatalogItem.barcode.ilike(term),
                 CatalogItem.category.ilike(term),
+            )
+        )
+
+    if has_barcode is True:
+        base_query = base_query.where(
+            CatalogItem.barcode.isnot(None),
+            CatalogItem.barcode != "",
+        )
+    elif has_barcode is False:
+        base_query = base_query.where(
+            or_(
+                CatalogItem.barcode.is_(None),
+                CatalogItem.barcode == "",
             )
         )
 

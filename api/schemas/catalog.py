@@ -9,7 +9,7 @@ class CatalogItemBase(BaseModel):
     category: str = Field(default="General", max_length=100)
     suggested_price: int = Field(default=0, ge=0, description="Price in kobo")
     cost_price: int = Field(default=0, ge=0, description="Estimated wholesale cost in kobo")
-    unit_in: Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag"] = "piece"
+    unit_in: Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag", "sachet"] = "piece"
     description: Optional[str] = None
     is_active: bool = True
 
@@ -24,7 +24,7 @@ class CatalogItemUpdate(BaseModel):
     category: Optional[str] = None
     suggested_price: Optional[int] = Field(None, ge=0)
     cost_price: Optional[int] = Field(None, ge=0)
-    unit_in: Optional[Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag"]] = None
+    unit_in: Optional[Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag", "sachet"]] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
 
