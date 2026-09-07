@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kluda.app/sitemap.xml

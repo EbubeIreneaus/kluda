@@ -2,14 +2,13 @@
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase || 'http://localhost:8000/api/v1'
 
-useHead({
-  title: 'Frequently Asked Questions — Kluda Retail POS',
-  meta: [
-    {
-      name: 'description',
-      content: 'Answers to common questions about Kluda POS: offline mode, hardware thermal printing, staff anti-theft controls, and daily/monthly plans.'
-    }
-  ]
+useSeoMeta({
+  title: 'Frequently Asked Questions | Free Stock Keeping App | Kluda',
+  ogTitle: 'Frequently Asked Questions | Free Stock Keeping App | Kluda',
+  description: 'Answers to common questions about Kluda: free stock keeping app, camera barcode scanning, offline sales tracking, thermal printing, and cashier theft prevention.',
+  ogDescription: 'Frequently asked questions about Kluda retail POS, free stock keeping, and barcode scanning.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 
 interface FAQItem {
@@ -161,6 +160,7 @@ function toggleFaq(id: number) {
 
     <!-- FAQ Accordion List -->
     <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+      <h2 class="sr-only">Stock Keeping & POS Answers</h2>
       <div
         v-if="filteredFaqs.length === 0"
         class="text-center py-16 px-4 rounded-3xl border border-dashed border-(--ui-border) bg-(--ui-bg-elevated)/40"
@@ -209,7 +209,7 @@ function toggleFaq(id: number) {
         <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
           <UIcon name="i-lucide-message-square" class="w-6 h-6" />
         </div>
-        <h3 class="text-xl font-black text-(--ui-text-highlighted)">Have a specific retail question?</h3>
+        <h2 class="text-xl font-black text-(--ui-text-highlighted)">Have a specific retail question?</h2>
         <p class="text-sm text-(--ui-text-muted) max-w-lg mx-auto leading-relaxed">
           Need advice on setting up barcode scanners, thermal printers, or running multi-branch inventory? Our retail operations team is available to assist you.
         </p>

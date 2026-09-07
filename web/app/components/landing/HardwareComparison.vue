@@ -40,9 +40,9 @@ const comparisonPoints = [
         <UIcon name="i-lucide-scale" class="w-3.5 h-3.5" />
         <span>Smart Store Economics</span>
       </div>
-      <h3 class="text-2xl sm:text-3xl font-black text-(--ui-text-highlighted) tracking-tight">
+      <h2 class="text-2xl sm:text-3xl font-black text-(--ui-text-highlighted) tracking-tight">
         Why buy a ₦300,000+ POS machine when your phone is all you need?
-      </h3>
+      </h2>
       <p class="text-sm text-(--ui-text-muted) mt-2">
         Get full supermarket-grade sales tracking, theft protection, and stock monitoring without the heavy price tag.
       </p>

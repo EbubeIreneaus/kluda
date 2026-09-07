@@ -15,7 +15,7 @@ class CatalogItemBase(BaseModel):
 
 
 class CatalogItemCreate(CatalogItemBase):
-    pass
+    reassign_barcode: Optional[bool] = False
 
 
 class CatalogItemUpdate(BaseModel):
@@ -27,6 +27,7 @@ class CatalogItemUpdate(BaseModel):
     unit_in: Optional[Literal["piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag", "sachet"]] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
+    reassign_barcode: Optional[bool] = False
 
 
 class CatalogItemResponse(CatalogItemBase):

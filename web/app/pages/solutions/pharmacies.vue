@@ -10,8 +10,12 @@ const config = useRuntimeConfig()
 const posUrl = config.public.posAppUrl || 'http://localhost:3000'
 
 useSeoMeta({
-  title: 'POS for Pharmacies & Chemists | Kluda',
-  description: 'Manage medicine inventory, patient credit ledgers, and fast offline prescription checkout with Kluda for pharmacies and chemists.'
+  title: 'Pharmacy Stock Keeping App & Patient Debt Ledger | Kluda',
+  ogTitle: 'Pharmacy Stock Keeping App & Patient Debt Ledger | Kluda',
+  description: 'Manage medicine inventory, patient credit ledgers, and fast offline prescription checkout with Kluda for pharmacies and chemists.',
+  ogDescription: 'Pharmacy stock keeping and credit ledger app. Track medicine stock, avoid expired drugs, and manage customer credit without paper books.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 
 const pharmacyBenefits = [
@@ -48,14 +52,14 @@ const pharmacyBenefits = [
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Track Sales & Patient Credit<br />
+          Pharmacy Stock Keeping App<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            Without Paper Ledgers
+            & Patient Credit Ledger
           </span>
         </h1>
 
         <p class="text-base sm:text-xl text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          Say goodbye to lost credit record books. Kluda tracks every customer credit balance, partial repayment, and medicine stock change right at the counter.
+          Say goodbye to lost credit books and expired drugs. Kluda tracks every customer credit balance, partial repayment, and medicine stock change right at the pharmacy counter.
         </p>
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
@@ -71,6 +75,14 @@ const pharmacyBenefits = [
     </section>
 
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+          Pharmacy Stock Keeping & Credit Management
+        </h2>
+        <p class="text-sm text-(--ui-text-muted) mt-2">
+          Tailored tools to control drug inventory and patient balances without confusion.
+        </p>
+      </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div
           v-for="b in pharmacyBenefits"

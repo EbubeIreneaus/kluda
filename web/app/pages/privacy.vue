@@ -1,12 +1,11 @@
 <script setup lang="ts">
-useHead({
-  title: 'Privacy Policy — Kluda Retail POS',
-  meta: [
-    {
-      name: 'description',
-      content: 'Kluda Privacy Policy: our zero data selling guarantee, how merchant sales and inventory data are protected, and payment security standards.'
-    }
-  ]
+useSeoMeta({
+  title: 'Privacy Policy | Kluda Retail POS & Stock Keeping App',
+  ogTitle: 'Privacy Policy | Kluda Retail POS & Stock Keeping App',
+  description: 'Kluda Privacy Policy: our zero data selling guarantee, how store sales and inventory data are protected, and payment security standards.',
+  ogDescription: 'Kluda Privacy Policy: how your store data and retail sales are protected.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 </script>
 

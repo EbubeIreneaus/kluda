@@ -366,12 +366,6 @@ async function lookupBarcode(barcode: string) {
         category: res.category,
         suggested_price: res.suggested_price
       }
-      toast.add({
-        title: 'Product Recognized!',
-        description: `${res.name} (${res.source === 'catalog' ? 'Global Catalog' : 'Community'})`,
-        color: 'success',
-        icon: 'i-lucide-sparkles'
-      })
     } else {
       catalogMatchInfo.value = null
     }
@@ -380,6 +374,15 @@ async function lookupBarcode(barcode: string) {
   } finally {
     isLookingUpBarcode.value = false
   }
+}
+
+function clearAutoFill() {
+  catalogMatchInfo.value = null
+  newProduct.value.name = ''
+  newProduct.value.price = 0
+  newProduct.value.cost_price = 0
+  newProduct.value.description = ''
+  newProduct.value.unit = 'piece'
 }
 
 function handleBarcodeManualInput() {
@@ -776,29 +779,46 @@ watch([showAddModal, showEditSlideover], () => {
         <!-- Catalog Recognition Badge / Banner -->
         <div
           v-if="catalogMatchInfo"
-          class="p-3 rounded-xl bg-primary-500/10 border border-primary-500/30 flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1"
+          class="p-3 rounded-xl bg-primary-500/10 border border-primary-500/30 flex flex-col gap-2.5 text-xs animate-in fade-in slide-in-from-top-1"
         >
-          <div class="flex items-center gap-2.5 min-w-0 flex-1">
-            <div class="size-7 rounded-lg bg-primary-500/20 text-primary-500 flex items-center justify-center shrink-0">
-              <UIcon name="i-lucide-sparkles" class="size-4" />
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-1.5">
-                <span class="font-bold text-(--ui-text-highlighted) truncate">
-                  {{ catalogMatchInfo.name }}
-                </span>
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <div class="size-7 rounded-lg bg-primary-500/20 text-primary-500 flex items-center justify-center shrink-0">
+                <UIcon name="i-lucide-sparkles" class="size-4" />
               </div>
-              <p class="text-[11px] text-(--ui-text-muted) truncate">
-                Recognized from {{ catalogMatchInfo.source === 'catalog' ? 'Global Catalog' : 'Community' }}
-                <span v-if="catalogMatchInfo.suggested_price" class="font-mono text-emerald-500 font-semibold ml-1">
-                  · Suggested: ₦{{ (catalogMatchInfo.suggested_price / 100).toLocaleString() }}
-                </span>
-              </p>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-(--ui-text-highlighted) truncate">
+                    {{ catalogMatchInfo.name }}
+                  </span>
+                </div>
+                <p class="text-[11px] text-(--ui-text-muted) truncate">
+                  Recognized from {{ catalogMatchInfo.source === 'catalog' ? 'Global Catalog' : 'Community' }}
+                  <span v-if="catalogMatchInfo.suggested_price" class="font-mono text-emerald-500 font-semibold ml-1">
+                    · Suggested: ₦{{ (catalogMatchInfo.suggested_price / 100).toLocaleString() }}
+                  </span>
+                </p>
+              </div>
             </div>
+            <UBadge color="primary" variant="subtle" size="xs" class="shrink-0">
+              Auto-Filled
+            </UBadge>
           </div>
-          <UBadge color="primary" variant="subtle" size="xs" class="shrink-0">
-            Auto-Filled
-          </UBadge>
+
+          <!-- Product Confirmation Disclaimer & Reset Action -->
+          <div class="pt-2 border-t border-primary-500/20 flex items-center justify-between gap-2 text-[11px]">
+            <span class="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-medium">
+              <UIcon name="i-lucide-info" class="size-3.5 shrink-0" />
+              Please verify product name, unit size, and price match your physical item.
+            </span>
+            <button
+              type="button"
+              class="text-xs text-primary-500 hover:text-primary-600 dark:hover:text-primary-400 font-semibold underline shrink-0 cursor-pointer"
+              @click="clearAutoFill"
+            >
+              Reset / Edit
+            </button>
+          </div>
         </div>
 
         <!-- Product Name -->

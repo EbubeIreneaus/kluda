@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import LandingNavbar from '~/components/landing/LandingNavbar.vue'
 import LandingFooter from '~/components/landing/LandingFooter.vue'
+
+const route = useRoute()
+useHead(() => {
+  const cleanPath = route.path === '/' ? '' : route.path.replace(/\/$/, '')
+  return {
+    link: [
+      {
+        rel: 'canonical',
+        href: `https://kluda.app${cleanPath}`
+      }
+    ]
+  }
+})
 </script>
 
 <template>

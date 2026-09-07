@@ -22,13 +22,38 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: "Kluda — Sell Faster, Track Everything | Modern Retail Management",
+      htmlAttrs: {
+        lang: "en",
+      },
+      title: "Kluda — Free Stock Keeping App & Barcode Scanner for Stores",
       meta: [
         {
           name: "description",
           content:
-            "Turn any smartphone, tablet, or laptop into a fast, offline-ready retail POS with instant camera barcode scanning, customer ledgers, and real-time multi-register mesh.",
+            "Free stock keeping app and phone camera barcode scanner. Track daily store sales, manage customer debt ledgers, and prevent cashier theft with zero expensive hardware.",
         },
+        {
+          name: "keywords",
+          content:
+            "stock keeping app, free app to take stock, free barcode scanning app, free app to track my store sales, retail POS app, store sales tracker, supermarket POS, store inventory tracking",
+        },
+        { property: "og:site_name", content: "Kluda" },
+        { property: "og:type", content: "website" },
+        { property: "og:title", content: "Kluda — Free Stock Keeping App & Barcode Scanner for Stores" },
+        {
+          property: "og:description",
+          content:
+            "Free stock keeping app and phone camera barcode scanner. Track daily store sales, eliminate cash theft, and take stock with zero expensive hardware.",
+        },
+        { property: "og:image", content: "https://kluda.app/kluda_icon.jpg" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: "Kluda — Free Stock Keeping App & Barcode Scanner for Stores" },
+        {
+          name: "twitter:description",
+          content:
+            "Free stock keeping app and phone camera barcode scanner. Track daily store sales, eliminate cash theft, and take stock with zero expensive hardware.",
+        },
+        { name: "twitter:image", content: "https://kluda.app/kluda_icon.jpg" },
       ],
       link: [
         { rel: "icon", type: "image/x-icon", href: "/kluda-icons/favicon.ico" },
@@ -46,10 +71,6 @@ export default defineNuxtConfig({
         {
           rel: "stylesheet",
           href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap",
-        },
-        {
-          rel: "canonical",
-          href: "https://kluda.app",
         },
       ],
       script: [

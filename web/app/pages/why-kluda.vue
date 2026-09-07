@@ -7,8 +7,12 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Why Kluda | Stop Money Theft & Take Control of Your Store',
-  description: 'Discover why Kluda was built: to eliminate employee cash theft, automate stock tracking, and manage customer debts without buying expensive supermarket POS machines.'
+  title: 'Why Kluda | Free Stock Keeping App to Stop Store Theft & Loss',
+  ogTitle: 'Why Kluda | Free Stock Keeping App to Stop Store Theft & Loss',
+  description: 'Discover why Kluda was built: to eliminate employee cash theft, automate stock tracking without paper books, and replace expensive supermarket computer setups.',
+  ogDescription: 'Why retailers choose Kluda: a free stock keeping app and sales tracker that protects daily revenue with zero machine costs.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 
 const manifestoPoints = [
@@ -45,14 +49,14 @@ const manifestoPoints = [
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-black text-(--ui-text-highlighted) tracking-tight leading-tight">
-          Stop Leaving Your Store Revenue<br />
+          Stop Leaving Store Sales & Stock Keeping<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
             To Paper Books & Guesswork.
           </span>
         </h1>
 
         <p class="text-base sm:text-xl text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          Every day, retail store owners bleed profit through untracked cash sales, employee theft, missing inventory, and forgotten customer debts. Kluda puts an end to that.
+          Every day, retail store owners bleed profit through untracked cash sales, employee theft, missing inventory, and forgotten customer debts. Kluda replaces manual guesswork with a free stock keeping app on your phone.
         </p>
       </div>
     </section>

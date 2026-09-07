@@ -98,6 +98,54 @@ const isCreateItemOpen = ref(false)
 const isEditItemOpen = ref(false)
 const editingItem = ref<CatalogProductItem | null>(null)
 
+// Barcode scanner state
+const isBarcodeScannerOpen = ref(false)
+const scannerTarget = ref<'itemForm' | 'search'>('itemForm')
+
+function openBarcodeScanner(target: 'itemForm' | 'search' = 'itemForm') {
+  scannerTarget.value = target
+  isBarcodeScannerOpen.value = true
+}
+
+function handleBarcodeScanned(code: string) {
+  const clean = code.trim()
+  if (scannerTarget.value === 'search') {
+    searchItem.value = clean
+    handleItemSearch()
+    toast.add({
+      title: 'Barcode Scanned',
+      description: `Searching for: ${clean}`,
+      color: 'success',
+      icon: 'i-lucide-scan-barcode'
+    })
+  } else {
+    itemForm.barcode = clean
+    toast.add({
+      title: 'Barcode Scanned',
+      description: `Captured: ${clean}`,
+      color: 'success',
+      icon: 'i-lucide-scan-barcode'
+    })
+  }
+}
+
+// Barcode conflict state
+const isConflictModalOpen = ref(false)
+const conflictInfo = ref<{
+  name: string
+  barcode: string
+  action: 'create' | 'update'
+} | null>(null)
+
+async function confirmReassignBarcode() {
+  if (!conflictInfo.value) return
+  if (conflictInfo.value.action === 'create') {
+    await handleSaveItem(true)
+  } else {
+    await handleUpdateItem(true)
+  }
+}
+
 const itemForm = reactive({
   name: '',
   barcode: '',
@@ -331,11 +379,13 @@ function openCreateItem() {
   isCreateItemOpen.value = true
 }
 
-async function handleSaveItem() {
+async function handleSaveItem(reassign: any = false) {
   if (!selectedTemplate.value || !itemForm.name.trim()) {
     toast.add({ title: 'Validation Error', description: 'Product name is required.', color: 'warning' })
     return
   }
+
+  const shouldReassign = reassign === true
 
   isSubmitting.value = true
   try {
@@ -349,15 +399,32 @@ async function handleSaveItem() {
         cost_price: Math.round(Number(itemForm.cost_price_naira || 0) * 100),
         unit_in: itemForm.unit_in,
         description: itemForm.description.trim() || null,
-        is_active: itemForm.is_active
+        is_active: itemForm.is_active,
+        reassign_barcode: shouldReassign
       }
     })
 
-    toast.add({ title: 'Product Added', description: 'Item added to catalog.', color: 'success' })
+    toast.add({
+      title: reassign ? 'Barcode Reassigned' : 'Product Added',
+      description: reassign ? `Barcode assigned to ${itemForm.name.trim()}.` : 'Item added to catalog.',
+      color: 'success'
+    })
+    isConflictModalOpen.value = false
+    conflictInfo.value = null
     isCreateItemOpen.value = false
     await fetchItems()
     await fetchTemplates() // update counts
   } catch (err: any) {
+    const raw = err?.data?.rawDetail || err?.data?.detail
+    if (typeof raw === 'object' && raw?.code === 'BARCODE_CONFLICT') {
+      conflictInfo.value = {
+        name: raw.existing_item_name,
+        barcode: raw.barcode,
+        action: 'create'
+      }
+      isConflictModalOpen.value = true
+      return
+    }
     toast.add({ title: 'Failed to Add', description: err?.data?.detail || 'Could not add item.', color: 'error' })
   } finally {
     isSubmitting.value = false
@@ -378,8 +445,10 @@ function openEditItem(item: CatalogProductItem) {
   isEditItemOpen.value = true
 }
 
-async function handleUpdateItem() {
+async function handleUpdateItem(reassign: any = false) {
   if (!editingItem.value) return
+  const shouldReassign = reassign === true
+
   isSubmitting.value = true
   try {
     await apiFetch(`/admin/catalog-templates/items/${editingItem.value.id}`, {
@@ -392,14 +461,31 @@ async function handleUpdateItem() {
         cost_price: Math.round(Number(itemForm.cost_price_naira || 0) * 100),
         unit_in: itemForm.unit_in,
         description: itemForm.description.trim() || null,
-        is_active: itemForm.is_active
+        is_active: itemForm.is_active,
+        reassign_barcode: shouldReassign
       }
     })
 
-    toast.add({ title: 'Product Updated', description: 'Item saved & cache refreshed.', color: 'success' })
+    toast.add({
+      title: reassign ? 'Barcode Reassigned' : 'Product Updated',
+      description: reassign ? `Barcode assigned to ${itemForm.name.trim()}.` : 'Item saved & cache refreshed.',
+      color: 'success'
+    })
+    isConflictModalOpen.value = false
+    conflictInfo.value = null
     isEditItemOpen.value = false
     await fetchItems()
   } catch (err: any) {
+    const raw = err?.data?.rawDetail || err?.data?.detail
+    if (typeof raw === 'object' && raw?.code === 'BARCODE_CONFLICT') {
+      conflictInfo.value = {
+        name: raw.existing_item_name,
+        barcode: raw.barcode,
+        action: 'update'
+      }
+      isConflictModalOpen.value = true
+      return
+    }
     toast.add({ title: 'Update Failed', description: err?.data?.detail || 'Could not update item.', color: 'error' })
   } finally {
     isSubmitting.value = false
@@ -607,7 +693,7 @@ onMounted(() => {
       <div class="flex flex-col gap-4">
         <!-- Controls Bar -->
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-900/80 p-3 rounded-xl border border-zinc-800">
-          <div class="flex-1 relative">
+          <div class="flex-1 relative flex items-center gap-2">
             <UInput
               v-model="searchItem"
               icon="i-lucide-search"
@@ -615,6 +701,14 @@ onMounted(() => {
               size="sm"
               class="w-full"
               @keyup.enter="handleItemSearch"
+            />
+            <UButton
+              icon="i-lucide-scan-barcode"
+              size="sm"
+              color="neutral"
+              variant="outline"
+              title="Scan barcode to search"
+              @click="openBarcodeScanner('search')"
             />
           </div>
 
@@ -997,8 +1091,33 @@ onMounted(() => {
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Barcode / EAN-13</label>
-            <UInput v-model="itemForm.barcode" placeholder="e.g. 089686120110" size="sm" />
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-medium text-zinc-300">Barcode / EAN-13</label>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
+                @click="openBarcodeScanner('itemForm')"
+              >
+                <UIcon name="i-lucide-scan-barcode" class="size-3.5" />
+                <span>Scan Barcode</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              <UInput
+                v-model="itemForm.barcode"
+                placeholder="e.g. 089686120110"
+                size="sm"
+                class="flex-1"
+              />
+              <UButton
+                icon="i-lucide-scan-barcode"
+                color="neutral"
+                variant="subtle"
+                size="sm"
+                title="Scan with Camera"
+                @click="openBarcodeScanner('itemForm')"
+              />
+            </div>
           </div>
 
           <div class="flex flex-col gap-1.5">
@@ -1038,7 +1157,7 @@ onMounted(() => {
 
         <div class="pt-4 border-t border-zinc-800 flex items-center justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isCreateItemOpen = false" />
-          <UButton label="Add Product" color="primary" size="sm" :loading="isSubmitting" @click="handleSaveItem" />
+          <UButton label="Add Product" color="primary" size="sm" :loading="isSubmitting" @click="handleSaveItem()" />
         </div>
       </div>
     </AdminFullScreenModal>
@@ -1057,8 +1176,33 @@ onMounted(() => {
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-zinc-300">Barcode / EAN-13</label>
-            <UInput v-model="itemForm.barcode" size="sm" />
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-medium text-zinc-300">Barcode / EAN-13</label>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
+                @click="openBarcodeScanner('itemForm')"
+              >
+                <UIcon name="i-lucide-scan-barcode" class="size-3.5" />
+                <span>Scan Barcode</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              <UInput
+                v-model="itemForm.barcode"
+                placeholder="e.g. 089686120110"
+                size="sm"
+                class="flex-1"
+              />
+              <UButton
+                icon="i-lucide-scan-barcode"
+                color="neutral"
+                variant="subtle"
+                size="sm"
+                title="Scan with Camera"
+                @click="openBarcodeScanner('itemForm')"
+              />
+            </div>
           </div>
 
           <div class="flex flex-col gap-1.5">
@@ -1098,9 +1242,68 @@ onMounted(() => {
 
         <div class="pt-4 border-t border-zinc-800 flex items-center justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="isEditItemOpen = false" />
-          <UButton label="Save Changes" color="primary" size="sm" :loading="isSubmitting" @click="handleUpdateItem" />
+          <UButton label="Save Changes" color="primary" size="sm" :loading="isSubmitting" @click="handleUpdateItem()" />
         </div>
       </div>
     </AdminFullScreenModal>
+
+    <!-- Camera Barcode Scanner Modal -->
+    <BarcodeScannerModal
+      v-model="isBarcodeScannerOpen"
+      @scan="handleBarcodeScanned"
+    />
+
+    <!-- Barcode Conflict Reassign Dialog -->
+    <Teleport to="body">
+      <div
+        v-if="isConflictModalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+      >
+        <div class="fixed inset-0 bg-black/80 backdrop-blur-xs" @click="isConflictModalOpen = false" />
+        <div class="relative z-10 w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl p-5 shadow-2xl space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="size-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+              <UIcon name="i-lucide-alert-triangle" class="size-5" />
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-white">Barcode Already in Use</h3>
+              <p class="text-xs text-zinc-400">This barcode belongs to another product</p>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2 text-xs">
+            <div class="text-zinc-400">
+              Barcode: <span class="font-mono font-bold text-amber-400 text-sm ml-1">{{ conflictInfo?.barcode }}</span>
+            </div>
+            <div class="text-zinc-400">
+              Currently assigned to:
+              <p class="font-bold text-white text-sm mt-0.5">{{ conflictInfo?.name }}</p>
+            </div>
+          </div>
+
+          <p class="text-xs text-zinc-300 leading-relaxed">
+            Would you like to <strong>remove this barcode</strong> from <span class="text-zinc-100 font-semibold">{{ conflictInfo?.name }}</span> and reassign it to <span class="text-emerald-400 font-semibold">{{ itemForm.name || 'this product' }}</span>?
+          </p>
+
+          <div class="pt-2 border-t border-zinc-800 flex items-center justify-end gap-2">
+            <UButton
+              label="Cancel"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="isConflictModalOpen = false"
+            />
+            <UButton
+              label="Reassign Barcode"
+              color="warning"
+              icon="i-lucide-arrow-left-right"
+              size="sm"
+              :loading="isSubmitting"
+              @click="confirmReassignBarcode"
+            />
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

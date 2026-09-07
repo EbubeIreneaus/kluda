@@ -14,9 +14,46 @@ const posUrl = config.public.posAppUrl || "http://localhost:3000";
 
 useSeoMeta({
   title:
-    "Kluda | Retail POS & Store Management — Stop Money Theft & Track Every Item",
+    "Free Stock Keeping App & Barcode Scanner for Retail Stores | Kluda",
+  ogTitle:
+    "Free Stock Keeping App & Barcode Scanner for Retail Stores | Kluda",
   description:
-    "Kluda helps store owners eliminate cash theft, track stock in real time, and manage customer debts using the phone they already have — with zero expensive hardware.",
+    "Kluda is a free stock keeping app and camera barcode scanner. Track daily store sales, take stock with your phone, manage customer debt books, and eliminate cashier theft.",
+  ogDescription:
+    "Free stock keeping app and phone camera barcode scanner. Track daily store sales, take inventory stock, and stop cashier theft with zero hardware costs.",
+  ogImage: "https://kluda.app/kluda_icon.jpg",
+  twitterCard: "summary_large_image",
+});
+
+useHead({
+  script: [
+    {
+      type: "application/ld+json",
+      innerHTML: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Kluda",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web, Android, iOS, Windows, macOS",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "NGN",
+          availability: "https://schema.org/InStock",
+        },
+        description:
+          "Free stock keeping app and retail POS system. Scan barcodes using any smartphone camera, track daily store sales, take inventory stock, and prevent cash theft.",
+        featureList: [
+          "Free stock keeping and live inventory deduction",
+          "Phone camera barcode scanner with audio confirmation",
+          "Daily store sales tracking and cashier shift auditing",
+          "Customer credit and digital debt ledger",
+          "100% offline sales continuity and automatic cloud sync",
+          "Thermal receipt printing via Bluetooth and USB (ESC/POS)",
+        ],
+      }),
+    },
+  ],
 });
 
 const outcomes = [
@@ -26,6 +63,7 @@ const outcomes = [
     desc: "Eliminate under-the-counter cash sales and pocketing. Every item that leaves the shelf is locked to a cashier shift and digital receipt.",
     icon: "i-lucide-shield-check",
     link: "/how-it-works",
+    linkText: "See how to stop cashier theft & track shifts",
   },
   {
     title: "Live Stock & Inventory Keeping",
@@ -33,6 +71,7 @@ const outcomes = [
     desc: "Live stock deductions on every single sale. Know your fast-moving goods, remaining cartons, and low-stock alerts before items run out.",
     icon: "i-lucide-boxes",
     link: "/how-it-works",
+    linkText: "Explore live stock keeping & inventory alerts",
   },
   {
     title: "Digital Customer Debt Ledger",
@@ -40,6 +79,7 @@ const outcomes = [
     desc: "Record customer credit sales in two taps, track partial cash repayments, and view exact outstanding balances right at the counter.",
     icon: "i-lucide-book-open",
     link: "/how-it-works",
+    linkText: "See how to track customer debts digitally",
   },
   {
     title: "Zero Supermarket Hardware Costs",
@@ -47,6 +87,7 @@ const outcomes = [
     desc: "Turn any Android smartphone, iPhone, tablet, or laptop into a full checkout counter with camera barcode scanning and thermal receipts.",
     icon: "i-lucide-smartphone",
     link: "/pricing",
+    linkText: "Compare free phone register vs POS machine",
   },
 ];
 
@@ -108,26 +149,26 @@ const storeUseCases = [
         >
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <UIcon name="i-lucide-shield-check" class="w-3.5 h-3.5" />
-          <span>Next-Gen Retail POS & Anti-Theft Management</span>
+          <span>Free Stock Keeping App & Barcode Scanner</span>
         </div>
 
         <h1
           class="text-4xl sm:text-6xl lg:text-7xl font-black text-(--ui-text-highlighted) tracking-tight leading-[1.08]"
         >
-          STOP LOSING MONEY IN YOUR SHOP.<br />
+          Free Stock Keeping App & Barcode Scanner.<br />
           <span
             class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent"
           >
-            TRACK SALES. CONTROL STOCK. STOP THEFT.
+            Track Sales. Control Stock. Stop Cash Theft.
           </span>
         </h1>
 
         <p
           class="text-lg sm:text-2xl text-(--ui-text-muted) max-w-3xl mx-auto font-normal leading-relaxed"
         >
-          Turn the smartphone in your pocket into a hyper-fast checkout
-          register. Kluda eliminates missing cash, untracked inventory, and
-          messy paper debt books — with zero expensive machines to buy.
+          The free app to take stock, scan barcodes with your phone camera, and
+          track daily store sales. Eliminate missing cash, untracked inventory,
+          and messy paper debt books — with zero expensive machines to buy.
         </p>
 
         <div
@@ -368,7 +409,7 @@ const storeUseCases = [
         <h2
           class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight"
         >
-          Built to protect your hard-earned profit
+          Built to track store sales & protect retail profit
         </h2>
         <p class="text-sm text-(--ui-text-muted) mt-2">
           Designed specifically to eliminate the daily revenue leakages store
@@ -414,7 +455,7 @@ const storeUseCases = [
               :to="outcome.link"
               class="text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1.5 transition"
             >
-              <span>Explore details</span>
+              <span>{{ outcome.linkText }}</span>
               <UIcon name="i-lucide-arrow-right" class="w-3.5 h-3.5" />
             </NuxtLink>
           </div>
@@ -437,7 +478,7 @@ const storeUseCases = [
         <h2
           class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight"
         >
-          Test the checkout register right now
+          Test the free barcode scanning & checkout register
         </h2>
         <p class="text-sm text-(--ui-text-muted) mt-2">
           Experience the high-speed barcode scanner, item checkout, and instant
@@ -463,7 +504,7 @@ const storeUseCases = [
         <h2
           class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight"
         >
-          Designed for your store type
+          Stock keeping & sales tracking for every store type
         </h2>
       </div>
 
@@ -493,7 +534,7 @@ const storeUseCases = [
           <div
             class="mt-4 pt-3 border-t border-(--ui-border) flex items-center gap-1 text-xs font-bold text-emerald-500"
           >
-            <span>Learn more</span>
+            <span>Explore {{ store.title }} POS & stock features</span>
             <UIcon
               name="i-lucide-chevron-right"
               class="w-3.5 h-3.5 group-hover:translate-x-1 transition"

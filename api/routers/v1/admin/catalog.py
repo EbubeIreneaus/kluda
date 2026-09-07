@@ -16,21 +16,44 @@ from schemas.catalog import (
 from schemas.admin.user import AdminPermission
 from libs.deps import require_admin_permission
 from libs.audit import record_audit_log
-from libs.cache import delete_cache_pattern
+from libs.cache import delete_cache, delete_cache_pattern
 
 router = APIRouter(prefix="/catalog-templates", tags=["Admin Catalog Management"])
 
 
-async def invalidate_template_cache(slug: str | None = None):
-    """Invalidate Redis caches for templates and items."""
+async def invalidate_template_cache(
+    slug: str | None = None,
+    barcodes: list[str | None] | str | None = None,
+):
+    """Invalidate Redis caches for templates, items, and barcode lookups."""
     # Clear all template list caches
     await delete_cache_pattern("catalog:templates:*")
+
     if slug:
         # Clear single template cache and all item pagination caches for this template
         await delete_cache_pattern(f"catalog:template:{slug}*")
+        await delete_cache_pattern(f"catalog:items:{slug}:*")
         await delete_cache_pattern(f"{slug}:items:*")
     else:
+        # Clear all single template caches and all item pagination caches
         await delete_cache_pattern("catalog:template:*")
+        await delete_cache_pattern("catalog:items:*")
+        await delete_cache_pattern("*:items:*")
+
+    # Invalidate specific barcode lookups or all lookups
+    if barcodes is not None:
+        bc_list = [barcodes] if isinstance(barcodes, str) else barcodes
+        keys_to_delete = []
+        for bc in bc_list:
+            if bc:
+                clean_bc = str(bc).strip()
+                if clean_bc:
+                    keys_to_delete.append(f"catalog:lookup:{clean_bc}")
+        if keys_to_delete:
+            await delete_cache(*keys_to_delete)
+    elif slug is None:
+        # If no slug is specified (global cache invalidation), clear all barcode lookup caches as well
+        await delete_cache_pattern("catalog:lookup:*")
 
 
 # =========================================================================
@@ -123,7 +146,20 @@ async def update_template(
     await db.commit()
     await db.refresh(template)
 
-    await invalidate_template_cache(old_slug)
+    # If template deactivated, also invalidate barcode lookups for all its items
+    if "is_active" in update_data and update_data["is_active"] is False:
+        item_barcodes = (
+            await db.scalars(
+                select(CatalogItem.barcode).where(
+                    CatalogItem.template_id == template_id,
+                    CatalogItem.barcode.isnot(None),
+                )
+            )
+        ).all()
+        await invalidate_template_cache(old_slug, barcodes=list(item_barcodes))
+    else:
+        await invalidate_template_cache(old_slug)
+
     if template.slug != old_slug:
         await invalidate_template_cache(template.slug)
 
@@ -155,10 +191,21 @@ async def delete_template(
         )
 
     slug = template.slug
+
+    # Collect item barcodes to invalidate lookup caches
+    item_barcodes = (
+        await db.scalars(
+            select(CatalogItem.barcode).where(
+                CatalogItem.template_id == template_id,
+                CatalogItem.barcode.isnot(None),
+            )
+        )
+    ).all()
+
     await db.delete(template)
     await db.commit()
 
-    await invalidate_template_cache(slug)
+    await invalidate_template_cache(slug, barcodes=list(item_barcodes))
 
     await record_audit_log(
         db=db,
@@ -193,8 +240,10 @@ async def add_item_to_template(
         )
 
     clean_barcode = payload.barcode.strip() if payload.barcode and payload.barcode.strip() else None
+    reassign_barcode = bool(payload.reassign_barcode is True)
 
     # Check for duplicate barcode in same template
+    duplicate = None
     if clean_barcode:
         duplicate = await db.scalar(
             select(CatalogItem).where(
@@ -203,12 +252,22 @@ async def add_item_to_template(
             )
         )
         if duplicate:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"An item with barcode '{clean_barcode}' already exists in this template",
-            )
+            if not reassign_barcode:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "BARCODE_CONFLICT",
+                        "message": f"Barcode '{clean_barcode}' already exists on '{duplicate.name}'",
+                        "existing_item_id": duplicate.id,
+                        "existing_item_name": duplicate.name,
+                        "barcode": clean_barcode,
+                    },
+                )
+            else:
+                duplicate.barcode = None
 
     item_data = payload.model_dump()
+    item_data.pop("reassign_barcode", None)
     item_data["template_id"] = template_id
     item_data["barcode"] = clean_barcode
 
@@ -217,8 +276,8 @@ async def add_item_to_template(
     await db.commit()
     await db.refresh(item)
 
-    # Invalidate items and template counts
-    await invalidate_template_cache(template.slug)
+    # Invalidate items, template counts, and new item barcode lookup cache
+    await invalidate_template_cache(template.slug, barcodes=item.barcode)
 
     await record_audit_log(
         db=db,
@@ -227,6 +286,20 @@ async def add_item_to_template(
         target_type="catalog_item",
         details={"name": item.name, "barcode": item.barcode, "template": template.slug},
     )
+
+    if duplicate and reassign_barcode:
+        await record_audit_log(
+            db=db,
+            admin_id=admin.admin_id,
+            action="catalog_item:barcode_reassigned",
+            target_type="catalog_item",
+            details={
+                "previous_item_id": duplicate.id,
+                "previous_item_name": duplicate.name,
+                "barcode": clean_barcode,
+                "new_item_name": item.name,
+            },
+        )
 
     return item
 
@@ -252,8 +325,12 @@ async def update_item(
         select(CatalogTemplate).where(CatalogTemplate.id == item.template_id)
     )
 
+    old_barcode = item.barcode
+    reassign_barcode = bool(payload.reassign_barcode is True)
     update_data = payload.model_dump(exclude_unset=True)
+    update_data.pop("reassign_barcode", None)
 
+    reassigned_duplicate = None
     if "barcode" in update_data and update_data["barcode"]:
         clean_barcode = update_data["barcode"].strip()
         if clean_barcode != item.barcode:
@@ -265,10 +342,20 @@ async def update_item(
                 )
             )
             if duplicate:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"An item with barcode '{clean_barcode}' already exists in this template",
-                )
+                if not reassign_barcode:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "code": "BARCODE_CONFLICT",
+                            "message": f"Barcode '{clean_barcode}' already exists on '{duplicate.name}'",
+                            "existing_item_id": duplicate.id,
+                            "existing_item_name": duplicate.name,
+                            "barcode": clean_barcode,
+                        },
+                    )
+                else:
+                    duplicate.barcode = None
+                    reassigned_duplicate = duplicate
             update_data["barcode"] = clean_barcode
 
     for key, value in update_data.items():
@@ -278,7 +365,8 @@ async def update_item(
     await db.refresh(item)
 
     if template:
-        await invalidate_template_cache(template.slug)
+        barcodes_to_clear = [b for b in [old_barcode, item.barcode] if b]
+        await invalidate_template_cache(template.slug, barcodes=barcodes_to_clear)
 
     await record_audit_log(
         db=db,
@@ -287,6 +375,20 @@ async def update_item(
         target_type="catalog_item",
         details={"name": item.name, "barcode": item.barcode},
     )
+
+    if reassigned_duplicate:
+        await record_audit_log(
+            db=db,
+            admin_id=admin.admin_id,
+            action="catalog_item:barcode_reassigned",
+            target_type="catalog_item",
+            details={
+                "previous_item_id": reassigned_duplicate.id,
+                "previous_item_name": reassigned_duplicate.name,
+                "barcode": item.barcode,
+                "new_item_name": item.name,
+            },
+        )
 
     return item
 
@@ -312,11 +414,12 @@ async def delete_item(
     )
 
     name = item.name
+    old_barcode = item.barcode
     await db.delete(item)
     await db.commit()
 
     if template:
-        await invalidate_template_cache(template.slug)
+        await invalidate_template_cache(template.slug, barcodes=old_barcode)
 
     await record_audit_log(
         db=db,

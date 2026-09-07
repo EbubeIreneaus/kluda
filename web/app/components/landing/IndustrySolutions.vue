@@ -87,9 +87,9 @@ const industries = [
         <UIcon name="i-lucide-layout-grid" class="w-4 h-4" />
         <span>Tailored For Every Retail Model</span>
       </div>
-      <h3 class="text-2xl sm:text-3xl font-extrabold text-(--ui-text-highlighted) tracking-tight">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-(--ui-text-highlighted) tracking-tight">
         Built for Your Specific Retail Workflow
-      </h3>
+      </h2>
       <p class="text-sm text-(--ui-text-muted) mt-2">
         Whether you manage a high-volume supermarket or a single boutique kiosk, Kluda adapts to your counter.
       </p>

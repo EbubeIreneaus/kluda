@@ -41,9 +41,9 @@ const steps = [
         <UIcon name="i-lucide-zap" class="w-3.5 h-3.5" />
         <span>Automated Offline Continuity</span>
       </div>
-      <h3 class="text-2xl sm:text-3xl font-black text-(--ui-text-highlighted) tracking-tight">
-        How Offline Mode Works
-      </h3>
+      <h2 class="text-2xl sm:text-3xl font-black text-(--ui-text-highlighted) tracking-tight">
+        How Offline Sales Tracking & Stock Keeping Works
+      </h2>
       <p class="text-sm text-(--ui-text-muted) mt-2">
         Zero manual export files. Zero lost sales records. Complete cashier continuity.
       </p>

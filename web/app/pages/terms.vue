@@ -1,12 +1,11 @@
 <script setup lang="ts">
-useHead({
-  title: 'Terms of Service — Kluda Retail POS',
-  meta: [
-    {
-      name: 'description',
-      content: 'Kluda Terms of Service: terms governing POS usage, offline mode, local device storage disclaimer, subscriptions, and merchant data ownership.'
-    }
-  ]
+useSeoMeta({
+  title: 'Terms of Service | Kluda Retail POS & Stock Keeping App',
+  ogTitle: 'Terms of Service | Kluda Retail POS & Stock Keeping App',
+  description: 'Kluda Terms of Service: terms governing POS usage, offline sales continuity, merchant data privacy, and subscription plans.',
+  ogDescription: 'Kluda Terms of Service: terms governing store POS usage and subscriptions.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 </script>
 

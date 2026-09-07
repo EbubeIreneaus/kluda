@@ -10,8 +10,12 @@ const config = useRuntimeConfig()
 const posUrl = config.public.posAppUrl || 'http://localhost:3000'
 
 useSeoMeta({
-  title: 'POS for Fashion Boutiques & Apparel | Kluda',
-  description: 'Turn smartphones into sleek mobile checkout registers for fashion boutiques, apparel stores, and retail pop-up kiosks.'
+  title: 'Boutique Stock Keeping App & Mobile POS | Kluda',
+  ogTitle: 'Boutique Stock Keeping App & Mobile POS | Kluda',
+  description: 'Turn smartphones into sleek mobile registers. Take boutique stock, track apparel sales, and checkout fashion shoppers anywhere on the floor.',
+  ogDescription: 'Boutique stock keeping app & mobile register. Ring up fashion sales from your phone with zero bulky machine clutter.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 
 const boutiqueBenefits = [
@@ -48,14 +52,14 @@ const boutiqueBenefits = [
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Turn Any Smartphone Into A<br />
+          Mobile Stock Keeping App<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            Mobile Boutique Checkout
+            For Boutiques & Fashion Stores
           </span>
         </h1>
 
         <p class="text-base sm:text-xl text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          Keep your retail space minimalist and clutter-free. Give your sales associates the freedom to checkout customers anywhere on the floor.
+          Keep your retail space minimalist and clutter-free. Take inventory stock, track garment sales, and checkout customers anywhere on the floor using your phone.
         </p>
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
@@ -71,6 +75,14 @@ const boutiqueBenefits = [
     </section>
 
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+          Boutique Stock Keeping & Mobile Register Features
+        </h2>
+        <p class="text-sm text-(--ui-text-muted) mt-2">
+          Sleek retail tools built for modern apparel, footwear, and accessory stores.
+        </p>
+      </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div
           v-for="b in boutiqueBenefits"

@@ -7,8 +7,12 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Retail Store Solutions | Kluda POS',
-  description: 'Explore tailored retail solutions for Supermarkets, Pharmacies, Boutiques, Electronics, and Multi-Branch outlets in Nigeria.'
+  title: 'Retail Store Solutions: Stock Keeping App by Store Type | Kluda',
+  ogTitle: 'Retail Store Solutions: Stock Keeping App by Store Type | Kluda',
+  description: 'Explore tailored stock keeping, phone barcode scanning, and sales tracking for supermarkets, pharmacies, fashion boutiques, and retail stores.',
+  ogDescription: 'Free stock keeping app & sales tracking tailored for supermarkets, pharmacies, fashion boutiques, and retail shops.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 
 const categories = [
@@ -53,19 +57,27 @@ const categories = [
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Tailored For Your<br />
+          Stock Keeping App & POS<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            Specific Retail Category
+            For Your Retail Category
           </span>
         </h1>
 
         <p class="text-base sm:text-xl text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          Whether you run a fast-paced mini-mart or a neighborhood pharmacy, Kluda adapts to your daily checkout workflow.
+          Whether you run a fast-paced supermarket, neighborhood pharmacy, or fashion boutique, Kluda gives you free stock keeping, camera barcode scanning, and theft-proof checkout.
         </p>
       </div>
     </section>
 
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+          Explore Solutions By Store Category
+        </h2>
+        <p class="text-sm text-(--ui-text-muted) mt-2">
+          Discover how Kluda solves the specific inventory and sales challenges of your business type.
+        </p>
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <NuxtLink
           v-for="cat in categories"

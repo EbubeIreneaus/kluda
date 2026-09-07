@@ -11,8 +11,12 @@ const config = useRuntimeConfig()
 const posUrl = config.public.posAppUrl || 'http://localhost:3000'
 
 useSeoMeta({
-  title: 'POS for Supermarkets & Mini-Marts | Kluda',
-  description: 'Fast, line-busting retail POS for supermarkets and grocery stores. Scan barcodes with phone cameras and keep checking out queues even during internet outages.'
+  title: 'Supermarket Stock Keeping App & Barcode POS | Kluda',
+  ogTitle: 'Supermarket Stock Keeping App & Barcode POS | Kluda',
+  description: 'Fast phone camera barcode scanning, multi-cashier line busting, and live shelf stock deduction for supermarkets, grocery stores, and mini-marts.',
+  ogDescription: 'Supermarket stock keeping app and barcode POS. Bust long checkout lines and manage grocery stock with zero machine setup.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 
 const benefits = [
@@ -49,14 +53,14 @@ const benefits = [
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Keep Checkout Queues Moving<br />
+          Supermarket Stock Keeping App<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            Even When Network Drops
+            & Free Barcode Scanner
           </span>
         </h1>
 
         <p class="text-base sm:text-xl text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          Never let a network glitch slow down your grocery checkout. Equip your cashiers with high-speed camera scanning on the phones they already have.
+          Never let a network glitch slow down your grocery checkout. Equip your cashiers with high-speed camera barcode scanning and live stock keeping on the phones they already have.
         </p>
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
@@ -72,6 +76,14 @@ const benefits = [
     </section>
 
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+          Supermarket Stock Keeping & Barcode POS Features
+        </h2>
+        <p class="text-sm text-(--ui-text-muted) mt-2">
+          Everything grocery stores and mini-marts need to manage stock and checkout queues.
+        </p>
+      </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div
           v-for="b in benefits"

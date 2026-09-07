@@ -17,6 +17,7 @@ export function useAdminApi() {
       })
     } catch (err: any) {
       if (err?.data && err.data.detail !== undefined) {
+        err.data.rawDetail = err.data.detail
         err.data.detail = getErrorMessage(err)
       }
       throw err

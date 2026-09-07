@@ -9,8 +9,12 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'How Kluda Works | Simple Store Management, Stock Tracking & Anti-Theft',
-  description: 'Learn how Kluda protects your retail profit, tracks inventory in real time, manages customer debts, and turns your phone into a complete checkout counter.'
+  title: 'How It Works: Free App to Track Store Sales & Take Stock | Kluda',
+  ogTitle: 'How It Works: Free App to Track Store Sales & Take Stock | Kluda',
+  description: 'See how Kluda works: turn any smartphone into a stock keeping app and camera barcode scanner. Track daily store sales, manage debts, and audit cashier shifts.',
+  ogDescription: 'Free stock keeping app & sales tracker. See how to take stock, scan barcodes with your phone, and eliminate store theft.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 
 const deepDiveFeatures = [
@@ -63,14 +67,14 @@ const deepDiveFeatures = [
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Supermarket Control In Your Pocket.<br />
+          Free App to Track Store Sales & Take Stock.<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
             Simple. Theft-Proof. Complete.
           </span>
         </h1>
 
         <p class="text-base sm:text-xl text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          See how Kluda replaces messy paper books and expensive computer hardware with a modern sales register that protects your profits every day.
+          See how Kluda replaces messy paper books and ₦300,000 POS machines with a free stock keeping app and camera barcode scanner that protects your retail profits every day.
         </p>
       </div>
     </section>
@@ -82,7 +86,7 @@ const deepDiveFeatures = [
           <span>Core Capabilities</span>
         </div>
         <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Everything your retail store needs to thrive
+          Everything your retail store needs to take stock & track sales
         </h2>
       </div>
 

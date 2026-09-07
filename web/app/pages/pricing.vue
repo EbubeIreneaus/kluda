@@ -12,8 +12,12 @@ const config = useRuntimeConfig()
 const posUrl = config.public.posAppUrl || 'http://localhost:3000'
 
 useSeoMeta({
-  title: 'Hardware Economics & Pricing | Kluda Retail POS',
-  description: 'Zero upfront hardware investment. See how much your retail store saves by using smartphones and tablets with Kluda instead of ₦250,000+ dedicated POS terminal hardware.'
+  title: 'Free Stock Keeping App Pricing & Retail Plans | Kluda',
+  ogTitle: 'Free Stock Keeping App Pricing & Retail Plans | Kluda',
+  description: 'Kluda is free to start. Turn existing smartphones into barcode scanners and checkout counters with transparent pricing and zero upfront hardware fees.',
+  ogDescription: 'Free stock keeping app and barcode POS pricing. Transparent plans, no ₦300k hardware machines needed.',
+  ogImage: 'https://kluda.app/kluda_icon.jpg',
+  twitterCard: 'summary_large_image',
 })
 
 const openFaqIndex = ref<number | null>(0)
@@ -148,14 +152,14 @@ const displayFaqs = computed(() => dynamicFaqs.value || defaultFaqs)
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Zero Hardware Cost.<br />
+          Free Stock Keeping App & POS.<br />
           <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            Transparent Subscription Plans.
+            Transparent Pricing. Zero Machine Costs.
           </span>
         </h1>
 
         <p class="text-base sm:text-xl text-(--ui-text-muted) max-w-2xl mx-auto leading-relaxed">
-          Stop paying ₦250,000+ for bulky desktop terminal towers. Turn the devices your staff already carry into modern retail cash registers.
+          Stop paying ₦250,000+ for bulky desktop terminal towers. Turn the devices your staff already carry into a free stock keeping app and modern retail checkout register.
         </p>
 
         <!-- Dynamic Interval Selector -->
@@ -178,6 +182,15 @@ const displayFaqs = computed(() => dynamicFaqs.value || defaultFaqs)
 
     <!-- Dynamic Plans Grid -->
     <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+          Transparent Store Pricing & Free Access
+        </h2>
+        <p class="text-sm text-(--ui-text-muted) mt-2">
+          Start free today. Scale with transparent plans as your retail store expands.
+        </p>
+      </div>
+
       <div v-if="displayPlans.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div
           v-for="plan in displayPlans"
@@ -266,7 +279,7 @@ const displayFaqs = computed(() => dynamicFaqs.value || defaultFaqs)
           <span>Frequently Asked Questions</span>
         </div>
         <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
-          Questions retailers ask us
+          Questions retailers ask about Kluda pricing & hardware
         </h2>
       </div>
 

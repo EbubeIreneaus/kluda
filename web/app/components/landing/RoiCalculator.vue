@@ -46,9 +46,9 @@ function formatNgn(num: number) {
         </div>
 
         <div>
-          <h3 class="text-2xl sm:text-3xl font-extrabold text-(--ui-text-highlighted) tracking-tight">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-(--ui-text-highlighted) tracking-tight">
             How much could Kluda save your store?
-          </h3>
+          </h2>
           <p class="text-sm text-(--ui-text-muted) mt-1">
             See how much your store protects by avoiding dedicated POS hardware and preventing downtime sales loss.
           </p>

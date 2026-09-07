@@ -95,9 +95,11 @@ async def lookup_product_by_barcode(
     # 1. Search Kluda Verified Master Catalog
     catalog_stmt = (
         select(CatalogItem)
+        .join(CatalogTemplate, CatalogItem.template_id == CatalogTemplate.id)
         .where(
             CatalogItem.barcode == clean_barcode,
             CatalogItem.is_active == True,
+            CatalogTemplate.is_active == True,
         )
         .order_by(CatalogItem.id.asc())
         .limit(1)
@@ -213,11 +215,11 @@ async def list_catalog_template_items(
 ):
     """
     Get paginated items for a catalog template.
-    Cached in Redis using key '{slug}:items:{page}:{page_size}:{search}:{has_barcode}'.
+    Cached in Redis using key 'catalog:items:{slug}:{page}:{page_size}:{clean_search}:{barcode_filter_key}'.
     """
     clean_search = search.strip().lower() if search and search.strip() else ""
     barcode_filter_key = "all" if has_barcode is None else ("with" if has_barcode else "none")
-    cache_key = f"{slug}:items:{page}:{page_size}:{clean_search}:{barcode_filter_key}"
+    cache_key = f"catalog:items:{slug}:{page}:{page_size}:{clean_search}:{barcode_filter_key}"
 
     cached_data = await get_cache(cache_key)
     if cached_data is not None:
