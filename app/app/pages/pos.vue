@@ -345,9 +345,14 @@ const selectedCustomerName = computed(() => {
 });
 
 let codeReader: any = null;
+let currentStream: MediaStream | null = null;
+const hasTorch = ref(false);
+const isTorchActive = ref(false);
 
 async function startCameraScanner() {
   isCameraActive.value = true;
+  isTorchActive.value = false;
+  hasTorch.value = false;
   try {
     await nextTick();
     if (!codeReader) {
@@ -359,29 +364,57 @@ async function startCameraScanner() {
         BarcodeFormat.CODE_39,
         BarcodeFormat.UPC_A,
         BarcodeFormat.UPC_E,
+        BarcodeFormat.ITF,
+        BarcodeFormat.QR_CODE,
       ];
       hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+      hints.set(DecodeHintType.TRY_HARDER, true);
       codeReader = new BrowserMultiFormatReader(hints);
     }
     const videoEl = videoRef.value;
-    if (videoEl) {
-      codeReader.decodeFromVideoDevice(
-        undefined,
-        videoEl,
-        (result: any, err: any) => {
-          if (result) {
-            const code = result.getText();
-            const now = Date.now();
-            // 1.5 second cooldown for same barcode scanning
-            if (code !== lastScannedCode || now - lastScanTime > 1500) {
-              lastScannedCode = code;
-              lastScanTime = now;
-              handleScannedBarcode(code);
-            }
-          }
+    if (!videoEl) return;
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
-      );
+        audio: false,
+      });
+    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
+      });
     }
+
+    currentStream = stream;
+
+    const track = stream.getVideoTracks()[0];
+    if (track) {
+      const capabilities = (track.getCapabilities && track.getCapabilities()) as any;
+      hasTorch.value = !!(capabilities && capabilities.torch);
+    }
+
+    await codeReader.decodeFromStream(
+      stream,
+      videoEl,
+      (result: any, err: any) => {
+        if (result) {
+          const code = result.getText();
+          const now = Date.now();
+          // 1.5 second cooldown for same barcode scanning
+          if (code !== lastScannedCode || now - lastScanTime > 1500) {
+            lastScannedCode = code;
+            lastScanTime = now;
+            handleScannedBarcode(code);
+          }
+        }
+      },
+    );
   } catch (err) {
     console.error("Camera access failed:", err);
     toast.add({
@@ -389,14 +422,44 @@ async function startCameraScanner() {
       description: "Please check camera permissions",
       color: "error",
     });
-    isCameraActive.value = false;
+    stopCameraScanner();
+  }
+}
+
+async function toggleTorch() {
+  if (!currentStream) return;
+  const track = currentStream.getVideoTracks()[0];
+  if (!track) return;
+  try {
+    const nextState = !isTorchActive.value;
+    await (track as any).applyConstraints({
+      advanced: [{ torch: nextState }],
+    });
+    isTorchActive.value = nextState;
+  } catch (err) {
+    console.warn("Torch toggle failed:", err);
   }
 }
 
 function stopCameraScanner() {
   isCameraActive.value = false;
+  isTorchActive.value = false;
+  hasTorch.value = false;
   if (codeReader) {
-    codeReader.reset();
+    try {
+      codeReader.reset();
+    } catch {}
+  }
+  if (currentStream) {
+    currentStream.getTracks().forEach((t) => {
+      try {
+        t.stop();
+      } catch {}
+    });
+    currentStream = null;
+  }
+  if (videoRef.value) {
+    videoRef.value.srcObject = null;
   }
 }
 
@@ -502,15 +565,29 @@ function handleSearchBlur() {
             v-show="isCameraActive"
             class="overflow-hidden bg-black flex items-center justify-center mt-2.5 fixed inset-0 z-[60] p-4 flex flex-col xl:relative xl:inset-auto xl:z-10 xl:aspect-video xl:max-h-64 xl:rounded-xl xl:border xl:border-(--ui-border) xl:p-0 xl:mt-2.5"
           >
-            <div class="absolute top-4 right-4 z-[70] xl:hidden">
-              <UButton
-                color="neutral"
-                variant="solid"
-                icon="i-lucide-x"
-                size="lg"
-                class="rounded-full bg-black/40 text-white hover:bg-black/60"
+            <!-- Camera Top Controls (Torch & Close) -->
+            <div class="absolute top-3 right-3 flex items-center gap-2 z-[70]">
+              <!-- Flash / Torch Toggle -->
+              <button
+                v-if="hasTorch"
+                type="button"
+                class="size-10 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-lg active:scale-95"
+                :class="{ 'bg-amber-500! text-black! border-amber-400! shadow-amber-500/50': isTorchActive }"
+                title="Toggle Flashlight / Night Mode"
+                @click="toggleTorch"
+              >
+                <UIcon :name="isTorchActive ? 'i-lucide-zap' : 'i-lucide-zap-off'" class="size-5" />
+              </button>
+
+              <!-- Close Scanner Button -->
+              <button
+                type="button"
+                class="size-10 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-lg active:scale-95"
+                title="Close Camera"
                 @click="stopCameraScanner"
-              />
+              >
+                <UIcon name="i-lucide-x" class="size-5" />
+              </button>
             </div>
 
             <video

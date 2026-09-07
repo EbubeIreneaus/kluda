@@ -145,15 +145,28 @@ async function startScanner() {
     const constraints: MediaStreamConstraints = {
       video: selectedDeviceId.value
         ? { deviceId: { exact: selectedDeviceId.value } }
-        : { facingMode: { ideal: 'environment' } },
+        : {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
       audio: false
     }
 
-    // Request stream explicitly to check torch support
-    const stream = await navigator.mediaDevices.getUserMedia(constraints)
+    // Request stream explicitly to check torch support & attach to reader
+    let stream: MediaStream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints)
+    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: selectedDeviceId.value
+          ? { deviceId: { exact: selectedDeviceId.value } }
+          : { facingMode: { ideal: 'environment' } },
+        audio: false
+      })
+    }
+
     currentStream = stream
-    videoEl.srcObject = stream
-    await videoEl.play()
 
     // Check torch capabilities
     const track = stream.getVideoTracks()[0]
@@ -162,8 +175,8 @@ async function startScanner() {
       hasTorch.value = !!(capabilities && capabilities.torch)
     }
 
-    // Start ZXing decoding loop
-    codeReader.decodeFromVideoElement(videoEl, (result, err) => {
+    // Start ZXing continuous decoding loop
+    await codeReader.decodeFromStream(stream, videoEl, (result, err) => {
       if (result && !scannedSuccess.value) {
         const text = result.getText()
         if (text && text.trim()) {
@@ -182,7 +195,9 @@ async function startScanner() {
 
 function stopScanner() {
   if (codeReader) {
-    codeReader.reset()
+    try {
+      codeReader.reset()
+    } catch {}
   }
 
   if (currentStream) {
@@ -203,6 +218,7 @@ function stopScanner() {
 }
 
 function onCodeCaptured(code: string) {
+  if (scannedSuccess.value) return
   scannedSuccess.value = true
   playBeep()
   vibrateDevice()
@@ -280,7 +296,7 @@ onUnmounted(() => {
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+      class="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6"
     >
       <!-- Backdrop -->
       <div

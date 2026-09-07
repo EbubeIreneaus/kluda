@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch, onUnmounted } from 'vue'
 import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library'
 
 const { format } = useFormatCurrency()
@@ -328,6 +328,24 @@ const addVideoRef = ref<HTMLVideoElement | null>(null)
 const editVideoRef = ref<HTMLVideoElement | null>(null)
 const activeScanningField = ref<'add' | 'edit' | null>(null)
 let codeReader: any = null
+let currentStream: MediaStream | null = null
+const hasTorch = ref(false)
+const isTorchActive = ref(false)
+
+async function toggleTorch() {
+  if (!currentStream) return
+  const track = currentStream.getVideoTracks()[0]
+  if (!track) return
+  try {
+    const nextState = !isTorchActive.value
+    await (track as any).applyConstraints({
+      advanced: [{ torch: nextState }]
+    })
+    isTorchActive.value = nextState
+  } catch (err) {
+    console.warn('Torch toggle failed:', err)
+  }
+}
 
 // Scan-to-Add State & Logic
 const isLookingUpBarcode = ref(false)
@@ -410,6 +428,8 @@ async function startCameraScanner(field: 'add' | 'edit') {
   }
   activeScanningField.value = field
   isCameraActive.value = true
+  isTorchActive.value = false
+  hasTorch.value = false
   
   try {
     await nextTick()
@@ -430,12 +450,41 @@ async function startCameraScanner(field: 'add' | 'edit') {
           BarcodeFormat.CODE_128,
           BarcodeFormat.CODE_39,
           BarcodeFormat.UPC_A,
-          BarcodeFormat.UPC_E
+          BarcodeFormat.UPC_E,
+          BarcodeFormat.ITF,
+          BarcodeFormat.QR_CODE
         ]
         hints.set(DecodeHintType.POSSIBLE_FORMATS, formats)
+        hints.set(DecodeHintType.TRY_HARDER, true)
         codeReader = new BrowserMultiFormatReader(hints)
       }
-      codeReader.decodeFromVideoDevice(undefined, videoEl, (result: any) => {
+
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        })
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        })
+      }
+
+      currentStream = stream
+
+      const track = stream.getVideoTracks()[0]
+      if (track) {
+        const capabilities = (track.getCapabilities && track.getCapabilities()) as any
+        hasTorch.value = !!(capabilities && capabilities.torch)
+      }
+
+      await codeReader.decodeFromStream(stream, videoEl, (result: any) => {
         if (result) {
           const code = result.getText()
           if (activeScanningField.value === 'add') {
@@ -461,20 +510,41 @@ async function startCameraScanner(field: 'add' | 'edit') {
     }
   } catch {
     toast.add({ title: 'Camera Error', description: 'Could not access camera', color: 'error' })
-    isCameraActive.value = false
-    activeScanningField.value = null
+    stopCameraScanner()
   }
 }
 
 function stopCameraScanner() {
   isCameraActive.value = false
   activeScanningField.value = null
+  isTorchActive.value = false
+  hasTorch.value = false
   if (codeReader) {
-    codeReader.reset()
+    try {
+      codeReader.reset()
+    } catch {}
+  }
+  if (currentStream) {
+    currentStream.getTracks().forEach((t) => {
+      try {
+        t.stop()
+      } catch {}
+    })
+    currentStream = null
+  }
+  if (addVideoRef.value) {
+    addVideoRef.value.srcObject = null
+  }
+  if (editVideoRef.value) {
+    editVideoRef.value.srcObject = null
   }
 }
 
 watch([showAddModal, showEditSlideover], () => {
+  stopCameraScanner()
+})
+
+onUnmounted(() => {
   stopCameraScanner()
 })
 </script>
@@ -762,6 +832,28 @@ watch([showAddModal, showEditSlideover], () => {
           v-if="isCameraActive && activeScanningField === 'add'"
           class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
         >
+          <!-- Camera Controls Overlay (Torch & Close) -->
+          <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
+            <button
+              v-if="hasTorch"
+              type="button"
+              class="size-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-md active:scale-95"
+              :class="{ 'bg-amber-500! text-black! border-amber-400! shadow-amber-500/50': isTorchActive }"
+              title="Toggle Flashlight / Night Mode"
+              @click="toggleTorch"
+            >
+              <UIcon :name="isTorchActive ? 'i-lucide-zap' : 'i-lucide-zap-off'" class="size-4" />
+            </button>
+            <button
+              type="button"
+              class="size-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-md active:scale-95"
+              title="Close Camera"
+              @click="stopCameraScanner"
+            >
+              <UIcon name="i-lucide-x" class="size-4" />
+            </button>
+          </div>
+
           <video
             ref="addVideoRef"
             class="w-full h-full object-cover"
@@ -907,6 +999,28 @@ watch([showAddModal, showEditSlideover], () => {
           v-if="isCameraActive && activeScanningField === 'edit'"
           class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
         >
+          <!-- Camera Controls Overlay (Torch & Close) -->
+          <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
+            <button
+              v-if="hasTorch"
+              type="button"
+              class="size-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-md active:scale-95"
+              :class="{ 'bg-amber-500! text-black! border-amber-400! shadow-amber-500/50': isTorchActive }"
+              title="Toggle Flashlight / Night Mode"
+              @click="toggleTorch"
+            >
+              <UIcon :name="isTorchActive ? 'i-lucide-zap' : 'i-lucide-zap-off'" class="size-4" />
+            </button>
+            <button
+              type="button"
+              class="size-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-md active:scale-95"
+              title="Close Camera"
+              @click="stopCameraScanner"
+            >
+              <UIcon name="i-lucide-x" class="size-4" />
+            </button>
+          </div>
+
           <video
             ref="editVideoRef"
             class="w-full h-full object-cover"
