@@ -49,10 +49,10 @@ export default defineNuxtConfig({
         },
         {
           rel: "canonical",
-          href: "https://kluda.app"
-        }
+          href: "https://kluda.app",
+        },
       ],
-       script: [
+      script: [
         {
           innerHTML: `
             var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
@@ -65,10 +65,9 @@ export default defineNuxtConfig({
             s0.parentNode.insertBefore(s1,s0);
             })();
           `,
-          type: 'text/javascript',
+          type: "text/javascript",
         },
       ],
-    
     },
   },
 
@@ -82,9 +81,6 @@ export default defineNuxtConfig({
     },
   },
 
-  routeRules: {
-    "/**": { ssr: false },
-  },
 
   compatibilityDate: "2026-06-30",
 

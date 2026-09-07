@@ -1,79 +1,81 @@
 <script setup lang="ts">
-import InteractivePosDemo from '~/components/landing/InteractivePosDemo.vue'
-import RoiCalculator from '~/components/landing/RoiCalculator.vue'
-import OfflineFlowDiagram from '~/components/landing/OfflineFlowDiagram.vue'
-import HardwareComparison from '~/components/landing/HardwareComparison.vue'
-import CtaSection from '~/components/landing/CtaSection.vue'
+import InteractivePosDemo from "~/components/landing/InteractivePosDemo.vue";
+import RoiCalculator from "~/components/landing/RoiCalculator.vue";
+import OfflineFlowDiagram from "~/components/landing/OfflineFlowDiagram.vue";
+import HardwareComparison from "~/components/landing/HardwareComparison.vue";
+import CtaSection from "~/components/landing/CtaSection.vue";
 
 definePageMeta({
-  layout: 'marketing'
-})
+  layout: "marketing",
+});
 
-const config = useRuntimeConfig()
-const posUrl = config.public.posAppUrl || 'http://localhost:3000'
+const config = useRuntimeConfig();
+const posUrl = config.public.posAppUrl || "http://localhost:3000";
 
 useSeoMeta({
-  title: 'Kluda | Retail POS & Store Management — Stop Money Theft & Track Every Item',
-  description: 'Kluda helps store owners eliminate cash theft, track stock in real time, and manage customer debts using the phone they already have — with zero expensive hardware.'
-})
+  title:
+    "Kluda | Retail POS & Store Management — Stop Money Theft & Track Every Item",
+  description:
+    "Kluda helps store owners eliminate cash theft, track stock in real time, and manage customer debts using the phone they already have — with zero expensive hardware.",
+});
 
 const outcomes = [
   {
-    title: 'Stop Staff Cash & Stock Theft',
-    headline: 'Every sale recorded. Every Naira accounted for.',
-    desc: 'Eliminate under-the-counter cash sales and pocketing. Every item that leaves the shelf is locked to a cashier shift and digital receipt.',
-    icon: 'i-lucide-shield-check',
-    link: '/how-it-works'
+    title: "Stop Staff Cash & Stock Theft",
+    headline: "Every sale recorded. Every Naira accounted for.",
+    desc: "Eliminate under-the-counter cash sales and pocketing. Every item that leaves the shelf is locked to a cashier shift and digital receipt.",
+    icon: "i-lucide-shield-check",
+    link: "/how-it-works",
   },
   {
-    title: 'Live Stock & Inventory Keeping',
-    headline: 'Know what is on your shelf without manual counting.',
-    desc: 'Live stock deductions on every single sale. Know your fast-moving goods, remaining cartons, and low-stock alerts before items run out.',
-    icon: 'i-lucide-boxes',
-    link: '/how-it-works'
+    title: "Live Stock & Inventory Keeping",
+    headline: "Know what is on your shelf without manual counting.",
+    desc: "Live stock deductions on every single sale. Know your fast-moving goods, remaining cartons, and low-stock alerts before items run out.",
+    icon: "i-lucide-boxes",
+    link: "/how-it-works",
   },
   {
-    title: 'Digital Customer Debt Ledger',
-    headline: 'Never lose money to torn or forgotten paper books.',
-    desc: 'Record customer credit sales in two taps, track partial cash repayments, and view exact outstanding balances right at the counter.',
-    icon: 'i-lucide-book-open',
-    link: '/how-it-works'
+    title: "Digital Customer Debt Ledger",
+    headline: "Never lose money to torn or forgotten paper books.",
+    desc: "Record customer credit sales in two taps, track partial cash repayments, and view exact outstanding balances right at the counter.",
+    icon: "i-lucide-book-open",
+    link: "/how-it-works",
   },
   {
-    title: 'Zero Supermarket Hardware Costs',
-    headline: 'Your phone is the counter. No ₦300k setup.',
-    desc: 'Turn any Android smartphone, iPhone, tablet, or laptop into a full checkout counter with camera barcode scanning and thermal receipts.',
-    icon: 'i-lucide-smartphone',
-    link: '/pricing'
-  }
-]
+    title: "Zero Supermarket Hardware Costs",
+    headline: "Your phone is the counter. No ₦300k setup.",
+    desc: "Turn any Android smartphone, iPhone, tablet, or laptop into a full checkout counter with camera barcode scanning and thermal receipts.",
+    icon: "i-lucide-smartphone",
+    link: "/pricing",
+  },
+];
 
 const storeUseCases = [
   {
-    icon: 'i-lucide-shopping-bag',
-    title: 'Supermarkets & Mini-Marts',
-    desc: 'Rapid camera barcode scanning, multi-cashier tracking, and synced shelf stock.',
-    to: '/solutions/supermarkets'
+    icon: "i-lucide-shopping-bag",
+    title: "Supermarkets & Mini-Marts",
+    desc: "Rapid camera barcode scanning, multi-cashier tracking, and synced shelf stock.",
+    to: "/solutions/supermarkets",
   },
   {
-    icon: 'i-lucide-pill',
-    title: 'Pharmacies & Chemists',
-    desc: 'Track patient credit sales, medicine expiry, and unit vs carton stock.',
-    to: '/solutions/pharmacies'
+    icon: "i-lucide-pill",
+    title: "Pharmacies & Chemists",
+    desc: "Track patient credit sales, medicine expiry, and unit vs carton stock.",
+    to: "/solutions/pharmacies",
   },
   {
-    icon: 'i-lucide-shirt',
-    title: 'Fashion & Boutiques',
-    desc: 'Turn sales staff phones into mobile registers for checkout anywhere on the floor.',
-    to: '/solutions/boutiques'
+    icon: "i-lucide-shirt",
+    title: "Fashion & Boutiques",
+    desc: "Turn sales staff phones into mobile registers for checkout anywhere on the floor.",
+    to: "/solutions/boutiques",
   },
   {
-    icon: 'i-lucide-store',
-    title: 'Multi-Branch Retailers',
-    desc: 'Monitor live sales, cash balances, and branch stock from anywhere in the world.',
-    to: '/solutions'
-  }
-]
+    icon: "i-lucide-store",
+    title: "Multi-Branch Retailers",
+    desc: "Monitor live sales, cash balances, and branch stock from anywhere in the world.",
+    to: "/solutions",
+  },
+];
 </script>
 
 <template>
@@ -81,65 +83,117 @@ const storeUseCases = [
     <section class="relative pt-10 sm:pt-16 px-4 sm:px-6 lg:px-8">
       <!-- High-Tech Blueprint Grid & Ambient Radial Mesh Background -->
       <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div class="absolute inset-0 bg-[linear-gradient(to_right,#27272a15_1px,transparent_1px),linear-gradient(to_bottom,#27272a15_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_75%_55%_at_50%_15%,#000_70%,transparent_100%)]" />
-        <div class="absolute top-10 left-1/2 -translate-x-1/2 w-[700px] h-[450px] rounded-full bg-gradient-to-tr from-emerald-500/15 via-teal-500/10 to-cyan-500/10 blur-[130px]" />
-        <div class="absolute top-40 left-10 w-72 h-72 rounded-full bg-emerald-600/10 blur-[100px]" />
-        <div class="absolute top-40 right-10 w-72 h-72 rounded-full bg-cyan-600/10 blur-[100px]" />
+        <div
+          class="absolute inset-0 bg-[linear-gradient(to_right,#27272a15_1px,transparent_1px),linear-gradient(to_bottom,#27272a15_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_75%_55%_at_50%_15%,#000_70%,transparent_100%)]"
+        />
+        <div
+          class="absolute top-10 left-1/2 -translate-x-1/2 w-[700px] h-[450px] rounded-full bg-gradient-to-tr from-emerald-500/15 via-teal-500/10 to-cyan-500/10 blur-[130px]"
+        />
+        <div
+          class="absolute top-40 left-10 w-72 h-72 rounded-full bg-emerald-600/10 blur-[100px]"
+        />
+        <div
+          class="absolute top-40 right-10 w-72 h-72 rounded-full bg-cyan-600/10 blur-[100px]"
+        />
       </div>
 
-      <div data-aos="fade-up" data-aos-duration="600" class="max-w-5xl mx-auto text-center space-y-7">
+      <div
+        data-aos="fade-up"
+        data-aos-duration="600"
+        class="max-w-5xl mx-auto text-center space-y-7"
+      >
         <!-- Floating Pill Tag -->
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black tracking-wide uppercase shadow-lg shadow-emerald-500/10 backdrop-blur-md">
+        <div
+          class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black tracking-wide uppercase shadow-lg shadow-emerald-500/10 backdrop-blur-md"
+        >
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <UIcon name="i-lucide-shield-check" class="w-3.5 h-3.5" />
           <span>Next-Gen Retail POS & Anti-Theft Management</span>
         </div>
 
-        <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black text-(--ui-text-highlighted) tracking-tight leading-[1.08]">
+        <h1
+          class="text-4xl sm:text-6xl lg:text-7xl font-black text-(--ui-text-highlighted) tracking-tight leading-[1.08]"
+        >
           STOP LOSING MONEY IN YOUR SHOP.<br />
-          <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+          <span
+            class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent"
+          >
             TRACK SALES. CONTROL STOCK. STOP THEFT.
           </span>
         </h1>
 
-        <p class="text-lg sm:text-2xl text-(--ui-text-muted) max-w-3xl mx-auto font-normal leading-relaxed">
-          Turn the smartphone in your pocket into a hyper-fast checkout register. Kluda eliminates missing cash, untracked inventory, and messy paper debt books — with zero expensive machines to buy.
+        <p
+          class="text-lg sm:text-2xl text-(--ui-text-muted) max-w-3xl mx-auto font-normal leading-relaxed"
+        >
+          Turn the smartphone in your pocket into a hyper-fast checkout
+          register. Kluda eliminates missing cash, untracked inventory, and
+          messy paper debt books — with zero expensive machines to buy.
         </p>
 
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+        <div
+          class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2"
+        >
           <a
             :href="`${posUrl}/auth/register`"
             class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm shadow-xl shadow-emerald-500/25 transition active:scale-95 group cursor-pointer"
           >
             <span>Start Selling Free — No Card Required</span>
-            <UIcon name="i-lucide-arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <UIcon
+              name="i-lucide-arrow-right"
+              class="w-4 h-4 group-hover:translate-x-1 transition-transform"
+            />
           </a>
 
           <NuxtLink
             to="/how-it-works"
             class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated) hover:bg-(--ui-bg-accented) text-(--ui-text-highlighted) font-bold text-sm shadow-xs transition cursor-pointer"
           >
-            <UIcon name="i-lucide-play-circle" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <UIcon
+              name="i-lucide-play-circle"
+              class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+            />
             <span>See How It Works</span>
           </NuxtLink>
         </div>
 
         <!-- Metric Badges Row -->
-        <div class="pt-2 flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs font-semibold text-(--ui-text-highlighted)">
-          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--ui-bg-elevated) border border-(--ui-border) shadow-xs">
-            <UIcon name="i-lucide-check-circle-2" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        <div
+          class="pt-2 flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs font-semibold text-(--ui-text-highlighted)"
+        >
+          <div
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--ui-bg-elevated) border border-(--ui-border) shadow-xs"
+          >
+            <UIcon
+              name="i-lucide-check-circle-2"
+              class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+            />
             <span>Stops staff theft</span>
           </div>
-          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--ui-bg-elevated) border border-(--ui-border) shadow-xs">
-            <UIcon name="i-lucide-check-circle-2" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <div
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--ui-bg-elevated) border border-(--ui-border) shadow-xs"
+          >
+            <UIcon
+              name="i-lucide-check-circle-2"
+              class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+            />
             <span>Live stock deduction</span>
           </div>
-          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--ui-bg-elevated) border border-(--ui-border) shadow-xs">
-            <UIcon name="i-lucide-check-circle-2" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <div
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--ui-bg-elevated) border border-(--ui-border) shadow-xs"
+          >
+            <UIcon
+              name="i-lucide-check-circle-2"
+              class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+            />
             <span>Customer debt ledger</span>
           </div>
-          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--ui-bg-elevated) border border-(--ui-border) shadow-xs">
-            <UIcon name="i-lucide-check-circle-2" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <div
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--ui-bg-elevated) border border-(--ui-border) shadow-xs"
+          >
+            <UIcon
+              name="i-lucide-check-circle-2"
+              class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+            />
             <span>Zero ₦300k machine costs</span>
           </div>
         </div>
@@ -147,76 +201,138 @@ const storeUseCases = [
         <!-- Interactive POS Terminal Showcase with Floating Visual Cards -->
         <div class="pt-10 max-w-5xl mx-auto text-left relative">
           <!-- Ambient Glow under terminal -->
-          <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-4/5 h-64 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 blur-[100px] pointer-events-none rounded-full" />
+          <div
+            class="absolute -top-10 left-1/2 -translate-x-1/2 w-4/5 h-64 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 blur-[100px] pointer-events-none rounded-full"
+          />
 
           <!-- Floating Visual Badges around the terminal frame -->
           <!-- Floating Badge: Top Left (Anti-Theft) -->
-          <div class="hidden lg:flex items-center gap-3 absolute -top-4 -left-6 z-20 px-4 py-2.5 rounded-2xl bg-(--ui-bg-elevated)/95 border border-emerald-500/40 shadow-xl backdrop-blur-xl animate-bounce [animation-duration:4s]">
-            <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-              <UIcon name="i-lucide-shield-alert" class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <div
+            class="hidden lg:flex items-center gap-3 absolute -top-4 -left-6 z-20 px-4 py-2.5 rounded-2xl bg-(--ui-bg-elevated)/95 border border-emerald-500/40 shadow-xl backdrop-blur-xl animate-bounce [animation-duration:4s]"
+          >
+            <div
+              class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0"
+            >
+              <UIcon
+                name="i-lucide-shield-alert"
+                class="w-5 h-5 text-emerald-600 dark:text-emerald-400"
+              />
             </div>
             <div>
-              <div class="text-[11px] font-bold text-(--ui-text-highlighted) flex items-center gap-1.5">
+              <div
+                class="text-[11px] font-bold text-(--ui-text-highlighted) flex items-center gap-1.5"
+              >
                 Anti-Theft Active
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                <span
+                  class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"
+                />
               </div>
-              <div class="text-[10px] text-(--ui-text-muted) font-mono">Drawer Locked: ₦0 Missing Cash</div>
+              <div class="text-[10px] text-(--ui-text-muted) font-mono">
+                Drawer Locked: ₦0 Missing Cash
+              </div>
             </div>
           </div>
 
           <!-- Floating Badge: Top Right (Thermal Receipt) -->
-          <div class="hidden lg:flex items-center gap-3 absolute -top-4 -right-6 z-20 px-4 py-2.5 rounded-2xl bg-(--ui-bg-elevated)/95 border border-amber-500/40 shadow-xl backdrop-blur-xl animate-bounce [animation-duration:5s]">
-            <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-              <UIcon name="i-lucide-printer" class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <div
+            class="hidden lg:flex items-center gap-3 absolute -top-4 -right-6 z-20 px-4 py-2.5 rounded-2xl bg-(--ui-bg-elevated)/95 border border-amber-500/40 shadow-xl backdrop-blur-xl animate-bounce [animation-duration:5s]"
+          >
+            <div
+              class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0"
+            >
+              <UIcon
+                name="i-lucide-printer"
+                class="w-5 h-5 text-amber-600 dark:text-amber-400"
+              />
             </div>
             <div>
-              <div class="text-[11px] font-bold text-(--ui-text-highlighted) flex items-center gap-1.5">
+              <div
+                class="text-[11px] font-bold text-(--ui-text-highlighted) flex items-center gap-1.5"
+              >
                 Thermal Receipt
-                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300">0.2s</span>
+                <span
+                  class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300"
+                  >0.2s</span
+                >
               </div>
-              <div class="text-[10px] text-(--ui-text-muted) font-mono">Bluetooth ESC/POS Printed</div>
+              <div class="text-[10px] text-(--ui-text-muted) font-mono">
+                Bluetooth ESC/POS Printed
+              </div>
             </div>
           </div>
 
           <!-- Floating Badge: Bottom Left (Live Stock) -->
-          <div class="hidden lg:flex items-center gap-3 absolute -bottom-4 -left-6 z-20 px-4 py-2.5 rounded-2xl bg-(--ui-bg-elevated)/95 border border-cyan-500/40 shadow-xl backdrop-blur-xl">
-            <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-              <UIcon name="i-lucide-boxes" class="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+          <div
+            class="hidden lg:flex items-center gap-3 absolute -bottom-4 -left-6 z-20 px-4 py-2.5 rounded-2xl bg-(--ui-bg-elevated)/95 border border-cyan-500/40 shadow-xl backdrop-blur-xl"
+          >
+            <div
+              class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0"
+            >
+              <UIcon
+                name="i-lucide-boxes"
+                class="w-5 h-5 text-cyan-600 dark:text-cyan-400"
+              />
             </div>
             <div>
-              <div class="text-[11px] font-bold text-(--ui-text-highlighted) flex items-center gap-1.5">
+              <div
+                class="text-[11px] font-bold text-(--ui-text-highlighted) flex items-center gap-1.5"
+              >
                 Auto Stock Deduction
               </div>
-              <div class="text-[10px] text-(--ui-text-muted) font-mono">Golden Terra Oil: 12 Left</div>
+              <div class="text-[10px] text-(--ui-text-muted) font-mono">
+                Golden Terra Oil: 12 Left
+              </div>
             </div>
           </div>
 
           <!-- Floating Badge: Bottom Right (Offline Mesh) -->
-          <div class="hidden lg:flex items-center gap-3 absolute -bottom-4 -right-6 z-20 px-4 py-2.5 rounded-2xl bg-(--ui-bg-elevated)/95 border border-teal-500/40 shadow-xl backdrop-blur-xl">
-            <div class="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
-              <UIcon name="i-lucide-wifi-off" class="w-5 h-5 text-teal-600 dark:text-teal-400" />
+          <div
+            class="hidden lg:flex items-center gap-3 absolute -bottom-4 -right-6 z-20 px-4 py-2.5 rounded-2xl bg-(--ui-bg-elevated)/95 border border-teal-500/40 shadow-xl backdrop-blur-xl"
+          >
+            <div
+              class="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0"
+            >
+              <UIcon
+                name="i-lucide-wifi-off"
+                class="w-5 h-5 text-teal-600 dark:text-teal-400"
+              />
             </div>
             <div>
-              <div class="text-[11px] font-bold text-(--ui-text-highlighted) flex items-center gap-1.5">
+              <div
+                class="text-[11px] font-bold text-(--ui-text-highlighted) flex items-center gap-1.5"
+              >
                 100% Offline Mode
               </div>
-              <div class="text-[10px] text-(--ui-text-muted) font-mono">Rings Sales with 0 Internet</div>
+              <div class="text-[10px] text-(--ui-text-muted) font-mono">
+                Rings Sales with 0 Internet
+              </div>
             </div>
           </div>
 
           <!-- Terminal Container -->
-          <div class="relative rounded-3xl border border-emerald-500/30 bg-zinc-950/90 p-2 sm:p-4 shadow-2xl shadow-emerald-500/10 backdrop-blur-2xl">
+          <div
+            class="relative rounded-3xl border border-emerald-500/30 bg-zinc-950/90 p-2 sm:p-4 shadow-2xl shadow-emerald-500/10 backdrop-blur-2xl"
+          >
             <!-- Window Header / Terminal Bar -->
-            <div class="flex items-center justify-between px-3 py-2 border-b border-zinc-800/80 mb-3 text-xs">
+            <div
+              class="flex items-center justify-between px-3 py-2 border-b border-zinc-800/80 mb-3 text-xs"
+            >
               <div class="flex items-center gap-2">
                 <div class="w-3 h-3 rounded-full bg-red-500/80" />
                 <div class="w-3 h-3 rounded-full bg-yellow-500/80" />
                 <div class="w-3 h-3 rounded-full bg-emerald-500/80" />
-                <span class="text-[11px] font-mono text-zinc-400 ml-2 hidden sm:inline">kluda.app/pos — Cashier Register Terminal</span>
+                <span
+                  class="text-[11px] font-mono text-zinc-400 ml-2 hidden sm:inline"
+                  >kluda.app/pos — Cashier Register Terminal</span
+                >
               </div>
               <div class="flex items-center gap-2">
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5"
+                >
+                  <span
+                    class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"
+                  />
                   Live Cashier Terminal
                 </span>
               </div>
@@ -229,21 +345,34 @@ const storeUseCases = [
       </div>
     </section>
 
-    <section data-aos="fade-up" data-aos-duration="600" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      data-aos="fade-up"
+      data-aos-duration="600"
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+    >
       <HardwareComparison />
     </section>
 
-    <section data-aos="fade-up" data-aos-duration="600" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      data-aos="fade-up"
+      data-aos-duration="600"
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+    >
       <div class="text-center max-w-2xl mx-auto mb-12">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold mb-3">
+        <div
+          class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold mb-3"
+        >
           <UIcon name="i-lucide-target" class="w-3.5 h-3.5" />
           <span>Real Store Protection</span>
         </div>
-        <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+        <h2
+          class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight"
+        >
           Built to protect your hard-earned profit
         </h2>
         <p class="text-sm text-(--ui-text-muted) mt-2">
-          Designed specifically to eliminate the daily revenue leakages store owners face.
+          Designed specifically to eliminate the daily revenue leakages store
+          owners face.
         </p>
       </div>
 
@@ -257,20 +386,34 @@ const storeUseCases = [
           class="p-8 rounded-3xl border border-(--ui-border) bg-(--ui-bg-elevated)/40 hover:border-emerald-500/30 transition flex flex-col justify-between group"
         >
           <div>
-            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 mb-6 group-hover:scale-110 transition">
+            <div
+              class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 mb-6 group-hover:scale-110 transition"
+            >
               <UIcon :name="outcome.icon" class="w-6 h-6" />
             </div>
-            <span class="text-xs font-bold uppercase tracking-wider text-emerald-500">{{ outcome.title }}</span>
-            <h3 class="text-xl font-extrabold text-(--ui-text-highlighted) mt-1 mb-3">
+            <span
+              class="text-xs font-bold uppercase tracking-wider text-emerald-500"
+              >{{ outcome.title }}</span
+            >
+            <h3
+              class="text-xl font-extrabold text-(--ui-text-highlighted) mt-1 mb-3"
+            >
               {{ outcome.headline }}
             </h3>
-            <p class="text-xs sm:text-sm text-(--ui-text-muted) leading-relaxed">
+            <p
+              class="text-xs sm:text-sm text-(--ui-text-muted) leading-relaxed"
+            >
               {{ outcome.desc }}
             </p>
           </div>
 
-          <div class="pt-6 mt-6 border-t border-(--ui-border) flex items-center justify-between">
-            <NuxtLink :to="outcome.link" class="text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1.5 transition">
+          <div
+            class="pt-6 mt-6 border-t border-(--ui-border) flex items-center justify-between"
+          >
+            <NuxtLink
+              :to="outcome.link"
+              class="text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1.5 transition"
+            >
               <span>Explore details</span>
               <UIcon name="i-lucide-arrow-right" class="w-3.5 h-3.5" />
             </NuxtLink>
@@ -279,30 +422,47 @@ const storeUseCases = [
       </div>
     </section>
 
-    <section data-aos="fade-up" data-aos-duration="600" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      data-aos="fade-up"
+      data-aos-duration="600"
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+    >
       <div class="text-center max-w-2xl mx-auto mb-10">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold mb-3">
+        <div
+          class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold mb-3"
+        >
           <UIcon name="i-lucide-scan-barcode" class="w-3.5 h-3.5" />
           <span>Interactive Cashier Register</span>
         </div>
-        <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+        <h2
+          class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight"
+        >
           Test the checkout register right now
         </h2>
         <p class="text-sm text-(--ui-text-muted) mt-2">
-          Experience the high-speed barcode scanner, item checkout, and instant stock deduction.
+          Experience the high-speed barcode scanner, item checkout, and instant
+          stock deduction.
         </p>
       </div>
 
       <InteractivePosDemo />
     </section>
 
-    <section data-aos="fade-up" data-aos-duration="600" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      data-aos="fade-up"
+      data-aos-duration="600"
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+    >
       <div class="text-center max-w-2xl mx-auto mb-10">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold mb-3">
+        <div
+          class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold mb-3"
+        >
           <UIcon name="i-lucide-layout-grid" class="w-3.5 h-3.5" />
           <span>Tailored For Your Retail Category</span>
         </div>
-        <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+        <h2
+          class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight"
+        >
           Designed for your store type
         </h2>
       </div>
@@ -318,55 +478,96 @@ const storeUseCases = [
           class="p-6 rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated)/40 hover:border-emerald-500/40 hover:bg-(--ui-bg-elevated) transition group flex flex-col justify-between"
         >
           <div>
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 mb-4 group-hover:scale-110 transition">
+            <div
+              class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 mb-4 group-hover:scale-110 transition"
+            >
               <UIcon :name="store.icon" class="w-5 h-5" />
             </div>
-            <h3 class="text-base font-bold text-(--ui-text-highlighted) mb-2">{{ store.title }}</h3>
-            <p class="text-xs text-(--ui-text-muted) leading-relaxed">{{ store.desc }}</p>
+            <h3 class="text-base font-bold text-(--ui-text-highlighted) mb-2">
+              {{ store.title }}
+            </h3>
+            <p class="text-xs text-(--ui-text-muted) leading-relaxed">
+              {{ store.desc }}
+            </p>
           </div>
-          <div class="mt-4 pt-3 border-t border-(--ui-border) flex items-center gap-1 text-xs font-bold text-emerald-500">
+          <div
+            class="mt-4 pt-3 border-t border-(--ui-border) flex items-center gap-1 text-xs font-bold text-emerald-500"
+          >
             <span>Learn more</span>
-            <UIcon name="i-lucide-chevron-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+            <UIcon
+              name="i-lucide-chevron-right"
+              class="w-3.5 h-3.5 group-hover:translate-x-1 transition"
+            />
           </div>
         </NuxtLink>
       </div>
     </section>
 
-    <section data-aos="fade-up" data-aos-duration="600" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      data-aos="fade-up"
+      data-aos-duration="600"
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+    >
       <RoiCalculator />
     </section>
 
     <!-- Direct Support & Founder Contact Section -->
-    <section data-aos="fade-up" data-aos-duration="600" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="p-8 sm:p-12 rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-zinc-950 via-(--ui-bg-elevated) to-emerald-950/20 relative overflow-hidden shadow-xl">
-        <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+    <section
+      data-aos="fade-up"
+      data-aos-duration="600"
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+    >
+      <div
+        class="p-8 sm:p-12 rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-zinc-950 via-(--ui-bg-elevated) to-emerald-950/20 relative overflow-hidden shadow-xl"
+      >
+        <div
+          class="absolute -right-20 -bottom-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"
+        />
 
         <div class="max-w-2xl">
-          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold mb-3">
+          <div
+            class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold mb-3"
+          >
             <UIcon name="i-lucide-headset" class="w-3.5 h-3.5" />
             <span>Retailer Support & Instant Help</span>
           </div>
-          <h2 class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight">
+          <h2
+            class="text-3xl sm:text-4xl font-black text-(--ui-text-highlighted) tracking-tight"
+          >
             Need help setting up your store?
           </h2>
-          <p class="text-sm sm:text-base text-(--ui-text-muted) mt-2 leading-relaxed">
-            Our onboarding engineers and customer team are available on WhatsApp, phone, and email to guide your store setup and answer any questions.
+          <p
+            class="text-sm sm:text-base text-(--ui-text-muted) mt-2 leading-relaxed"
+          >
+            Our onboarding engineers and customer team are available on
+            WhatsApp, phone, and email to guide your store setup and answer any
+            questions.
           </p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-8 border-t border-zinc-800/80">
+        <div
+          class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-8 border-t border-zinc-800/80"
+        >
           <a
             href="https://wa.me/2348000005583"
             target="_blank"
             rel="noopener noreferrer"
             class="p-5 rounded-2xl bg-(--ui-bg-elevated) border border-(--ui-border) hover:border-emerald-500/40 hover:bg-(--ui-bg-accented) transition flex items-center gap-3.5 group shadow-xs cursor-pointer"
           >
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition">
+            <div
+              class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition"
+            >
               <UIcon name="i-lucide-message-circle" class="w-5 h-5" />
             </div>
             <div>
-              <div class="text-xs font-bold text-(--ui-text-highlighted) group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">Instant WhatsApp</div>
-              <div class="text-[11px] text-(--ui-text-muted) mt-0.5">Chat with our founder/support</div>
+              <div
+                class="text-xs font-bold text-(--ui-text-highlighted) group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition"
+              >
+                Instant WhatsApp
+              </div>
+              <div class="text-[11px] text-(--ui-text-muted) mt-0.5">
+                Chat with our founder/support
+              </div>
             </div>
           </a>
 
@@ -374,12 +575,20 @@ const storeUseCases = [
             href="mailto:support@kluda.com"
             class="p-5 rounded-2xl bg-(--ui-bg-elevated) border border-(--ui-border) hover:border-blue-500/40 hover:bg-(--ui-bg-accented) transition flex items-center gap-3.5 group shadow-xs cursor-pointer"
           >
-            <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition">
+            <div
+              class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition"
+            >
               <UIcon name="i-lucide-mail" class="w-5 h-5" />
             </div>
             <div>
-              <div class="text-xs font-bold text-(--ui-text-highlighted) group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">Email Desk</div>
-              <div class="text-[11px] text-(--ui-text-muted) mt-0.5">support@kluda.com</div>
+              <div
+                class="text-xs font-bold text-(--ui-text-highlighted) group-hover:text-blue-600 dark:group-hover:text-blue-400 transition"
+              >
+                Email Desk
+              </div>
+              <div class="text-[11px] text-(--ui-text-muted) mt-0.5">
+                support@kluda.com
+              </div>
             </div>
           </a>
 
@@ -387,12 +596,20 @@ const storeUseCases = [
             href="tel:+2348000005583"
             class="p-5 rounded-2xl bg-(--ui-bg-elevated) border border-(--ui-border) hover:border-purple-500/40 hover:bg-(--ui-bg-accented) transition flex items-center gap-3.5 group shadow-xs cursor-pointer"
           >
-            <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition">
+            <div
+              class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition"
+            >
               <UIcon name="i-lucide-phone" class="w-5 h-5" />
             </div>
             <div>
-              <div class="text-xs font-bold text-(--ui-text-highlighted) group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">Direct Telephone</div>
-              <div class="text-[11px] text-(--ui-text-muted) mt-0.5">+234 800 000 5583</div>
+              <div
+                class="text-xs font-bold text-(--ui-text-highlighted) group-hover:text-purple-600 dark:group-hover:text-purple-400 transition"
+              >
+                Direct Telephone
+              </div>
+              <div class="text-[11px] text-(--ui-text-muted) mt-0.5">
+                +234 800 000 5583
+              </div>
             </div>
           </a>
         </div>
