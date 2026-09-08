@@ -607,8 +607,8 @@ async def request_password_reset(
 
     if user and user.status == UserStatus.ACTIVE:
         otp = f"{secrets.randbelow(900000) + 100000}"
-        user.reset_token = hash_token(otp)
-        user.reset_token_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+        user.otp_token = hash_token(f"{clean_email}:{otp}")
+        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
         await db.flush()
         try:
             from worker.config import get_arq_pool
@@ -635,12 +635,27 @@ async def verify_password_reset_code(
     ).scalar_one_or_none()
 
     code_val = (req.code or req.otp_token or "").strip()
+    now = datetime.now(timezone.utc)
+    expires_at = user.otp_expires_at if user else None
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    is_valid_code = (
+        user is not None
+        and user.otp_token is not None
+        and (
+            user.otp_token == hash_token(f"{clean_email}:{code_val}")
+            or user.otp_token == hash_token(code_val)
+            or user.otp_token == code_val
+        )
+    )
+
     if (
         not user
-        or not user.reset_token
-        or not user.reset_token_expires
-        or user.reset_token != hash_token(code_val)
-        or user.reset_token_expires < datetime.now(timezone.utc)
+        or not user.otp_token
+        or not expires_at
+        or not is_valid_code
+        or expires_at < now
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -662,12 +677,27 @@ async def submit_password_reset(
     ).scalar_one_or_none()
 
     code_val = (req.code or req.otp_token or "").strip()
+    now = datetime.now(timezone.utc)
+    expires_at = user.otp_expires_at if user else None
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    is_valid_code = (
+        user is not None
+        and user.otp_token is not None
+        and (
+            user.otp_token == hash_token(f"{clean_email}:{code_val}")
+            or user.otp_token == hash_token(code_val)
+            or user.otp_token == code_val
+        )
+    )
+
     if (
         not user
-        or not user.reset_token
-        or not user.reset_token_expires
-        or user.reset_token != hash_token(code_val)
-        or user.reset_token_expires < datetime.now(timezone.utc)
+        or not user.otp_token
+        or not expires_at
+        or not is_valid_code
+        or expires_at < now
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -675,8 +705,8 @@ async def submit_password_reset(
         )
 
     user.password = hash_password(req.new_password)
-    user.reset_token = None
-    user.reset_token_expires = None
+    user.otp_token = None
+    user.otp_expires_at = None
 
     user_with_sessions = await db.scalar(
         select(User)
