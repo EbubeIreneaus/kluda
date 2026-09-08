@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, onUnmounted } from 'vue'
-import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library'
 
 const { format } = useFormatCurrency()
 const toast = useToast()
@@ -323,29 +322,26 @@ async function confirmDelete(product: any) {
   })
 }
 
-const isCameraActive = ref(false)
 const addVideoRef = ref<HTMLVideoElement | null>(null)
 const editVideoRef = ref<HTMLVideoElement | null>(null)
 const activeScanningField = ref<'add' | 'edit' | null>(null)
-let codeReader: any = null
-let currentStream: MediaStream | null = null
-const hasTorch = ref(false)
-const isTorchActive = ref(false)
 
-async function toggleTorch() {
-  if (!currentStream) return
-  const track = currentStream.getVideoTracks()[0]
-  if (!track) return
-  try {
-    const nextState = !isTorchActive.value
-    await (track as any).applyConstraints({
-      advanced: [{ torch: nextState }]
-    })
-    isTorchActive.value = nextState
-  } catch (err) {
-    console.warn('Torch toggle failed:', err)
-  }
-}
+const {
+  isCameraActive,
+  hasTorch,
+  isTorchActive,
+  isNativeEngine,
+  hasMultipleCameras,
+  startScanner,
+  stopScanner,
+  toggleTorch,
+  switchCamera
+} = useBarcodeScanner({
+  cooldownMs: 1200,
+  throttleMs: 100,
+  playBeep: true,
+  vibrate: true
+})
 
 // Scan-to-Add State & Logic
 const isLookingUpBarcode = ref(false)
@@ -427,86 +423,39 @@ async function startCameraScanner(field: 'add' | 'edit') {
     stopCameraScanner()
   }
   activeScanningField.value = field
-  isCameraActive.value = true
-  isTorchActive.value = false
-  hasTorch.value = false
   
   try {
     await nextTick()
-    await new Promise((resolve) => setTimeout(resolve, 200))
+    await new Promise((resolve) => setTimeout(resolve, 150))
     let videoEl = field === 'add' ? addVideoRef.value : editVideoRef.value
     
     if (!videoEl) {
-      await new Promise((resolve) => setTimeout(resolve, 300))
+      await new Promise((resolve) => setTimeout(resolve, 200))
       videoEl = field === 'add' ? addVideoRef.value : editVideoRef.value
     }
     
     if (videoEl) {
-      if (!codeReader) {
-        const hints = new Map()
-        const formats = [
-          BarcodeFormat.EAN_13,
-          BarcodeFormat.EAN_8,
-          BarcodeFormat.CODE_128,
-          BarcodeFormat.CODE_39,
-          BarcodeFormat.UPC_A,
-          BarcodeFormat.UPC_E,
-          BarcodeFormat.ITF,
-          BarcodeFormat.QR_CODE
-        ]
-        hints.set(DecodeHintType.POSSIBLE_FORMATS, formats)
-        hints.set(DecodeHintType.TRY_HARDER, true)
-        codeReader = new BrowserMultiFormatReader(hints)
-      }
-
-      let stream: MediaStream
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          audio: false
-        })
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false
-        })
-      }
-
-      currentStream = stream
-
-      const track = stream.getVideoTracks()[0]
-      if (track) {
-        const capabilities = (track.getCapabilities && track.getCapabilities()) as any
-        hasTorch.value = !!(capabilities && capabilities.torch)
-      }
-
-      await codeReader.decodeFromStream(stream, videoEl, (result: any) => {
-        if (result) {
-          const code = result.getText()
-          if (activeScanningField.value === 'add') {
-            newProduct.value.barcode_id = code
-            lookupBarcode(code)
-          } else if (activeScanningField.value === 'edit' && editingProduct.value) {
-            editingProduct.value.barcode_id = code
-          }
-          
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(200)
-          }
-          
-          toast.add({
-            title: 'Barcode Scanned',
-            description: `Captured: ${code}`,
-            color: 'success',
-            icon: 'i-lucide-check-circle'
-          })
-          stopCameraScanner()
+      const success = await startScanner(videoEl, (code: string) => {
+        if (activeScanningField.value === 'add') {
+          newProduct.value.barcode_id = code
+          lookupBarcode(code)
+        } else if (activeScanningField.value === 'edit' && editingProduct.value) {
+          editingProduct.value.barcode_id = code
         }
+        
+        toast.add({
+          title: 'Barcode Scanned',
+          description: `Captured: ${code}`,
+          color: 'success',
+          icon: 'i-lucide-check-circle'
+        })
+        stopCameraScanner()
       })
+
+      if (!success) {
+        toast.add({ title: 'Camera Error', description: 'Could not access camera', color: 'error' })
+        stopCameraScanner()
+      }
     }
   } catch {
     toast.add({ title: 'Camera Error', description: 'Could not access camera', color: 'error' })
@@ -515,23 +464,8 @@ async function startCameraScanner(field: 'add' | 'edit') {
 }
 
 function stopCameraScanner() {
-  isCameraActive.value = false
   activeScanningField.value = null
-  isTorchActive.value = false
-  hasTorch.value = false
-  if (codeReader) {
-    try {
-      codeReader.reset()
-    } catch {}
-  }
-  if (currentStream) {
-    currentStream.getTracks().forEach((t) => {
-      try {
-        t.stop()
-      } catch {}
-    })
-    currentStream = null
-  }
+  stopScanner()
   if (addVideoRef.value) {
     addVideoRef.value.srcObject = null
   }
@@ -832,8 +766,23 @@ onUnmounted(() => {
           v-if="isCameraActive && activeScanningField === 'add'"
           class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
         >
-          <!-- Camera Controls Overlay (Torch & Close) -->
+          <!-- Camera Controls Overlay (Torch, Fast ML, Switch Camera & Close) -->
           <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
+            <span
+              v-if="isNativeEngine"
+              class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/80 backdrop-blur-md text-white border border-emerald-400/40 shadow-sm tracking-wider uppercase font-mono"
+            >
+              Fast ML
+            </span>
+            <button
+              v-if="hasMultipleCameras"
+              type="button"
+              class="size-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-md active:scale-95"
+              title="Switch Camera"
+              @click="switchCamera"
+            >
+              <UIcon name="i-lucide-refresh-cw" class="size-4" />
+            </button>
             <button
               v-if="hasTorch"
               type="button"
@@ -999,8 +948,23 @@ onUnmounted(() => {
           v-if="isCameraActive && activeScanningField === 'edit'"
           class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
         >
-          <!-- Camera Controls Overlay (Torch & Close) -->
+          <!-- Camera Controls Overlay (Torch, Fast ML, Switch Camera & Close) -->
           <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
+            <span
+              v-if="isNativeEngine"
+              class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/80 backdrop-blur-md text-white border border-emerald-400/40 shadow-sm tracking-wider uppercase font-mono"
+            >
+              Fast ML
+            </span>
+            <button
+              v-if="hasMultipleCameras"
+              type="button"
+              class="size-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-md active:scale-95"
+              title="Switch Camera"
+              @click="switchCamera"
+            >
+              <UIcon name="i-lucide-refresh-cw" class="size-4" />
+            </button>
             <button
               v-if="hasTorch"
               type="button"

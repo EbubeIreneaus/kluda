@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import {
-  BrowserMultiFormatReader,
-  BarcodeFormat,
-  DecodeHintType
-} from '@zxing/library'
+import { ref, computed, watch, nextTick } from 'vue'
 
 interface Props {
   modelValue?: boolean
@@ -25,209 +20,37 @@ const isOpen = computed({
 })
 
 const videoRef = ref<HTMLVideoElement | null>(null)
-const isCameraLoading = ref(false)
-const cameraError = ref<string | null>(null)
-const hasMultipleCameras = ref(false)
-const availableDevices = ref<MediaDeviceInfo[]>([])
-const selectedDeviceId = ref<string | undefined>(undefined)
-const isTorchActive = ref(false)
-const hasTorch = ref(false)
 const manualCode = ref('')
 const scannedSuccess = ref(false)
 
-let codeReader: BrowserMultiFormatReader | null = null
-let currentStream: MediaStream | null = null
-let audioContext: AudioContext | null = null
-
-// Web Audio API beep sound for feedback
-function playBeep() {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-    if (!AudioCtx) return
-
-    if (!audioContext || audioContext.state === 'closed') {
-      audioContext = new AudioCtx()
-    }
-    if (audioContext.state === 'suspended') {
-      audioContext.resume()
-    }
-
-    const osc = audioContext.createOscillator()
-    const gain = audioContext.createGain()
-
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(1200, audioContext.currentTime)
-    osc.frequency.exponentialRampToValueAtTime(1800, audioContext.currentTime + 0.12)
-
-    gain.gain.setValueAtTime(0.3, audioContext.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.12)
-
-    osc.connect(gain)
-    gain.connect(audioContext.destination)
-
-    osc.start()
-    osc.stop(audioContext.currentTime + 0.12)
-  } catch {
-    // Ignore audio errors if blocked
-  }
-}
-
-function vibrateDevice() {
-  try {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([100, 50, 100])
-    }
-  } catch {
-    // Ignore
-  }
-}
-
-async function listVideoInputDevices() {
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices()
-    const videoDevices = devices.filter(d => d.kind === 'videoinput')
-    availableDevices.value = videoDevices
-    hasMultipleCameras.value = videoDevices.length > 1
-
-    // Prefer back/environment facing camera if available
-    if (!selectedDeviceId.value && videoDevices.length > 0) {
-      const backCam = videoDevices.find(d =>
-        d.label.toLowerCase().includes('back') ||
-        d.label.toLowerCase().includes('rear') ||
-        d.label.toLowerCase().includes('environment')
-      )
-      selectedDeviceId.value = backCam ? backCam.deviceId : videoDevices[0].deviceId
-    }
-  } catch {
-    // Ignore enumeration errors
-  }
-}
-
-async function startScanner() {
-  isCameraLoading.value = true
-  cameraError.value = null
-  scannedSuccess.value = false
-  manualCode.value = ''
-
-  await nextTick()
-
-  try {
-    if (!navigator?.mediaDevices?.getUserMedia) {
-      throw new Error('Camera access is not supported on this device/browser.')
-    }
-
-    // List devices
-    await listVideoInputDevices()
-
-    // Initialize ZXing Reader with common retail barcode formats
-    if (!codeReader) {
-      const hints = new Map()
-      const formats = [
-        BarcodeFormat.EAN_13,
-        BarcodeFormat.EAN_8,
-        BarcodeFormat.UPC_A,
-        BarcodeFormat.UPC_E,
-        BarcodeFormat.CODE_128,
-        BarcodeFormat.CODE_39,
-        BarcodeFormat.ITF,
-        BarcodeFormat.QR_CODE
-      ]
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, formats)
-      hints.set(DecodeHintType.TRY_HARDER, true)
-      codeReader = new BrowserMultiFormatReader(hints)
-    }
-
-    const videoEl = videoRef.value
-    if (!videoEl) {
-      throw new Error('Video element not found')
-    }
-
-    const constraints: MediaStreamConstraints = {
-      video: selectedDeviceId.value
-        ? { deviceId: { exact: selectedDeviceId.value } }
-        : {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-      audio: false
-    }
-
-    // Request stream explicitly to check torch support & attach to reader
-    let stream: MediaStream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints)
-    } catch {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: selectedDeviceId.value
-          ? { deviceId: { exact: selectedDeviceId.value } }
-          : { facingMode: { ideal: 'environment' } },
-        audio: false
-      })
-    }
-
-    currentStream = stream
-
-    // Check torch capabilities
-    const track = stream.getVideoTracks()[0]
-    if (track) {
-      const capabilities = (track.getCapabilities && track.getCapabilities()) as any
-      hasTorch.value = !!(capabilities && capabilities.torch)
-    }
-
-    // Start ZXing continuous decoding loop
-    await codeReader.decodeFromStream(stream, videoEl, (result, err) => {
-      if (result && !scannedSuccess.value) {
-        const text = result.getText()
-        if (text && text.trim()) {
-          onCodeCaptured(text.trim())
-        }
-      }
-    })
-
-    isCameraLoading.value = false
-  } catch (err: any) {
-    console.error('Barcode scanner start error:', err)
-    isCameraLoading.value = false
-    cameraError.value = err?.message || 'Could not access camera. Please check permissions.'
-  }
-}
-
-function stopScanner() {
-  if (codeReader) {
-    try {
-      codeReader.reset()
-    } catch {}
-  }
-
-  if (currentStream) {
-    currentStream.getTracks().forEach(track => {
-      try {
-        track.stop()
-      } catch {}
-    })
-    currentStream = null
-  }
-
-  if (videoRef.value) {
-    videoRef.value.srcObject = null
-  }
-
-  isTorchActive.value = false
-  hasTorch.value = false
-}
+const {
+  isCameraLoading,
+  cameraError,
+  hasMultipleCameras,
+  hasTorch,
+  isTorchActive,
+  isNativeEngine,
+  startScanner,
+  stopScanner,
+  toggleTorch,
+  switchCamera
+} = useBarcodeScanner({
+  cooldownMs: 1500,
+  throttleMs: 100,
+  playBeep: true,
+  vibrate: true
+})
 
 function onCodeCaptured(code: string) {
   if (scannedSuccess.value) return
   scannedSuccess.value = true
-  playBeep()
-  vibrateDevice()
 
-  // Small delay so user sees green flash reticle before closing
+  // Short delay so user sees green flash reticle before modal closes
   setTimeout(() => {
     emit('scan', code)
     isOpen.value = false
-  }, 400)
+    scannedSuccess.value = false
+  }, 350)
 }
 
 function submitManualCode() {
@@ -236,30 +59,12 @@ function submitManualCode() {
   onCodeCaptured(code)
 }
 
-async function switchCamera() {
-  if (availableDevices.value.length <= 1) return
-
-  const currentIndex = availableDevices.value.findIndex(d => d.deviceId === selectedDeviceId.value)
-  const nextIndex = (currentIndex + 1) % availableDevices.value.length
-  selectedDeviceId.value = availableDevices.value[nextIndex].deviceId
-
-  stopScanner()
-  await startScanner()
-}
-
-async function toggleTorch() {
-  if (!currentStream) return
-  const track = currentStream.getVideoTracks()[0]
-  if (!track) return
-
-  try {
-    const nextState = !isTorchActive.value
-    await (track as any).applyConstraints({
-      advanced: [{ torch: nextState }]
-    })
-    isTorchActive.value = nextState
-  } catch (err) {
-    console.warn('Torch toggle failed:', err)
+async function initScanner() {
+  scannedSuccess.value = false
+  manualCode.value = ''
+  await nextTick()
+  if (videoRef.value) {
+    await startScanner(videoRef.value, onCodeCaptured)
   }
 }
 
@@ -270,24 +75,9 @@ function handleClose() {
 
 watch(isOpen, (newVal) => {
   if (newVal) {
-    startScanner()
+    initScanner()
   } else {
     stopScanner()
-  }
-})
-
-onMounted(() => {
-  if (isOpen.value) {
-    startScanner()
-  }
-})
-
-onUnmounted(() => {
-  stopScanner()
-  if (audioContext && audioContext.state !== 'closed') {
-    try {
-      audioContext.close()
-    } catch {}
   }
 })
 </script>
@@ -368,7 +158,7 @@ onUnmounted(() => {
               size="xs"
               color="primary"
               variant="outline"
-              @click="startScanner"
+              @click="initScanner"
             />
           </div>
 

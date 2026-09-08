@@ -4,11 +4,6 @@ definePageMeta({
 });
 
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
-import {
-  BrowserMultiFormatReader,
-  BarcodeFormat,
-  DecodeHintType,
-} from "@zxing/library";
 import { useCartStore } from "~/stores/cart";
 import { useSalesStore } from "~/stores/sales";
 import { useProductsStore } from "~/stores/product";
@@ -35,11 +30,6 @@ const {
 const searchQuery = ref("");
 const barcodeRef = ref<any>();
 const isScanning = ref(true);
-
-const isCameraActive = ref(false);
-const videoRef = ref<HTMLVideoElement>();
-let lastScannedCode = "";
-let lastScanTime = 0;
 
 const { vibrate } = useVibrate({ pattern: [200], interval: 100 });
 const showSearchResults = ref(false);
@@ -344,123 +334,34 @@ const selectedCustomerName = computed(() => {
   );
 });
 
-let codeReader: any = null;
-let currentStream: MediaStream | null = null;
-const hasTorch = ref(false);
-const isTorchActive = ref(false);
+const videoRef = ref<HTMLVideoElement>();
+
+const {
+  isCameraActive,
+  hasTorch,
+  isTorchActive,
+  isNativeEngine,
+  startScanner,
+  stopScanner,
+  toggleTorch,
+} = useBarcodeScanner({
+  cooldownMs: 1500,
+  throttleMs: 100,
+  playBeep: false,
+  vibrate: false,
+});
 
 async function startCameraScanner() {
-  isCameraActive.value = true;
-  isTorchActive.value = false;
-  hasTorch.value = false;
-  try {
-    await nextTick();
-    if (!codeReader) {
-      const hints = new Map();
-      const formats = [
-        BarcodeFormat.EAN_13,
-        BarcodeFormat.EAN_8,
-        BarcodeFormat.CODE_128,
-        BarcodeFormat.CODE_39,
-        BarcodeFormat.UPC_A,
-        BarcodeFormat.UPC_E,
-        BarcodeFormat.ITF,
-        BarcodeFormat.QR_CODE,
-      ];
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
-      hints.set(DecodeHintType.TRY_HARDER, true);
-      codeReader = new BrowserMultiFormatReader(hints);
-    }
-    const videoEl = videoRef.value;
-    if (!videoEl) return;
-
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-    } catch {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
-      });
-    }
-
-    currentStream = stream;
-
-    const track = stream.getVideoTracks()[0];
-    if (track) {
-      const capabilities = (track.getCapabilities && track.getCapabilities()) as any;
-      hasTorch.value = !!(capabilities && capabilities.torch);
-    }
-
-    await codeReader.decodeFromStream(
-      stream,
-      videoEl,
-      (result: any, err: any) => {
-        if (result) {
-          const code = result.getText();
-          const now = Date.now();
-          // 1.5 second cooldown for same barcode scanning
-          if (code !== lastScannedCode || now - lastScanTime > 1500) {
-            lastScannedCode = code;
-            lastScanTime = now;
-            handleScannedBarcode(code);
-          }
-        }
-      },
-    );
-  } catch (err) {
-    console.error("Camera access failed:", err);
-    toast.add({
-      title: "Camera access failed",
-      description: "Please check camera permissions",
-      color: "error",
+  await nextTick();
+  if (videoRef.value) {
+    await startScanner(videoRef.value, (code) => {
+      handleScannedBarcode(code);
     });
-    stopCameraScanner();
-  }
-}
-
-async function toggleTorch() {
-  if (!currentStream) return;
-  const track = currentStream.getVideoTracks()[0];
-  if (!track) return;
-  try {
-    const nextState = !isTorchActive.value;
-    await (track as any).applyConstraints({
-      advanced: [{ torch: nextState }],
-    });
-    isTorchActive.value = nextState;
-  } catch (err) {
-    console.warn("Torch toggle failed:", err);
   }
 }
 
 function stopCameraScanner() {
-  isCameraActive.value = false;
-  isTorchActive.value = false;
-  hasTorch.value = false;
-  if (codeReader) {
-    try {
-      codeReader.reset();
-    } catch {}
-  }
-  if (currentStream) {
-    currentStream.getTracks().forEach((t) => {
-      try {
-        t.stop();
-      } catch {}
-    });
-    currentStream = null;
-  }
-  if (videoRef.value) {
-    videoRef.value.srcObject = null;
-  }
+  stopScanner();
 }
 
 function toggleCameraScanner() {
@@ -565,8 +466,16 @@ function handleSearchBlur() {
             v-show="isCameraActive"
             class="overflow-hidden bg-black flex items-center justify-center mt-2.5 fixed inset-0 z-[60] p-4 flex flex-col xl:relative xl:inset-auto xl:z-10 xl:aspect-video xl:max-h-64 xl:rounded-xl xl:border xl:border-(--ui-border) xl:p-0 xl:mt-2.5"
           >
-            <!-- Camera Top Controls (Torch & Close) -->
+            <!-- Camera Top Controls (Torch, Fast ML Badge & Close) -->
             <div class="absolute top-3 right-3 flex items-center gap-2 z-[70]">
+              <!-- Hardware Acceleration Badge -->
+              <span
+                v-if="isNativeEngine"
+                class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/80 backdrop-blur-md text-white border border-emerald-400/40 shadow-lg tracking-wider uppercase font-mono"
+              >
+                Fast ML
+              </span>
+
               <!-- Flash / Torch Toggle -->
               <button
                 v-if="hasTorch"
