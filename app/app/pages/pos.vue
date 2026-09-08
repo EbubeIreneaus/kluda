@@ -338,12 +338,14 @@ const videoRef = ref<HTMLVideoElement>();
 
 const {
   isCameraActive,
+  isCameraLoading,
   hasTorch,
   isTorchActive,
   isNativeEngine,
   startScanner,
   stopScanner,
   toggleTorch,
+  triggerAutofocus,
 } = useBarcodeScanner({
   cooldownMs: 1500,
   throttleMs: 100,
@@ -499,23 +501,39 @@ function handleSearchBlur() {
               </button>
             </div>
 
+            <!-- Loading state indicator -->
+            <div
+              v-if="isCameraLoading"
+              class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center gap-2 z-[65] text-zinc-300"
+            >
+              <UIcon name="i-lucide-loader-2" class="size-7 animate-spin text-primary-400" />
+              <span class="text-xs font-medium">Starting camera...</span>
+            </div>
+
             <video
               ref="videoRef"
-              class="w-full h-full object-cover rounded-xl"
+              class="w-full h-full object-cover rounded-xl cursor-pointer"
               autoplay
               playsinline
               muted
+              title="Tap to focus"
+              @click="triggerAutofocus"
             />
             <div
-              class="absolute inset-0 flex items-center justify-center pointer-events-none"
+              class="absolute inset-0 flex items-center justify-center pointer-events-auto cursor-pointer"
+              title="Tap to focus"
+              @click="triggerAutofocus"
             >
               <div
-                class="w-2/3 h-1/3 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative"
+                class="w-2/3 h-1/3 border-2 border-dashed border-emerald-500 rounded-lg opacity-65 relative transition hover:opacity-100"
               >
                 <div
                   class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"
                   style="top: 50%"
                 />
+                <span class="absolute -bottom-5 inset-x-0 text-center text-[10px] text-emerald-400 font-medium tracking-wide drop-shadow">
+                  Tap to Focus
+                </span>
               </div>
             </div>
           </div>

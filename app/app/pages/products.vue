@@ -328,6 +328,7 @@ const activeScanningField = ref<'add' | 'edit' | null>(null)
 
 const {
   isCameraActive,
+  isCameraLoading,
   hasTorch,
   isTorchActive,
   isNativeEngine,
@@ -335,7 +336,8 @@ const {
   startScanner,
   stopScanner,
   toggleTorch,
-  switchCamera
+  switchCamera,
+  triggerAutofocus
 } = useBarcodeScanner({
   cooldownMs: 1200,
   throttleMs: 100,
@@ -419,20 +421,14 @@ function openAddProductModal() {
 }
 
 async function startCameraScanner(field: 'add' | 'edit') {
-  if (isCameraActive.value) {
+  if (activeScanningField.value) {
     stopCameraScanner()
   }
   activeScanningField.value = field
   
   try {
     await nextTick()
-    await new Promise((resolve) => setTimeout(resolve, 150))
-    let videoEl = field === 'add' ? addVideoRef.value : editVideoRef.value
-    
-    if (!videoEl) {
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      videoEl = field === 'add' ? addVideoRef.value : editVideoRef.value
-    }
+    const videoEl = field === 'add' ? addVideoRef.value : editVideoRef.value
     
     if (videoEl) {
       const success = await startScanner(videoEl, (code: string) => {
@@ -457,7 +453,8 @@ async function startCameraScanner(field: 'add' | 'edit') {
         stopCameraScanner()
       }
     }
-  } catch {
+  } catch (err) {
+    console.error('startCameraScanner error:', err)
     toast.add({ title: 'Camera Error', description: 'Could not access camera', color: 'error' })
     stopCameraScanner()
   }
@@ -752,20 +749,29 @@ onUnmounted(() => {
             />
             <UButton
               type="button"
-              :color="isCameraActive && activeScanningField === 'add' ? 'error' : 'primary'"
+              :color="activeScanningField === 'add' ? 'error' : 'primary'"
               variant="solid"
-              :icon="isCameraActive && activeScanningField === 'add' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
-              :title="isCameraActive ? 'Stop Camera' : 'Scan with Camera'"
-              @click="isCameraActive && activeScanningField === 'add' ? stopCameraScanner() : startCameraScanner('add')"
+              :icon="activeScanningField === 'add' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
+              :title="activeScanningField === 'add' ? 'Stop Camera' : 'Scan with Camera'"
+              @click="activeScanningField === 'add' ? stopCameraScanner() : startCameraScanner('add')"
             />
           </div>
         </UFormField>
 
         <!-- Camera Scanner Live Stream Box -->
         <div
-          v-if="isCameraActive && activeScanningField === 'add'"
-          class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
+          v-if="activeScanningField === 'add'"
+          class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-56 flex items-center justify-center"
         >
+          <!-- Loading indicator -->
+          <div
+            v-if="isCameraLoading"
+            class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center gap-2 z-10 text-zinc-300"
+          >
+            <UIcon name="i-lucide-loader-2" class="size-6 animate-spin text-primary-400" />
+            <span class="text-xs font-medium">Opening camera...</span>
+          </div>
+
           <!-- Camera Controls Overlay (Torch, Fast ML, Switch Camera & Close) -->
           <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
             <span
@@ -805,14 +811,23 @@ onUnmounted(() => {
 
           <video
             ref="addVideoRef"
-            class="w-full h-full object-cover"
+            class="w-full h-full object-cover cursor-pointer"
             autoplay
             playsinline
             muted
+            title="Tap to focus"
+            @click="triggerAutofocus"
           />
-          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div class="w-3/4 h-1/2 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative">
+          <div
+            class="absolute inset-0 flex items-center justify-center pointer-events-auto cursor-pointer"
+            title="Tap to focus"
+            @click="triggerAutofocus"
+          >
+            <div class="w-3/4 h-1/2 border-2 border-dashed border-emerald-500 rounded-lg opacity-65 relative transition hover:opacity-100">
               <div class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" style="top: 50%" />
+              <span class="absolute -bottom-5 inset-x-0 text-center text-[10px] text-emerald-400 font-medium tracking-wide drop-shadow">
+                Tap to Focus
+              </span>
             </div>
           </div>
         </div>
@@ -936,18 +951,27 @@ onUnmounted(() => {
             <UInput v-model="editingProduct.barcode_id" class="flex-1" />
             <UButton
               type="button"
-              :color="isCameraActive && activeScanningField === 'edit' ? 'error' : 'primary'"
+              :color="activeScanningField === 'edit' ? 'error' : 'primary'"
               variant="solid"
-              :icon="isCameraActive && activeScanningField === 'edit' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
-              @click="isCameraActive && activeScanningField === 'edit' ? stopCameraScanner() : startCameraScanner('edit')"
+              :icon="activeScanningField === 'edit' ? 'i-lucide-camera-off' : 'i-lucide-camera'"
+              @click="activeScanningField === 'edit' ? stopCameraScanner() : startCameraScanner('edit')"
             />
           </div>
         </UFormField>
 
         <div
-          v-if="isCameraActive && activeScanningField === 'edit'"
-          class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-48 flex items-center justify-center"
+          v-if="activeScanningField === 'edit'"
+          class="relative overflow-hidden rounded-xl border border-(--ui-border) bg-black aspect-video max-h-56 flex items-center justify-center"
         >
+          <!-- Loading indicator -->
+          <div
+            v-if="isCameraLoading"
+            class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center gap-2 z-10 text-zinc-300"
+          >
+            <UIcon name="i-lucide-loader-2" class="size-6 animate-spin text-primary-400" />
+            <span class="text-xs font-medium">Opening camera...</span>
+          </div>
+
           <!-- Camera Controls Overlay (Torch, Fast ML, Switch Camera & Close) -->
           <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
             <span
@@ -987,14 +1011,23 @@ onUnmounted(() => {
 
           <video
             ref="editVideoRef"
-            class="w-full h-full object-cover"
+            class="w-full h-full object-cover cursor-pointer"
             autoplay
             playsinline
             muted
+            title="Tap to focus"
+            @click="triggerAutofocus"
           />
-          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div class="w-3/4 h-1/2 border-2 border-dashed border-green-500 rounded-lg opacity-60 relative">
+          <div
+            class="absolute inset-0 flex items-center justify-center pointer-events-auto cursor-pointer"
+            title="Tap to focus"
+            @click="triggerAutofocus"
+          >
+            <div class="w-3/4 h-1/2 border-2 border-dashed border-emerald-500 rounded-lg opacity-65 relative transition hover:opacity-100">
               <div class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" style="top: 50%" />
+              <span class="absolute -bottom-5 inset-x-0 text-center text-[10px] text-emerald-400 font-medium tracking-wide drop-shadow">
+                Tap to Focus
+              </span>
             </div>
           </div>
         </div>

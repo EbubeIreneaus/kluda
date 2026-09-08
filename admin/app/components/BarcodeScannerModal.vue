@@ -33,7 +33,8 @@ const {
   startScanner,
   stopScanner,
   toggleTorch,
-  switchCamera
+  switchCamera,
+  triggerAutofocus
 } = useBarcodeScanner({
   cooldownMs: 1500,
   throttleMs: 100,
@@ -125,10 +126,12 @@ watch(isOpen, (newVal) => {
           <!-- Video feed -->
           <video
             ref="videoRef"
-            class="w-full h-full object-cover"
+            class="w-full h-full object-cover cursor-pointer"
             autoplay
             playsinline
             muted
+            title="Tap to focus"
+            @click="triggerAutofocus"
           />
 
           <!-- Loading state -->
@@ -165,7 +168,9 @@ watch(isOpen, (newVal) => {
           <!-- Reticle / Target Overlay -->
           <div
             v-if="!isCameraLoading && !cameraError"
-            class="absolute inset-0 pointer-events-none flex items-center justify-center p-8"
+            class="absolute inset-0 pointer-events-auto cursor-pointer flex items-center justify-center p-8"
+            title="Tap to focus"
+            @click="triggerAutofocus"
           >
             <div
               class="relative w-full max-w-70 h-42.5 rounded-xl border-2 transition-colors duration-200"
@@ -183,6 +188,14 @@ watch(isOpen, (newVal) => {
                 class="absolute inset-x-2 h-0.5 bg-linear-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#10b981] animate-pulse"
                 style="top: 50%;"
               />
+
+              <!-- Tap to focus hint -->
+              <span
+                v-if="!scannedSuccess"
+                class="absolute -bottom-6 inset-x-0 text-center text-[10px] text-emerald-400/90 font-medium tracking-wide drop-shadow"
+              >
+                Tap to Focus
+              </span>
 
               <!-- Success Checkmark Banner -->
               <div
@@ -235,7 +248,6 @@ watch(isOpen, (newVal) => {
               placeholder="e.g. 089686120110"
               size="sm"
               class="flex-1"
-              autofocus
               @keydown.enter.prevent="submitManualCode"
             />
             <UButton

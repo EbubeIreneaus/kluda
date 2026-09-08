@@ -148,15 +148,16 @@ export function useBarcodeScanner(options: BarcodeScannerOptions = {}) {
         throw new Error('Camera access not supported on this browser')
       }
 
-      await listCameras()
-
       // Resolution capped at 720p: ideal 1280x720 (drastically faster than 1080p/4K)
+      // We avoid rigid max constraints so portrait mode (720x1280) never triggers OverconstrainedError
       const constraints: MediaStreamConstraints = {
         video: {
           deviceId: selectedDeviceId.value ? { exact: selectedDeviceId.value } : undefined,
           facingMode: selectedDeviceId.value ? undefined : { ideal: 'environment' },
-          width: { ideal: 1280, max: 1280 },
-          height: { ideal: 720, max: 720 }
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          // @ts-ignore - Supported in Chromium/Android for rapid hardware lens focus
+          focusMode: { ideal: 'continuous' }
         },
         audio: false
       }
@@ -178,12 +179,28 @@ export function useBarcodeScanner(options: BarcodeScannerOptions = {}) {
       videoEl.srcObject = stream
       await videoEl.play()
 
-      // Inspect hardware flashlight (torch) capability
+      // Inspect hardware capabilities (flashlight/torch & continuous autofocus)
       const track = stream.getVideoTracks()[0]
       if (track) {
-        const capabilities = (track.getCapabilities && track.getCapabilities()) as any
-        hasTorch.value = !!(capabilities && capabilities.torch)
+        try {
+          const capabilities = (track.getCapabilities && track.getCapabilities()) as any
+          hasTorch.value = !!(capabilities && capabilities.torch)
+
+          // Engage hardware continuous auto-focus if supported by lens actuator
+          if (capabilities?.focusMode && Array.isArray(capabilities.focusMode)) {
+            if (capabilities.focusMode.includes('continuous')) {
+              await (track as any).applyConstraints({
+                advanced: [{ focusMode: 'continuous' }]
+              })
+            }
+          }
+        } catch {
+          // Ignore constraint application errors on older browsers
+        }
       }
+
+      // Enumerate cameras in the background now that permissions are active (non-blocking)
+      listCameras().catch(() => {})
 
       // -------------------------------------------------------------
       // ENGINE 1: Check Native Hardware-Accelerated BarcodeDetector
@@ -346,6 +363,29 @@ export function useBarcodeScanner(options: BarcodeScannerOptions = {}) {
     await startScanner(videoEl, cb)
   }
 
+  async function triggerAutofocus() {
+    if (!currentStream) return
+    const track = currentStream.getVideoTracks()[0]
+    if (!track) return
+
+    try {
+      const capabilities = (track.getCapabilities && track.getCapabilities()) as any
+      if (capabilities?.focusMode && Array.isArray(capabilities.focusMode)) {
+        if (capabilities.focusMode.includes('continuous')) {
+          await (track as any).applyConstraints({
+            advanced: [{ focusMode: 'continuous' }]
+          })
+        } else if (capabilities.focusMode.includes('single-shot')) {
+          await (track as any).applyConstraints({
+            advanced: [{ focusMode: 'single-shot' }]
+          })
+        }
+      }
+    } catch (err) {
+      console.debug('Autofocus trigger not supported:', err)
+    }
+  }
+
   onUnmounted(() => {
     stopScanner()
     if (audioContext && audioContext.state !== 'closed') {
@@ -372,6 +412,7 @@ export function useBarcodeScanner(options: BarcodeScannerOptions = {}) {
     startScanner,
     stopScanner,
     toggleTorch,
-    switchCamera
+    switchCamera,
+    triggerAutofocus
   }
 }
