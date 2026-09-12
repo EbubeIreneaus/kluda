@@ -73,18 +73,27 @@ export const useSalesStore = defineStore('sales', () => {
     const min = String(dateObj.getMinutes()).padStart(2, '0')
     const dateFormatted = `${yyyy}-${mm}-${dd} ${hh}:${min}`
 
+    const productStore = useProductsStore()
+
     return {
       sale_id: 'SYNCING',
       full_sale_id: pendingSale.idempotency_key,
       idempotency_key: pendingSale.idempotency_key,
       date: dateFormatted,
       customer: pendingSale.customer_id ? 'Linked Customer' : 'Walk-in',
-      items: pendingSale.items.map((item) => ({
-        name: item.stock_slug,
-        qty: item.quantities,
-        price: item.amount
-      })),
+      items: pendingSale.items.map((item) => {
+        const prod = productStore.products.find(p => p.slug === item.stock_slug)
+        return {
+          name: prod?.name || item.stock_slug,
+          slug: item.stock_slug,
+          qty: item.quantities,
+          price: item.amount,
+          cost_price: prod?.cost_price ?? null
+        }
+      }),
       total: totalKobo,
+      amount_received: pendingSale.amount_recived ?? totalKobo,
+      discount: pendingSale.discount ?? 0,
       method: pendingSale.payment_method,
       status: pendingSale.status || 'pending',
       staff: {
@@ -129,10 +138,14 @@ export const useSalesStore = defineStore('sales', () => {
             customer: sale.customer ? sale.customer.fullname : null,
             items: sale.items.map((item: any) => ({
               name: item.stock?.name || item.stock_slug,
+              slug: item.stock_slug,
               qty: item.quantities,
-              price: item.amount
+              price: item.amount,
+              cost_price: item.cost_price ?? item.stock?.cost_price ?? null
             })),
             total: totalKobo,
+            amount_received: sale.amount_recived ?? totalKobo,
+            discount: sale.discount ?? 0,
             method: sale.payment_method,
             status: sale.status,
             staff: {

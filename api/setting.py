@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     PAYSTACK_SECRET: str
     PAYSTACK_PUBLIC: str
 
+    DEMO_ACCOUNT_EMAILS: str = "demo@kluda.com,pitch@kluda.com,demo@example.com,admin@example.com"
+
+    @property
+    def demo_emails_list(self) -> list[str]:
+        return [e.strip().lower() for e in self.DEMO_ACCOUNT_EMAILS.split(",") if e.strip()]
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

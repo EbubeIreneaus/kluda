@@ -169,6 +169,49 @@ def require_permission(permission: StaffPermission | str):
     return permission_checker
 
 
+async def has_profit_permission(user: User, store_id: uuid.UUID, db: AsyncSession) -> bool:
+    if user_perms := getattr(user, "permission", None):
+        user_perm_strs = [p.value if hasattr(p, "value") else str(p) for p in user_perms]
+        if (
+            StaffPermission.MANAGE_ALL.value in user_perm_strs
+            or "manage:all" in user_perm_strs
+            or StaffPermission.VIEW_PROFIT.value in user_perm_strs
+            or "view:profit" in user_perm_strs
+        ):
+            return True
+
+    try:
+        req_store_id = uuid.UUID(str(store_id)) if not isinstance(store_id, uuid.UUID) else store_id
+    except (ValueError, TypeError):
+        return False
+
+    store = await db.scalar(select(Store).where(Store.store_id == req_store_id))
+    if not store:
+        return False
+
+    # Store owner always has full profit permission
+    if store.user_id == user.user_id:
+        return True
+
+    member = await db.scalar(
+        select(StoreMember).where(
+            StoreMember.store_id == req_store_id,
+            StoreMember.user_id == user.user_id,
+            StoreMember.status == StaffStatus.ACTIVE,
+        )
+    )
+    if not member:
+        return False
+
+    member_perms = [p.value if hasattr(p, "value") else str(p) for p in (member.permission or [])]
+    return (
+        StaffPermission.MANAGE_ALL.value in member_perms
+        or "manage:all" in member_perms
+        or StaffPermission.VIEW_PROFIT.value in member_perms
+        or "view:profit" in member_perms
+    )
+
+
 async def get_staff_store(
     store_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),

@@ -17,6 +17,7 @@ class PlanCreate(BaseModel):
     sales_limit_per_month: int | None = 0
     analytics_read_per_month: int | None = 0
     status: PlanStatus = PlanStatus.AVAILABLE
+    is_default: bool = False
     paystack_planid: str | None = None
 
 
@@ -33,6 +34,7 @@ class PlanUpdate(BaseModel):
     sales_limit_per_month: int | None = None
     analytics_read_per_month: int | None = None
     status: PlanStatus | None = None
+    is_default: bool | None = None
     paystack_planid: str | None = None
 
 
@@ -51,6 +53,7 @@ class PlanResponse(BaseModel):
     sales_limit_per_month: int | None = 0
     analytics_read_per_month: int | None = 0
     status: PlanStatus
+    is_default: bool = False
     paystack_planid: str | None = None
     created_at: datetime
     updated_at: datetime

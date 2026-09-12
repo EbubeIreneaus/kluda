@@ -15,10 +15,10 @@ from models.subscription import UserSubscription
 from models.admin.plan import Plan
 from schemas.stock import SaleCreate, SaleUpdate, SaleResponse
 from schemas.user import StaffPermission
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlalchemy import apaginate
 from libs.ws_manager import manager as ws_manager
-from libs.deps import require_permission, get_staff_store, get_current_user
+from libs.deps import require_permission, get_staff_store, get_current_user, has_profit_permission
 from libs.notification_manager import notification_manager
 
 router = APIRouter(prefix="/{store_id}/sales", tags=["Sales"])
@@ -207,6 +207,7 @@ async def create_sales_batch(
                         stock_slug=stock_item.slug,
                         amount=item_in.amount,
                         quantities=item_in.quantities,
+                        cost_price=stock_item.cost_price or 0,
                     )
                     items_to_add.append(sale_item)
 
@@ -460,8 +461,9 @@ async def get_sales(
         default=None,
         description="Filter sales by date (YYYY-MM-DD). Defaults to today.",
     ),
+    params: Params = Depends(),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.VIEW_SALES)),
+    user: User = Depends(require_permission(StaffPermission.VIEW_SALES)),
 ):
     target = sale_date or datetime.now(timezone.utc).date()
     day_start = datetime(target.year, target.month, target.day, tzinfo=timezone.utc)
@@ -477,14 +479,23 @@ async def get_sales(
         .where(and_(Sale.created_at >= day_start, Sale.created_at < day_end), Sale.store_id == store.store_id)
         .order_by(Sale.created_at.desc())
     )
-    return await paginate(db, stmt)
+    page = await apaginate(db, stmt, params)
+    can_profit = await has_profit_permission(user, store.store_id, db)
+    if not can_profit:
+        db.expunge_all()
+        for sale in page.items:
+            for item in getattr(sale, "items", []):
+                item.cost_price = None
+                if getattr(item, "stock", None):
+                    item.stock.cost_price = None
+    return page
 
 
 @router.get("/{sale_id}", response_model=SaleResponse)
 async def get_sale(
     sale_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.VIEW_SALES)),
+    user: User = Depends(require_permission(StaffPermission.VIEW_SALES)),
 ):
     res = await db.execute(
         select(Sale)
@@ -500,6 +511,14 @@ async def get_sale(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Sale transaction '{sale_id}' not found",
         )
+
+    can_profit = await has_profit_permission(user, sale.store_id, db)
+    if not can_profit:
+        db.expunge_all()
+        for item in getattr(sale, "items", []):
+            item.cost_price = None
+            if getattr(item, "stock", None):
+                item.stock.cost_price = None
 
     return sale
 

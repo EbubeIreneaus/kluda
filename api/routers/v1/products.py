@@ -12,7 +12,7 @@ from models.admin.plan import Plan
 from schemas.stock import StockCreate, StockUpdate, StockResponse, StockHistoryCreate, StockHistoryResponse
 from schemas.user import StaffPermission
 from models.user import User
-from libs.deps import require_permission, get_staff_store, get_current_user
+from libs.deps import require_permission, get_staff_store, get_current_user, has_profit_permission
 from libs.audit import record_store_audit
 from libs.security import get_client_ip
 from fastapi_pagination import Page
@@ -236,7 +236,7 @@ async def get_stocks(
         None, description="Search products by name, description, SKU or barcode"
     ),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
+    user: User = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
 ):
     stmt = select(Stock).where(Stock.deleted == False, Stock.store_id == store.store_id)
 
@@ -267,7 +267,13 @@ async def get_stocks(
         stmt = stmt.order_by(Stock.created_at.desc())
 
     res = await db.execute(stmt)
-    return res.scalars().all()
+    stocks = res.scalars().all()
+    can_profit = await has_profit_permission(user, store.store_id, db)
+    if not can_profit:
+        db.expunge_all()
+        for s in stocks:
+            s.cost_price = None
+    return stocks
 
 
 @router.get("/{slug}", response_model=StockResponse)
@@ -276,7 +282,7 @@ async def get_stock(
     store_id: uuid.UUID,
     store: StoreResponseMini = Depends(get_staff_store),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
+    user: User = Depends(require_permission(StaffPermission.VIEW_PRODUCT)),
 ):
     res = await db.execute(
         select(Stock).where(Stock.slug == slug, Stock.deleted == False, Stock.store_id == store.store_id)
@@ -288,6 +294,11 @@ async def get_stock(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with slug '{slug}' not found",
         )
+
+    can_profit = await has_profit_permission(user, store.store_id, db)
+    if not can_profit:
+        db.expunge_all()
+        stock.cost_price = None
 
     return stock
 

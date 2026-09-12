@@ -41,6 +41,30 @@ const todayRevenueKobo = computed(() => {
   return todaySales.value.reduce((sum, s) => sum + (s.total || 0), 0);
 });
 
+const canViewProfit = computed(() => {
+  return auth.isOwner || auth.hasPermission("view:profit") || auth.hasPermission("manage:all");
+});
+
+const todayProfitKobo = computed(() => {
+  if (!canViewProfit.value) return 0;
+  return todaySales.value.reduce((totalProfit, sale) => {
+    let saleCogs = 0;
+    for (const item of sale.items || []) {
+      if (item.cost_price != null) {
+        saleCogs += item.cost_price * item.qty;
+      }
+    }
+    // Net profit accounts for checkout discounts (sale.total is already net of discounts)
+    const saleProfit = (sale.total || 0) - saleCogs;
+    return totalProfit + saleProfit;
+  }, 0);
+});
+
+const profitMarginPercent = computed(() => {
+  if (!todayRevenueKobo.value || todayRevenueKobo.value <= 0) return 0;
+  return Math.round((todayProfitKobo.value / todayRevenueKobo.value) * 100);
+});
+
 const totalProducts = computed(() => {
   return productStore.productCount;
 });
@@ -170,23 +194,50 @@ const staffName = computed(() => {
             </div>
           </div>
 
-          <div class="flex flex-col">
-            <span class="text-xs font-medium text-emerald-300/90 tracking-wide"
-              >Money Sold Today</span
-            >
-            <div
-              class="text-3xl sm:text-4xl font-black text-white tracking-tight mt-1 flex items-center gap-2"
-            >
-              <span v-if="isAmountVisible">{{ format(todayRevenueKobo) }}</span>
-              <span v-else class="tracking-widest">••••••••</span>
+          <div :class="canViewProfit ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' : 'flex flex-col'">
+            <div class="flex flex-col">
+              <span class="text-xs font-medium text-emerald-300/90 tracking-wide"
+                >Money Sold Today</span
+              >
+              <div
+                class="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1 flex items-center gap-2"
+              >
+                <span v-if="isAmountVisible">{{ format(todayRevenueKobo) }}</span>
+                <span v-else class="tracking-widest">••••••••</span>
+              </div>
+              <span class="text-[11px] text-zinc-400 mt-1">
+                {{
+                  todaySales.length === 1
+                    ? "1 sale completed today"
+                    : `${todaySales.length} sales completed today`
+                }}
+              </span>
             </div>
-            <span class="text-[11px] text-zinc-400 mt-1">
-              {{
-                todaySales.length === 1
-                  ? "1 sale completed today"
-                  : `${todaySales.length} sales completed today`
-              }}
-            </span>
+
+            <!-- Today's Net Profit (Visible to authorized store owners and managers) -->
+            <div v-if="canViewProfit" class="flex flex-col sm:border-l sm:border-white/10 sm:pl-4">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium text-emerald-300/90 tracking-wide"
+                  >Today's Net Profit</span
+                >
+                <span
+                  v-if="todayRevenueKobo > 0"
+                  class="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                  :class="todayProfitKobo >= 0 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'"
+                >
+                  {{ profitMarginPercent }}% margin
+                </span>
+              </div>
+              <div
+                class="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight mt-1 flex items-center gap-2"
+              >
+                <span v-if="isAmountVisible">{{ format(todayProfitKobo) }}</span>
+                <span v-else class="tracking-widest">••••••••</span>
+              </div>
+              <span class="text-[11px] text-zinc-400 mt-1">
+                Net after product costs & discounts
+              </span>
+            </div>
           </div>
 
           <div class="pt-4 border-t border-white/10 grid grid-cols-2 gap-4">

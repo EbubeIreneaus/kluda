@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 from schemas.business import StoreStatus
 from schemas.user import UserResponseMini, StaffStatus
 from sqlalchemy import update, select, func
-from schemas.business import StoreUpdate, StoreCreate, StoreResponseMini
+from schemas.business import StoreUpdate, StoreCreate, StoreResponseMini, StoreDemoResetRequest
+from libs.demo_reset import execute_demo_reset
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, status, HTTPException, Depends, Request
 from libs.deps import get_current_user, get_staff_store
@@ -153,3 +154,15 @@ async def delete_store(
     )
     await db.commit()
     return {"success": True}
+
+
+@router.post("/{store_id}/reset-demo-data")
+async def reset_store_demo_data(
+    store_id: uuid.UUID,
+    payload: StoreDemoResetRequest = StoreDemoResetRequest(),
+    store: StoreResponseMini = Depends(get_staff_store),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await execute_demo_reset(db=db, store_id=store.store_id, wipe_mode=payload.wipe_mode)
+

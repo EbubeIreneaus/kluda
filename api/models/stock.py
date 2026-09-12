@@ -103,6 +103,9 @@ class SaleItem(Base):
     quantities: MappedColumn[float] = mapped_column(
         Numeric(precision=8, scale=2), default=1
     )
+    cost_price: MappedColumn[int | None] = mapped_column(
+        Integer, default=0, nullable=True
+    )
     sale_id: MappedColumn[uuid.UUID] = mapped_column(
         ForeignKey("sales.sale_id"), nullable=False
     )

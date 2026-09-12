@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 const { apiFetch } = useAdminApi()
 const { canManageBillings, isSuperAdmin } = useAdminPermission()
 const toast = useToast()
@@ -17,6 +17,7 @@ interface PlanItem {
   sales_limit_per_month: number
   analytics_read_per_month: number
   status: string
+  is_default?: boolean
   paystack_planid: string | null
   created_at: string
   updated_at: string
@@ -66,6 +67,7 @@ const createForm = reactive({
   sales_limit_per_month: 500,
   analytics_read_per_month: 100,
   status: 'available',
+  is_default: false,
   paystack_planid: ''
 })
 
@@ -82,6 +84,7 @@ const editForm = reactive({
   sales_limit_per_month: 0,
   analytics_read_per_month: 0,
   status: 'available',
+  is_default: false,
   paystack_planid: ''
 })
 
@@ -110,6 +113,7 @@ function openCreateModal() {
   createForm.sales_limit_per_month = 500
   createForm.analytics_read_per_month = 100
   createForm.status = 'available'
+  createForm.is_default = false
   createForm.paystack_planid = ''
   isCreateOpen.value = true
 }
@@ -128,6 +132,7 @@ function openEditModal(plan: PlanItem) {
   editForm.sales_limit_per_month = plan.sales_limit_per_month
   editForm.analytics_read_per_month = plan.analytics_read_per_month
   editForm.status = isPlanActive(plan) ? 'available' : 'unavailable'
+  editForm.is_default = Boolean(plan.is_default)
   editForm.paystack_planid = plan.paystack_planid || ''
   isEditOpen.value = true
 }
@@ -156,6 +161,7 @@ async function handleCreatePlan() {
         sales_limit_per_month: Number(createForm.sales_limit_per_month),
         analytics_read_per_month: Number(createForm.analytics_read_per_month),
         status: createForm.status.toLowerCase(),
+        is_default: Boolean(createForm.is_default),
         paystack_planid: createForm.paystack_planid.trim() || null
       }
     })
@@ -190,6 +196,7 @@ async function handleUpdatePlan() {
         sales_limit_per_month: Number(editForm.sales_limit_per_month),
         analytics_read_per_month: Number(editForm.analytics_read_per_month),
         status: editForm.status.toLowerCase(),
+        is_default: Boolean(editForm.is_default),
         paystack_planid: editForm.paystack_planid.trim() || null
       }
     })
@@ -435,6 +442,13 @@ onMounted(() => {
                 {{ plan.interval || 'monthly' }}
               </span>
               <span
+                v-if="plan.is_default"
+                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1"
+              >
+                <UIcon name="i-lucide-check-circle" class="size-3" />
+                Default
+              </span>
+              <span
                 v-if="plan.has_trial"
                 class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1"
               >
@@ -646,6 +660,21 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- Default Registration Plan Toggle -->
+        <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs font-bold text-zinc-200">Default Registration Tier</span>
+            <span class="text-[11px] text-zinc-400">
+              Assign this plan automatically to all newly registered store owners.
+            </span>
+          </div>
+          <input
+            v-model="createForm.is_default"
+            type="checkbox"
+            class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4 cursor-pointer"
+          />
+        </div>
+
         <!-- Resource Quotas -->
         <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex flex-col gap-3">
           <span class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
@@ -782,6 +811,21 @@ onMounted(() => {
               <span class="text-[10px] text-zinc-500">e.g. 1, 3, 7, 14, 30 days</span>
             </div>
           </div>
+        </div>
+
+        <!-- Default Registration Plan Toggle -->
+        <div class="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs font-bold text-zinc-200">Default Registration Tier</span>
+            <span class="text-[11px] text-zinc-400">
+              Assign this plan automatically to all newly registered store owners.
+            </span>
+          </div>
+          <input
+            v-model="editForm.is_default"
+            type="checkbox"
+            class="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-0 size-4 cursor-pointer"
+          />
         </div>
 
         <!-- Resource Quotas -->

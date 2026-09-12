@@ -43,3 +43,8 @@ class StoreResponseSingle(StoreBase):
     created_at: datetime
     sales: list[SaleResponse]
     stocks: list[StockResponse]
+
+
+class StoreDemoResetRequest(BaseModel):
+    wipe_mode: str = Field(default="sales_only", description="'sales_only' or 'full_wipe'")
+

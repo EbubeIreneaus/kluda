@@ -26,6 +26,7 @@ class Plan(Base):
     has_trial: MappedColumn[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     trial_duration_days: MappedColumn[int | None] = mapped_column(Integer, default=0, server_default="0", nullable=True)
     status: MappedColumn[PlanStatus] = mapped_column(Enum(PlanStatus), default=PlanStatus.AVAILABLE)
+    is_default: MappedColumn[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     paystack_planid: MappedColumn[str | None] = mapped_column(String, nullable=True)
     created_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: MappedColumn[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), server_onupdate=func.now())

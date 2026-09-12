@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func
+from sqlalchemy import select, or_, func, update
 from models.config import get_db
 from models.admin.plan import Plan
 from models.admin.user import Admin
@@ -69,7 +69,6 @@ async def create_plan(
     plan_interval = (payload.interval or "monthly").strip().lower()
     ps_interval = "annually" if plan_interval in ("yearly", "annually") else "monthly"
 
-    # Free and trial plans should not be created on Paystack
     if clean_slug not in ["free", "trial"] and not paystack_plan_code and payload.price > 0:
         try:
             # Paystack amounts are in subunit (kobo for NGN)
@@ -82,6 +81,9 @@ async def create_plan(
             paystack_plan_code = ps_res.get("data", {}).get("plan_code")
         except PaymentException as pe:
             logger.warning("Failed to automatically create plan on Paystack", error=pe.message)
+
+    if payload.is_default:
+        await db.execute(update(Plan).values(is_default=False))
 
     plan = Plan(
         slug=clean_slug,
@@ -96,6 +98,7 @@ async def create_plan(
         sales_limit_per_month=payload.sales_limit_per_month,
         analytics_read_per_month=payload.analytics_read_per_month,
         status=payload.status,
+        is_default=payload.is_default,
         paystack_planid=paystack_plan_code,
     )
     db.add(plan)
@@ -107,7 +110,7 @@ async def create_plan(
         admin_id=admin.admin_id,
         action="PLAN_CREATED",
         target_type="plan",
-        details={"slug": plan.slug, "name": plan.name, "price": plan.price, "interval": plan.interval, "has_trial": plan.has_trial, "trial_duration_days": plan.trial_duration_days},
+        details={"slug": plan.slug, "name": plan.name, "price": plan.price, "interval": plan.interval, "has_trial": plan.has_trial, "trial_duration_days": plan.trial_duration_days, "is_default": plan.is_default},
     )
     await db.commit()
     await delete_cache("kluda:cache:public_plans")
@@ -134,6 +137,7 @@ async def update_plan(
         "price": plan.price,
         "interval": plan.interval,
         "status": plan.status.value if hasattr(plan.status, "value") else str(plan.status),
+        "is_default": plan.is_default,
     }
 
     if payload.name is not None:
@@ -158,21 +162,39 @@ async def update_plan(
         plan.analytics_read_per_month = payload.analytics_read_per_month
     if payload.status is not None:
         plan.status = payload.status
+    if payload.is_default is not None:
+        if payload.is_default:
+            await db.execute(update(Plan).values(is_default=False))
+        plan.is_default = payload.is_default
     if payload.paystack_planid is not None:
         plan.paystack_planid = payload.paystack_planid
 
-    # Free and trial plans should not be updated on Paystack
-    if plan.slug not in ["free", "trial"] and plan.paystack_planid and (payload.name is not None or payload.price is not None or payload.description is not None):
-        try:
-            # Paystack amounts are in subunit (kobo for NGN)
-            await payment_manager.paystack_update_plan(
-                plan_code_or_id=plan.paystack_planid,
-                name=payload.name,
-                amount=payload.price,
-                description=payload.description,
-            )
-        except PaymentException as pe:
-            logger.warning("Failed to sync plan update with Paystack", error=pe.message)
+    target_price = plan.price
+    # Free and trial plans or zero-price plans should not be created/updated on Paystack
+    if plan.slug not in ["free", "trial"] and target_price > 0:
+        if plan.paystack_planid and (payload.name is not None or payload.price is not None or payload.description is not None):
+            try:
+                # Paystack amounts are in subunit (kobo for NGN)
+                await payment_manager.paystack_update_plan(
+                    plan_code_or_id=plan.paystack_planid,
+                    name=payload.name,
+                    amount=payload.price,
+                    description=payload.description,
+                )
+            except PaymentException as pe:
+                logger.warning("Failed to sync plan update with Paystack", error=pe.message)
+        elif not plan.paystack_planid:
+            try:
+                ps_interval = "annually" if plan.interval in ("yearly", "annually") else "monthly"
+                ps_res = await payment_manager.paystack_create_plan(
+                    name=plan.name,
+                    amount=target_price,
+                    interval=ps_interval,
+                    description=plan.description,
+                )
+                plan.paystack_planid = ps_res.get("data", {}).get("plan_code")
+            except PaymentException as pe:
+                logger.warning("Failed to automatically create plan on Paystack during plan update", error=pe.message)
 
     await db.flush()
     await db.refresh(plan)

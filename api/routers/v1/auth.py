@@ -9,7 +9,8 @@ from sqlalchemy.orm import selectinload
 from models.config import get_db
 from models.user import User, UserSession, StoreMember
 from models.subscription import UserSubscription
-from schemas.subscription import SubscriptionStatus, PaymentChannel
+from models.admin.plan import Plan
+from schemas.subscription import SubscriptionStatus, PaymentChannel, PlanStatus
 from schemas.business import StoreStatus
 from models.business import Store
 from schemas.user import (
@@ -182,20 +183,31 @@ async def create_user(
     db.add(new_user)
     await db.flush()
 
-    # Fresh users start with free tier
+    # Assign default subscription plan configured by admin, or fallback to 'free'
     now = datetime.now(timezone.utc)
-    free_sub = UserSubscription(
-        user_id=new_user.user_id,
-        plan_id="free",
-        status=SubscriptionStatus.ACTIVE,
-        amount=0,
-        payment_channel=PaymentChannel.PAYSTACK,
-        next_renewal=now + timedelta(days=36500),
-        idempotency_key=f"init_free_{new_user.user_id}",
+    default_plan = await db.scalar(
+        select(Plan).where(Plan.is_default == True, Plan.status == PlanStatus.AVAILABLE)
     )
-    db.add(free_sub)
+    if not default_plan:
+        default_plan = await db.scalar(select(Plan).where(Plan.slug == "free"))
+
+    plan_slug = default_plan.slug if default_plan else "free"
+    plan_price = default_plan.price if default_plan else 0
+    has_trial = default_plan.has_trial if default_plan else False
+    trial_days = default_plan.trial_duration_days if (default_plan and default_plan.has_trial) else 36500
+
+    assigned_sub = UserSubscription(
+        user_id=new_user.user_id,
+        plan_id=plan_slug,
+        status=SubscriptionStatus.TRIALING if has_trial else SubscriptionStatus.ACTIVE,
+        amount=plan_price,
+        payment_channel=PaymentChannel.PAYSTACK,
+        next_renewal=now + timedelta(days=trial_days or 30),
+        idempotency_key=f"init_{plan_slug}_{new_user.user_id}",
+    )
+    db.add(assigned_sub)
     await db.flush()
-    new_user.current_subscription_id = free_sub.subscription_id
+    new_user.current_subscription_id = assigned_sub.subscription_id
 
     store_obj = None
     if body.store_name:

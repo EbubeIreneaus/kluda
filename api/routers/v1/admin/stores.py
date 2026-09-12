@@ -14,9 +14,10 @@ from schemas.admin.store import (
     AdminStoreStaffItem,
 )
 from schemas.admin.user import AdminPermission
-from schemas.business import StoreStatus
+from schemas.business import StoreStatus, StoreDemoResetRequest
 from libs.deps import require_admin_permission
 from libs.audit import record_audit_log
+from libs.demo_reset import execute_demo_reset
 
 
 router = APIRouter(prefix="/stores", tags=["Admin Store Moderation"])
@@ -180,3 +181,24 @@ async def update_store_status(
     )
 
     return await _build_store_detail_response(db, store)
+
+
+@router.post("/{store_id}/reset-demo-data")
+async def admin_reset_store_demo_data(
+    store_id: uuid.UUID,
+    payload: StoreDemoResetRequest = StoreDemoResetRequest(),
+    db: AsyncSession = Depends(get_db),
+    admin: Admin = Depends(require_admin_permission(AdminPermission.MANAGE_STORES)),
+):
+    result = await execute_demo_reset(db=db, store_id=store_id, wipe_mode=payload.wipe_mode)
+    await record_audit_log(
+        db=db,
+        admin_id=admin.admin_id,
+        action="STORE_DEMO_DATA_RESET",
+        target_type="store",
+        target_id=store_id,
+        details={"wipe_mode": payload.wipe_mode, "deleted_counts": result["deleted_counts"]},
+    )
+    await db.commit()
+    return result
+

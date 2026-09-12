@@ -123,6 +123,7 @@ class SaleItemResponse(BaseModel):
     stock_slug: str
     amount: int
     quantities: float
+    cost_price: int | None = None
     stock: StockResponse | None = None
 
 

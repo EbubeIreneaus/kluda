@@ -45,6 +45,7 @@ class StaffPermission(str, Enum):
     VIEW_SALES = "view:sales"
     CANCEL_SALES = "cancel:sales"
     APPLY_DISCOUNT = "apply:discount"
+    VIEW_PROFIT = "view:profit"
 
     VIEW_DEBT = "view:debt"
     RECORD_DEBT = "record:debt"

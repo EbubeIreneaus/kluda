@@ -71,13 +71,21 @@ export interface LocalSale {
   idempotency_key: string
   date: string
   customer: string | null
-  items: Array<{ name: string; qty: number; price: number }>
+  items: Array<{
+    name: string
+    qty: number
+    price: number
+    slug?: string
+    cost_price?: number | null
+  }>
   total: number
+  amount_received?: number
+  discount?: number
   method: string
   status: string
   staff: {
     user_id: string
-    fullname:string
+    fullname: string
   }
   note: string
 }
