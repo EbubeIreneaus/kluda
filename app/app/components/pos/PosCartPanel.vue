@@ -28,18 +28,18 @@ const paymentMethods = [
 
 <template>
   <div
-    class="xl:w-[420px]  overflow-y-auto flex flex-col min-h-0 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated)"
+    class="xl:w-[420px] h-full flex flex-col min-h-0 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) overflow-hidden"
   >
     <!-- Cart Header -->
     <div
-      class="flex items-center justify-between px-5 py-4 border-b border-(--ui-border)"
+      class="flex items-center justify-between px-4 py-3 border-b border-(--ui-border) shrink-0"
     >
       <div class="flex items-center gap-2">
         <UIcon
           name="i-lucide-shopping-cart"
-          class="w-5 h-5 text-(--ui-text-muted)"
+          class="w-4 h-4 text-(--ui-text-muted)"
         />
-        <h3 class="font-semibold text-(--ui-text-highlighted)">Cart</h3>
+        <h3 class="font-semibold text-sm text-(--ui-text-highlighted)">Cart</h3>
         <UBadge
           v-if="cart?.itemCount && cart.itemCount > 0"
           color="primary"
@@ -63,22 +63,22 @@ const paymentMethods = [
 
     <!-- Items List -->
     <div
-      class="flex-1 overflow-y-auto xl:max-h-none max-h-[300px] min-h-0 p-4 space-y-2"
+      class="flex-1 overflow-y-auto min-h-[120px] p-3 space-y-2"
     >
       <template v-if="cart.isEmpty">
         <div
           class="flex flex-col items-center justify-center h-full text-center py-8"
         >
           <div
-            class="w-16 h-16 rounded-full bg-(--ui-bg-accented) flex items-center justify-center mb-4"
+            class="w-12 h-12 rounded-full bg-(--ui-bg-accented) flex items-center justify-center mb-3"
           >
             <UIcon
               name="i-lucide-scan-barcode"
-              class="w-8 h-8 text-(--ui-text-dimmed)"
+              class="w-6 h-6 text-(--ui-text-dimmed)"
             />
           </div>
-          <p class="text-sm font-medium text-(--ui-text-muted)">No items yet</p>
-          <p class="text-xs text-(--ui-text-dimmed) mt-1">
+          <p class="text-xs font-medium text-(--ui-text-muted)">No items yet</p>
+          <p class="text-[11px] text-(--ui-text-dimmed) mt-0.5">
             Scan a barcode or search to add products
           </p>
         </div>
@@ -87,17 +87,17 @@ const paymentMethods = [
       <div
         v-for="item in cart.items"
         :key="item.slug"
-        class="p-3 rounded-xl bg-(--ui-bg-accented)/50 border border-(--ui-border)/60 flex flex-col gap-2.5 transition-all"
+        class="p-2.5 rounded-lg bg-(--ui-bg-accented)/50 border border-(--ui-border)/60 flex flex-col gap-2 transition-all"
       >
         <!-- Top Row: Product Name & Delete Button -->
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1 min-w-0">
             <p
-              class="text-sm font-semibold text-(--ui-text-highlighted) leading-snug line-clamp-2"
+              class="text-xs font-semibold text-(--ui-text-highlighted) leading-snug line-clamp-2"
             >
               {{ item.name }}
             </p>
-            <p class="text-[11px] text-(--ui-text-dimmed) mt-0.5 font-mono">
+            <p class="text-[10px] text-(--ui-text-dimmed) mt-0.5 font-mono">
               {{ format(item.unit_price) }} each
             </p>
           </div>
@@ -114,22 +114,22 @@ const paymentMethods = [
 
         <!-- Bottom Row: Quantity Stepper & Subtotal -->
         <div
-          class="flex items-center justify-between gap-3 pt-1 border-t border-(--ui-border)/40"
+          class="flex items-center justify-between gap-2 pt-1 border-t border-(--ui-border)/40"
         >
           <div
-            class="flex items-center gap-1.5 bg-(--ui-bg) border border-(--ui-border) rounded-lg p-0.5"
+            class="flex items-center gap-1 bg-(--ui-bg) border border-(--ui-border) rounded-md p-0.5"
           >
             <UButton
               variant="ghost"
               color="neutral"
               size="xs"
               icon="i-lucide-minus"
-              class="size-7 p-0 flex items-center justify-center rounded-md"
+              class="size-6 p-0 flex items-center justify-center rounded-sm"
               :disabled="item.quantity <= 1"
               @click="cart.updateQuantity(item.slug, item.quantity - 1)"
             />
             <span
-              class="w-8 text-center text-xs font-bold text-(--ui-text-highlighted) font-mono"
+              class="w-7 text-center text-xs font-bold text-(--ui-text-highlighted) font-mono"
             >
               {{ item.quantity }}
             </span>
@@ -138,13 +138,13 @@ const paymentMethods = [
               color="neutral"
               size="xs"
               icon="i-lucide-plus"
-              class="size-7 p-0 flex items-center justify-center rounded-md"
+              class="size-6 p-0 flex items-center justify-center rounded-sm"
               @click="cart.updateQuantity(item.slug, item.quantity + 1)"
             />
           </div>
 
           <div class="text-right">
-            <p class="text-sm font-bold text-(--ui-text-highlighted) font-mono">
+            <p class="text-xs font-bold text-(--ui-text-highlighted) font-mono">
               {{ format(item.unit_price * item.quantity) }}
             </p>
           </div>
@@ -153,7 +153,7 @@ const paymentMethods = [
     </div>
 
     <!-- Controls & Checkout Section -->
-    <div class="border-t border-(--ui-border) p-4 space-y-3">
+    <div class="shrink-0 border-t border-(--ui-border) p-3 space-y-2 overflow-y-auto max-h-[46vh]">
       <!-- Linked Customer Row -->
       <div class="flex items-center justify-between">
         <span class="text-xs text-(--ui-text-dimmed)">Customer</span>
@@ -162,6 +162,7 @@ const paymentMethods = [
           :color="cart.customerId ? 'primary' : 'neutral'"
           size="xs"
           :icon="cart.customerId ? 'i-lucide-user-check' : 'i-lucide-user-plus'"
+          class="font-medium"
           @click="emit('link-customer')"
         >
           {{ selectedCustomerName || "Link customer" }}
@@ -169,14 +170,14 @@ const paymentMethods = [
       </div>
 
       <!-- Discount Input -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
         <span class="text-xs text-(--ui-text-dimmed) whitespace-nowrap">
           Discount (₦)
         </span>
         <UInput
           :model-value="cart.discount / 100"
           type="number"
-          size="sm"
+          size="xs"
           placeholder="0.00"
           class="flex-1"
           @update:model-value="cart.discount = Number($event) * 100"
@@ -185,16 +186,16 @@ const paymentMethods = [
 
       <!-- Payment Method -->
       <div>
-        <p class="text-xs text-(--ui-text-dimmed) mb-2">Payment Method</p>
-        <div class="grid grid-cols-5 gap-1.5">
+        <p class="text-[11px] text-(--ui-text-dimmed) mb-1.5 font-medium uppercase tracking-wider">Payment Method</p>
+        <div class="grid grid-cols-5 gap-1">
           <button
             v-for="method in paymentMethods"
             :key="method.value"
             type="button"
             :class="[
-              'flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-xs font-medium transition-all cursor-pointer',
+              'flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer',
               cart.paymentMethod === method.value
-                ? 'bg-green-500/15 text-green-600 dark:text-green-400 ring-1 ring-green-500/30'
+                ? 'bg-green-500/15 text-green-600 dark:text-green-400 ring-1 ring-green-500/30 font-semibold'
                 : 'bg-(--ui-bg-accented) text-(--ui-text-muted) hover:bg-(--ui-bg-accented)/80',
             ]"
             @click="
@@ -206,8 +207,8 @@ const paymentMethods = [
               }
             "
           >
-            <UIcon :name="method.icon" class="w-4 h-4" />
-            <span>{{ method.label }}</span>
+            <UIcon :name="method.icon" class="w-3.5 h-3.5" />
+            <span class="truncate leading-none">{{ method.label }}</span>
           </button>
         </div>
       </div>
@@ -215,7 +216,7 @@ const paymentMethods = [
       <!-- Deposit Input for Debt Payments -->
       <div
         v-if="cart.paymentMethod === 'debt'"
-        class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2"
+        class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-1.5"
       >
         <div class="flex items-center justify-between">
           <span
@@ -224,7 +225,7 @@ const paymentMethods = [
             <UIcon name="i-lucide-wallet" class="size-3.5" />
             Deposit / Amount Paid (₦)
           </span>
-          <span class="text-[11px] text-(--ui-text-dimmed)">Optional</span>
+          <span class="text-[10px] text-(--ui-text-dimmed)">Optional</span>
         </div>
         <UInput
           :model-value="cart.amountReceived / 100"
@@ -233,7 +234,7 @@ const paymentMethods = [
           :max="cart.grandTotal / 100"
           step="0.01"
           placeholder="0.00"
-          size="sm"
+          size="xs"
           class="w-full"
           @update:model-value="
             cart.amountReceived = Math.min(
@@ -242,31 +243,23 @@ const paymentMethods = [
             )
           "
         />
-        <div
-          class="flex items-center justify-between text-xs pt-1 border-t border-amber-500/20"
-        >
-          <span class="text-(--ui-text-muted)">Remaining Debt Owed:</span>
-          <span class="font-bold text-rose-500 font-mono">
-            {{ format(Math.max(0, cart.grandTotal - cart.amountReceived)) }}
-          </span>
-        </div>
       </div>
 
       <!-- Totals Summary -->
-      <div class="space-y-1.5 pt-2 border-t border-(--ui-border)">
-        <div class="flex justify-between text-sm">
+      <div class="space-y-1 pt-1.5 border-t border-(--ui-border)">
+        <div class="flex justify-between text-xs">
           <span class="text-(--ui-text-muted)">Subtotal</span>
           <span class="font-medium text-(--ui-text-highlighted)">
             {{ format(cart.subtotal) }}
           </span>
         </div>
-        <div v-if="cart.discount > 0" class="flex justify-between text-sm">
+        <div v-if="cart.discount > 0" class="flex justify-between text-xs">
           <span class="text-(--ui-text-muted)">Discount</span>
           <span class="font-medium text-rose-500">
             -{{ format(cart.discount) }}
           </span>
         </div>
-        <div class="flex justify-between text-lg font-bold pt-1">
+        <div class="flex justify-between text-base font-bold pt-0.5">
           <span class="text-(--ui-text-highlighted)">Total</span>
           <span class="text-green-600 dark:text-green-400">
             {{ format(cart.grandTotal) }}
@@ -274,7 +267,7 @@ const paymentMethods = [
         </div>
         <div
           v-if="cart.paymentMethod === 'debt' && cart.amountReceived > 0"
-          class="flex justify-between text-sm"
+          class="flex justify-between text-xs"
         >
           <span class="text-(--ui-text-muted)">Deposit Paid</span>
           <span class="font-medium text-emerald-600 dark:text-emerald-400">
@@ -283,16 +276,16 @@ const paymentMethods = [
         </div>
         <div
           v-if="cart.paymentMethod === 'debt'"
-          class="flex justify-between text-sm pt-0.5"
+          class="flex justify-between text-xs pt-0.5"
         >
-          <span class="font-bold text-rose-500">Debt Owed</span>
+          <span class="font-bold text-rose-500">Debt Balance Owed</span>
           <span class="font-bold text-rose-500 font-mono">
             {{ format(Math.max(0, cart.grandTotal - cart.amountReceived)) }}
           </span>
         </div>
         <div
           v-if="cart.paymentMethod !== 'debt' && cart.change > 0"
-          class="flex justify-between text-sm"
+          class="flex justify-between text-xs"
         >
           <span class="text-(--ui-text-muted)">Change</span>
           <span class="font-medium text-blue-500">
@@ -304,13 +297,13 @@ const paymentMethods = [
       <!-- Quota Warning -->
       <div
         v-if="isQuotaBlocked"
-        class="p-3 bg-rose-50 dark:bg-rose-950/25 border border-rose-300 dark:border-rose-800/40 rounded-xl text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2.5 mb-3 shadow-xs"
+        class="p-2.5 bg-rose-50 dark:bg-rose-950/25 border border-rose-300 dark:border-rose-800/40 rounded-lg text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2 mb-2 shadow-xs"
       >
         <UIcon
           name="i-lucide-alert-triangle"
           class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5"
         />
-        <div class="space-y-1">
+        <div class="space-y-0.5 text-xs">
           <p class="font-bold text-rose-950 dark:text-rose-100">
             {{
               isOfflineLeaseExpired
@@ -324,21 +317,24 @@ const paymentMethods = [
             {{ quotaBlockReason }}
           </p>
           <p
-            class="text-[11px] text-rose-700 dark:text-rose-300 italic pt-1 border-t border-rose-200 dark:border-rose-800/30"
+            class="text-[10px] text-rose-700 dark:text-rose-300 italic pt-0.5 border-t border-rose-200 dark:border-rose-800/30"
           >
             Notice: {{ offlineDisclaimer }}
           </p>
         </div>
       </div>
+    </div>
 
-      <!-- Complete Sale Action -->
+    <!-- Complete Sale Action Pinned at Bottom -->
+    <div class="shrink-0 p-3 pt-2 border-t border-(--ui-border) bg-(--ui-bg-elevated)">
       <UButton
         block
-        size="lg"
+        size="md"
         :disabled="cart.isEmpty || isQuotaBlocked"
+        class="font-bold cursor-pointer"
         @click="emit('complete-sale')"
       >
-        <UIcon name="i-lucide-check-circle" class="w-5 h-5 mr-2" />
+        <UIcon name="i-lucide-check-circle" class="w-4 h-4 mr-2" />
         Complete Sale
       </UButton>
     </div>

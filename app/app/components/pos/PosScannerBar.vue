@@ -276,7 +276,7 @@ defineExpose({
       <Transition name="fade">
         <div
           v-if="showSearchResults && searchResults.length"
-          class="relative xl:absolute z-50 xl:top-full xl:mt-1 mt-2 w-full rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) shadow-xl overflow-hidden"
+          class="absolute top-full left-0 right-0 z-50 mt-2 w-full rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) shadow-2xl overflow-hidden max-h-72 overflow-y-auto"
         >
           <button
             v-for="product in searchResults"

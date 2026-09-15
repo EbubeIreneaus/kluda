@@ -266,14 +266,15 @@ onMounted(() => {
 
 <template>
   <ClientOnly>
-    <div class="flex flex-col xl:flex-row gap-4 h-[calc(100vh-7rem)]">
+    <div class="flex flex-col xl:flex-row gap-3 h-full min-h-0 flex-1">
       <!-- Left Column: Scanner Bar + Quick Add Grid -->
-      <div class="flex-1 flex flex-col min-h-0 space-y-4 " >
+      <div class="xl:flex-1 flex flex-col min-h-0 space-y-3 shrink-0 xl:shrink">
         <PosScannerBar
           ref="scannerBarRef"
           :active-products="activeProducts"
           :is-printer-connected="isPrinterConnected"
           :printer-name="printerName"
+          class="shrink-0"
           @scan-barcode="handleScannedBarcode"
           @add-product="handleQuickAdd"
           @open-printer="showPrinterModal = true"
@@ -292,6 +293,7 @@ onMounted(() => {
         :quota-block-reason="quotaBlockReason"
         :is-offline-lease-expired="isOfflineLeaseExpired"
         :offline-disclaimer="offlineDisclaimer"
+        class="flex-1 xl:flex-none"
         @link-customer="showCustomerSearch = true"
         @complete-sale="handleCompleteSale"
       />
@@ -316,20 +318,29 @@ onMounted(() => {
       <!-- Thermal Printer Settings Modal -->
       <PosPrinterSettingsModal v-model:open="showPrinterModal" />
 
-      <!-- Offline Sync Overlay Indicator -->
-      <div
-        v-if="salesStore.isSyncing"
-        class="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm flex flex-col items-center justify-center text-white"
+      <!-- Non-Blocking Offline Sync Status Indicator -->
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="transform translate-y-2 opacity-0"
+        enter-to-class="transform translate-y-0 opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="transform translate-y-0 opacity-100"
+        leave-to-class="transform translate-y-2 opacity-0"
       >
-        <UIcon
-          name="i-lucide-loader-2"
-          class="w-10 h-10 animate-spin text-green-500 mb-3"
-        />
-        <p class="font-semibold text-lg">Syncing local sales...</p>
-        <p class="text-xs text-gray-400 mt-1">
-          Please wait while we sync offline data to the server
-        </p>
-      </div>
+        <div
+          v-if="salesStore.isSyncing"
+          class="fixed bottom-5 left-5 z-40 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-neutral-900/90 dark:bg-neutral-800/90 text-white shadow-xl border border-neutral-700/60 backdrop-blur pointer-events-none select-none"
+        >
+          <UIcon
+            name="i-lucide-loader-2"
+            class="w-4 h-4 animate-spin text-emerald-400 shrink-0"
+          />
+          <div class="flex flex-col text-xs leading-tight">
+            <span class="font-semibold text-neutral-100">Syncing sales in background</span>
+            <span class="text-[10px] text-neutral-400">Transactions are uploading</span>
+          </div>
+        </div>
+      </Transition>
     </div>
 
     <template #fallback>

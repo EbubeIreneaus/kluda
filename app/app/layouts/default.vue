@@ -267,7 +267,14 @@ watch(() => route.path, () => {
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto p-4 lg:p-6">
+      <main
+        :class="[
+          route.path === '/pos'
+            ? 'p-2 lg:p-3 overflow-hidden flex flex-col min-h-0'
+            : 'p-4 lg:p-6 overflow-y-auto',
+          'flex-1'
+        ]"
+      >
         <slot />
       </main>
     </div>
