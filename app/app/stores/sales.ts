@@ -105,7 +105,7 @@ export const useSalesStore = defineStore('sales', () => {
   }
 
   async function fetchSales() {
-    const storeId = auth.store_id || auth.staff?.store_id
+    const storeId = auth.store_id
     if (!storeId) {
       const cached = await db.salesCache.toArray()
       if (cached.length > 0) sales.value = cached
@@ -232,7 +232,7 @@ export const useSalesStore = defineStore('sales', () => {
     }
 
     await db.pendingSales.add(newSale)
-    const storeId = auth.store_id || auth.staff?.store_id
+    const storeId = auth.store_id
     if (storeId) {
       addToShadowJournal(storeId, newSale)
     }
@@ -254,7 +254,7 @@ export const useSalesStore = defineStore('sales', () => {
       return
     }
 
-    const storeId = auth.store_id || auth.staff?.store_id
+    const storeId = auth.store_id
     if (!storeId) return
 
     isSyncing.value = true

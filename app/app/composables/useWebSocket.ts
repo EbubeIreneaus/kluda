@@ -30,16 +30,16 @@ export const usePosSocket = () => {
     const rawBase: string = config.public.apiBase as string
     const hostBase = rawBase.replace(/\/api\/v1\/?$/, '').replace(/\/v1\/?$/, '')
     const wsBase = hostBase.replace(/^http/, 'ws')
-    const storeId = auth.store_id || auth.staff?.store_id || 'unknown'
-    const staffId = auth.staff?.staff_id ?? 'unknown'
-    return `${wsBase}/ws/${storeId}/${staffId}`
+    const storeId = auth.store_id || 'unknown'
+    const userId = auth.user?.user_id ?? 'unknown'
+    return `${wsBase}/ws/${storeId}/${userId}`
   }
 
   function connect() {
     if (!import.meta.client) return
     const storeId = auth.store_id 
-    const staffId = auth.user?.user_id
-    if (!storeId || !staffId) {
+    const userId = auth.user?.user_id
+    if (!storeId || !userId) {
       scheduleReconnect()
       return
     }
@@ -113,19 +113,19 @@ export const usePosSocket = () => {
           break
 
         case 'staff_status_changed':
-          if (data && data.staff_id === auth.staff?.staff_id) {
+          if (data && (data.user_id === auth.user?.user_id || data.staff_id === auth.user?.user_id)) {
             if (['terminated', 'suspended', 'inactive', 'revoked'].includes(data.status)) {
               const toast = useToast()
               toast.add({
                 title: 'Access Revoked',
-                description: 'Your staff access has been suspended or terminated.',
+                description: 'Your user access has been suspended or terminated.',
                 color: 'error'
               })
               disconnect()
               await auth.logout(true)
-            } else if (data.status === 'active' && auth.staff) {
-              auth.staff.role = data.role ?? auth.staff.role
-              auth.staff.permission = data.permission ?? auth.staff.permission
+            } else if (data.status === 'active' && auth.user) {
+              auth.user.role = data.role ?? auth.user.role
+              auth.user.permission = data.permission ?? auth.user.permission
             }
           }
           break

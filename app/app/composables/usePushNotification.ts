@@ -73,7 +73,7 @@ export function usePushNotification() {
     if (!import.meta.client || !isSupported.value) {
       return { success: false, message: 'Push notifications are not supported on this browser' }
     }
-    const storeId = auth.store_id || auth.staff?.store_id || (import.meta.client ? localStorage.getItem('pos_store_id') : null)
+    const storeId = auth.store_id || (import.meta.client ? localStorage.getItem('pos_store_id') : null)
     if (!storeId) {
       return { success: false, message: 'Store identification missing. Please re-login.' }
     }
@@ -126,7 +126,7 @@ export function usePushNotification() {
     if (!import.meta.client || !isSupported.value) {
       return { success: false, message: 'Push notifications not supported' }
     }
-    const storeId = auth.store_id || auth.staff?.store_id || (import.meta.client ? localStorage.getItem('pos_store_id') : null)
+    const storeId = auth.store_id || (import.meta.client ? localStorage.getItem('pos_store_id') : null)
     if (!storeId) return { success: false, message: 'Store not found' }
 
     isLoading.value = true

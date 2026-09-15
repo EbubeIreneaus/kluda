@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import { db, type LocalStaffMember } from "~/utils/db";
 
 const auth = useAuthStore();
-const { isTerminalLocked, unlockTerminal, verifyStaffPin } = usePinAuth();
+const { isTerminalLocked, unlockTerminal, verifyPin } = usePinAuth();
 
 const enteredPin = ref("");
 const isChecking = ref(false);
@@ -12,17 +11,15 @@ const errorMessage = ref("");
 const maxPinLength = 4;
 
 const currentUser = computed(() => {
-  return auth.staff;
+  return auth.user;
 });
 
 const displayName = computed(() => {
-  if (!auth.staff) return "Terminal User";
-  return `${auth.staff.first_name || ""} ${auth.staff.last_name || ""}`.trim() || auth.staff.role || "Staff";
+  return auth.user?.fullname || "Terminal User";
 });
 
 const roleLabel = computed(() => {
-  if (!auth.staff) return "";
-  return auth.staff.role === "owner" ? "Store Owner" : "Cashier / Staff";
+  return auth.isOwner ? "Store Owner" : "Cashier / Staff";
 });
 
 function handleNumber(num: string) {
@@ -66,34 +63,14 @@ async function submitPin() {
   isChecking.value = true;
 
   try {
-    let target: LocalStaffMember | undefined = undefined;
-    if (auth.staff?.staff_id) {
-      target = await db.staffMembers.get(auth.staff.staff_id);
-    }
-
-    if (!target && auth.staff) {
-      target = {
-        staff_id: auth.staff.staff_id,
-        first_name: auth.staff.first_name,
-        last_name: auth.staff.last_name,
-        role: auth.staff.role,
-        email: auth.staff.email,
-        permission: auth.staff.permission || [],
-        pin_hash: (auth.staff as any).pin_hash || null,
-        pin_salt: (auth.staff as any).pin_salt || null,
-        has_pin: true,
-        status: auth.staff.status,
-      };
-    }
-
-    if (!target || !target.pin_hash || !target.pin_salt) {
+    if (!auth.user?.pin_hash || !auth.user?.pin_salt) {
       unlockTerminal();
       return;
     }
 
-    const isValid = await verifyStaffPin(enteredPin.value, target);
+    const isValid = await verifyPin(enteredPin.value);
     if (isValid) {
-      const proof = target.pin_hash;
+      const proof = auth.user.pin_hash;
       enteredPin.value = "";
       errorMessage.value = "";
       unlockTerminal(proof);

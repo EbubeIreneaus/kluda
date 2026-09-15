@@ -35,7 +35,7 @@ const filteredStores = computed(() => {
   const q = search.value.toLowerCase()
   return auth.stores.filter(s =>
     s.name.toLowerCase().includes(q) ||
-    s.category.toLowerCase().includes(q) ||
+    (s.category && s.category.toLowerCase().includes(q)) ||
     (s.address && s.address.toLowerCase().includes(q))
   )
 })

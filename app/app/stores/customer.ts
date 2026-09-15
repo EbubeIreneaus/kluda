@@ -19,7 +19,7 @@ export const useCustomerStore = defineStore("customers", () => {
   const { api } = useApi();
 
   async function fetchCustomers() {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) {
       const cached = await db.customers.toArray();
       if (cached.length > 0) customers.value = cached;
@@ -34,8 +34,8 @@ export const useCustomerStore = defineStore("customers", () => {
           customer_id: c.customer_id,
           fullname: c.fullname,
           phone: c.phone,
-          email: c.email ?? "",
-          address: c.address ?? "",
+          email: c.email,
+          address: c.address,
           created_at: c.created_at,
           status: c.status,
         }));
@@ -61,7 +61,7 @@ export const useCustomerStore = defineStore("customers", () => {
   }
 
   async function fetchDebtors() {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) {
       const cached = await db.debtors.toArray();
       if (cached.length > 0) debtors.value = cached;
@@ -73,7 +73,7 @@ export const useCustomerStore = defineStore("customers", () => {
 
       if (response && Array.isArray(response)) {
         const mapped: LocalDebtor[] = response.map((d: any) => ({
-          debtor_id: d.debtor_id ?? d.customer_id,
+          debtor_id: d.debt_id ?? d.debtor_id ?? d.customer_id,
           customer_name: d.customer?.fullname ?? "",
           customer_id: d.customer?.customer_id ?? d.customer_id,
           amount: d.amount,
@@ -103,7 +103,7 @@ export const useCustomerStore = defineStore("customers", () => {
   }
 
   async function addCustomer(customerData: Partial<Customer>) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     loading.value = true;
@@ -136,7 +136,7 @@ export const useCustomerStore = defineStore("customers", () => {
     customer_id: string,
     data: Partial<LocalCustomer>
   ) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     loading.value = true;
@@ -163,7 +163,7 @@ export const useCustomerStore = defineStore("customers", () => {
   }
 
   async function deleteCustomer(customer_id: string) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     loading.value = true;
@@ -186,11 +186,52 @@ export const useCustomerStore = defineStore("customers", () => {
     }
   }
 
+  async function addDebt(debtData: {
+    customer_id: string;
+    amount: number;
+    note?: string;
+    staff_note?: string;
+  }) {
+    const storeId = auth.store_id;
+    if (!storeId) throw new Error("No store ID");
+
+    loading.value = true;
+    try {
+      const response = await api<any>(`/${storeId}/debt`, {
+        method: "POST",
+        body: {
+          customer_id: debtData.customer_id,
+          amount: debtData.amount,
+          note: debtData.note,
+          staff_note: debtData.staff_note,
+          status: "unpaid",
+        },
+      });
+
+      if (response) {
+        const mapped: LocalDebtor = {
+          debtor_id: response.debt_id,
+          customer_name: response.customer?.fullname ?? "",
+          customer_id: response.customer?.customer_id ?? debtData.customer_id,
+          amount: response.amount,
+          note: response.note ?? debtData.note ?? "",
+          status: response.status ?? "unpaid",
+          created_at: response.created_at || new Date().toISOString(),
+        };
+        debtors.value.unshift(mapped);
+        await db.debtors.put(mapped);
+        return mapped;
+      }
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function updateDebtor(
     debtor_id: string,
     data: Partial<LocalDebtor>
   ) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     loading.value = true;
@@ -212,7 +253,7 @@ export const useCustomerStore = defineStore("customers", () => {
   }
 
   async function deleteDebtor(debtor_id: string) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     loading.value = true;
@@ -344,6 +385,7 @@ export const useCustomerStore = defineStore("customers", () => {
     addCustomer,
     updateCustomer,
     deleteCustomer,
+    addDebt,
     updateDebtor,
     deleteDebtor,
     appendCustomerFromWs,

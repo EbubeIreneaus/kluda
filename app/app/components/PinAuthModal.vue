@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { db, type LocalStaffMember } from '~/utils/db'
 
-const { modalState, verifyStaffPin } = usePinAuth()
+const { modalState, verifyPin } = usePinAuth()
 const auth = useAuthStore()
 
 const enteredPin = ref('')
@@ -10,27 +9,11 @@ const isShaking = ref(false)
 const errorMessage = ref('')
 const maxPinLength = 4
 const isChecking = ref(false)
-const availableStaff = ref<LocalStaffMember[]>([])
-const selectedStaffId = ref<string>('')
-
-async function loadStaff() {
-  try {
-    const list = await db.staffMembers.toArray()
-    availableStaff.value = list || []
-    if (!selectedStaffId.value) {
-      selectedStaffId.value = modalState.value.targetStaffId || auth.staff?.staff_id || list[0]?.staff_id || ''
-    }
-  } catch {
-    availableStaff.value = []
-  }
-}
 
 watch(() => modalState.value.isOpen, (open) => {
   if (open) {
     enteredPin.value = ''
     errorMessage.value = ''
-    selectedStaffId.value = modalState.value.targetStaffId || auth.staff?.staff_id || ''
-    loadStaff()
   }
 })
 
@@ -63,28 +46,12 @@ async function submitPin() {
   isChecking.value = true
 
   try {
-    let target = availableStaff.value.find(s => s.staff_id === selectedStaffId.value)
-    if (!target && auth.staff && auth.staff.staff_id === selectedStaffId.value) {
-      target = {
-        staff_id: auth.staff.staff_id,
-        first_name: auth.staff.first_name,
-        last_name: auth.staff.last_name,
-        role: auth.staff.role,
-        email: auth.staff.email,
-        permission: auth.staff.permission || [],
-        pin_hash: (auth.staff as any).pin_hash || null,
-        pin_salt: (auth.staff as any).pin_salt || null,
-        has_pin: true,
-        status: auth.staff.status,
-      }
-    }
-
-    if (!target || !target.pin_hash || !target.pin_salt) {
+    if (!auth.user?.pin_hash || !auth.user?.pin_salt) {
       triggerError('No PIN configured for this account')
       return
     }
 
-    const isValid = await verifyStaffPin(enteredPin.value, target)
+    const isValid = await verifyPin(enteredPin.value)
     if (isValid) {
       if (modalState.value.resolve) {
         modalState.value.resolve(true)
@@ -141,10 +108,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <ClientOnly>
+ <Teleport to="body">
+   <ClientOnly>
     <div
       v-if="modalState.isOpen"
-      class="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+      class="fixed inset-0 z-[99999]! bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
       @click="handleCancel"
     >
       <div
@@ -165,17 +133,6 @@ onUnmounted(() => {
           </div>
           <h3 class="text-lg font-bold text-white tracking-tight">{{ modalState.title }}</h3>
           <p class="text-xs text-zinc-400 max-w-[240px] leading-relaxed">{{ modalState.description }}</p>
-        </div>
-
-        <div v-if="availableStaff.length > 1" class="w-full">
-          <select
-            v-model="selectedStaffId"
-            class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500"
-          >
-            <option v-for="s in availableStaff" :key="s.staff_id" :value="s.staff_id">
-              {{ s.first_name }} {{ s.last_name }} ({{ s.role }})
-            </option>
-          </select>
         </div>
 
         <div
@@ -238,6 +195,7 @@ onUnmounted(() => {
       </div>
     </div>
   </ClientOnly>
+ </Teleport>
 </template>
 
 <style scoped>

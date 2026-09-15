@@ -11,7 +11,7 @@ export const useProductsStore = defineStore("products", () => {
   const { api } = useApi();
 
   async function fetchProducts(search?: string) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) {
       const localItems = await db.products.toArray();
       if (localItems.length > 0) products.value = localItems;
@@ -93,7 +93,7 @@ export const useProductsStore = defineStore("products", () => {
   }
 
   async function addProduct(productData: Partial<LocalProduct>) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     try {
@@ -132,7 +132,7 @@ export const useProductsStore = defineStore("products", () => {
     slug: string,
     updateData: Partial<LocalProduct>,
   ) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     try {
@@ -174,7 +174,7 @@ export const useProductsStore = defineStore("products", () => {
     reason: string;
     note?: string;
   }) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     try {
@@ -204,7 +204,7 @@ export const useProductsStore = defineStore("products", () => {
   }
 
   async function deleteProduct(slug: string) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) throw new Error("No store ID");
 
     try {
@@ -219,7 +219,7 @@ export const useProductsStore = defineStore("products", () => {
   }
 
   async function fetchStockHistory(slug?: string) {
-    const storeId = auth.store_id || auth.staff?.store_id;
+    const storeId = auth.store_id;
     if (!storeId) return [];
 
     try {

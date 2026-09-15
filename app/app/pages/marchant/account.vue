@@ -114,15 +114,15 @@ async function handleChangePassword() {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-(--ui-border) text-sm">
             <div class="p-3.5 rounded-2xl bg-(--ui-bg-accented)/30 border border-(--ui-border)">
               <span class="text-xs text-(--ui-text-muted)">Email Address</span>
-              <p class="font-bold text-(--ui-text-highlighted) mt-0.5">{{ auth.staff?.email || auth.user?.email }}</p>
+              <p class="font-bold text-(--ui-text-highlighted) mt-0.5">{{ auth.user?.email }}</p>
             </div>
             <div class="p-3.5 rounded-2xl bg-(--ui-bg-accented)/30 border border-(--ui-border)">
               <span class="text-xs text-(--ui-text-muted)">Phone Number</span>
-              <p class="font-bold text-(--ui-text-highlighted) mt-0.5">{{ auth.staff?.phone || auth.user?.phone || 'Not provided' }}</p>
+              <p class="font-bold text-(--ui-text-highlighted) mt-0.5">{{ auth.user?.phone || 'Not provided' }}</p>
             </div>
             <div class="p-3.5 rounded-2xl bg-(--ui-bg-accented)/30 border border-(--ui-border)">
               <span class="text-xs text-(--ui-text-muted)">User ID</span>
-              <p class="font-mono text-xs font-bold text-emerald-400 mt-0.5">{{ auth.staff?.staff_id || auth.user?.user_id }}</p>
+              <p class="font-mono text-xs font-bold text-emerald-400 mt-0.5">{{ auth.user?.user_id }}</p>
             </div>
             <div class="p-3.5 rounded-2xl bg-(--ui-bg-accented)/30 border border-(--ui-border)">
               <span class="text-xs text-(--ui-text-muted)">Total Store Branches</span>

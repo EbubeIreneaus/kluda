@@ -114,22 +114,21 @@ async def get_user_stores(user_id: uuid.UUID, db: AsyncSession) -> list[dict]:
     return store_items
 
 
-def _make_staff_compatibility_dict(user: User, stores: list[dict]) -> dict:
-    parts = (user.fullname or "User").split()
+def _format_user_auth_dict(user: User, stores: list[dict]) -> dict:
     primary = stores[0] if stores else None
     return {
-        "staff_id": str(user.user_id),
-        "store_id": primary["store_id"] if primary else None,
-        "first_name": parts[0],
-        "last_name": parts[-1] if len(parts) > 1 else "",
-        "other_name": None,
-        "role": primary["role"] if primary else "owner",
+        "user_id": str(user.user_id),
+        "fullname": user.fullname,
         "email": user.email,
         "phone": user.phone,
+        "role": primary["role"] if primary else "owner",
         "permission": primary["permission"] if primary else ["manage:all"],
         "status": user.status.value if hasattr(user.status, "value") else str(user.status),
-        "has_pin": bool(getattr(user, "pin_hash", None)),
-        "referral_code": getattr(user, "referral_code", None),
+        "has_pin": bool(user.pin_hash),
+        "pin_hash": user.pin_hash,
+        "pin_salt": user.pin_salt,
+        "store_id": primary["store_id"] if primary else None,
+        "stores": stores,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 
@@ -286,17 +285,14 @@ async def create_user(
     )
 
     stores = await get_user_stores(new_user.user_id, db)
-    staff_obj = _make_staff_compatibility_dict(new_user, stores)
+    user_data = _format_user_auth_dict(new_user, stores)
 
     return {
         "success": True,
         "access_token": access_token,
-        "user_access_token": access_token,
         "refresh_token": raw_refresh_token,
-        "user_refresh_token": raw_refresh_token,
-        "user": new_user,
-        "staff": staff_obj,
-        "store_id": staff_obj["store_id"],
+        "user": user_data,
+        "store_id": user_data["store_id"],
         "stores": stores,
     }
 
@@ -382,17 +378,14 @@ async def login_user(
     )
 
     stores = await get_user_stores(user.user_id, db)
-    staff_obj = _make_staff_compatibility_dict(user, stores)
+    user_data = _format_user_auth_dict(user, stores)
 
     return {
         "success": True,
         "access_token": access_token,
-        "user_access_token": access_token,
         "refresh_token": raw_refresh_token,
-        "user_refresh_token": raw_refresh_token,
-        "user": user,
-        "staff": staff_obj,
-        "store_id": staff_obj["store_id"],
+        "user": user_data,
+        "store_id": user_data["store_id"],
         "stores": stores,
     }
 
@@ -505,16 +498,14 @@ async def refresh_token_endpoint(
     )
 
     stores = await get_user_stores(user.user_id, db)
-    staff_obj = _make_staff_compatibility_dict(user, stores)
+    user_data = _format_user_auth_dict(user, stores)
 
     return {
         "success": True,
         "access_token": new_access_token,
-        "user_access_token": new_access_token,
         "refresh_token": new_raw_refresh,
-        "user": user,
-        "staff": staff_obj,
-        "store_id": staff_obj["store_id"],
+        "user": user_data,
+        "store_id": user_data["store_id"],
         "stores": stores,
     }
 
@@ -553,21 +544,7 @@ async def get_me(
     db: AsyncSession = Depends(get_db),
 ):
     stores = await get_user_stores(current_user.user_id, db)
-    staff_obj = _make_staff_compatibility_dict(current_user, stores)
-    return {
-        "user_id": str(current_user.user_id),
-        "fullname": current_user.fullname,
-        "email": current_user.email,
-        "phone": current_user.phone,
-        "role": staff_obj["role"],
-        "permission": staff_obj["permission"],
-        "status": staff_obj["status"],
-        "has_pin": staff_obj["has_pin"],
-        "store_id": staff_obj["store_id"],
-        "stores": stores,
-        "staff": staff_obj,
-        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
-    }
+    return _format_user_auth_dict(current_user, stores)
 
 
 @router.post("/change-password")

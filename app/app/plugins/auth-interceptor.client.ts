@@ -3,7 +3,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   if (import.meta.client) {
     auth.loadFromStorage()
-    if (auth.staff) {
+    if (auth.user) {
       auth.fetchMe()
     }
   }

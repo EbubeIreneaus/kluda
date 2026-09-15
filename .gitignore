@@ -11,7 +11,7 @@ api/.pytest_cache/
 api/.venv
 api/.env
 
-pos/
+/pos/
 
 node_modules
 .nuxt

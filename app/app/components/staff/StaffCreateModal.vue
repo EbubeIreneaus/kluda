@@ -24,7 +24,7 @@ const apiBase = config.public.apiBase
 const isSubmitting = ref(false)
 
 const effectiveStoreId = computed(() => {
-  return props.storeId || auth.store_id || auth.staff?.store_id || ''
+  return props.storeId || auth.store_id || ''
 })
 
 const form = ref({

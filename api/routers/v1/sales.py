@@ -45,7 +45,6 @@ async def ping(
             detail=f"Database connection error: {str(e)}",
         )
 
-
 @router.post("", status_code=status.HTTP_201_CREATED)
 @router.post("/", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_sales_batch(
@@ -64,25 +63,30 @@ async def create_sales_batch(
     low_stock_alerts = []
     debt_alerts = []
 
-    db_store = await db.scalar(select(Store).where(Store.store_id == store.store_id))
-    owner_user_id = db_store.user_id if db_store else None
-
-    owner = await db.scalar(select(User).where(User.user_id == owner_user_id)) if owner_user_id else None
-    current_sub = None
-
-    if owner and owner.current_subscription_id:
-        current_sub = await db.scalar(
-            select(UserSubscription).where(
-                UserSubscription.subscription_id == owner.current_subscription_id
-            )
+    db_store = await db.scalar(
+        select(Store)
+        .options(
+            joinedload(Store.user)
+            .joinedload(User.current_subscription)
+            .joinedload(UserSubscription.plan)
         )
-    plan = None
-    if current_sub and current_sub.plan_id:
-        plan = await db.scalar(select(Plan).where(Plan.slug == current_sub.plan_id))
+        .where(Store.store_id == store.store_id)
+    )
+    if not db_store:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Store with ID '{store.store_id}' not found",
+        )
+    owner = db_store.user
+    owner_user_id = owner.user_id
+    current_sub = owner.current_subscription
+    plan = current_sub.plan
+
     if not plan:
         plan = await db.scalar(select(Plan).where(Plan.slug == "free"))
 
-    sales_limit = plan.sales_limit_per_month if plan else 200
+    sales_limit = plan.sales_limit_per_month or 200
+
     if sales_limit and sales_limit > 0 and owner_user_id:
         now_utc = datetime.now(timezone.utc)
         start_of_month = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -223,18 +227,20 @@ async def create_sales_batch(
                             detail="Customer is required for debt payments",
                         )
                     debt_amount = max(0, grand_total - sale_data.amount_recived)
-                    debt_note = ", ".join(note_parts)
-                    new_debt = Debt(
-                        customer_id=sale_data.customer_id,
-                        amount=debt_amount,
-                        note=debt_note,
-                        status="unpaid",
-                        staff_note=sale_data.staff_note,
-                    )
-                    db.add(new_debt)
-                    await db.flush()
+                    if debt_amount > 0:
+                        debt_note = ", ".join(note_parts)
+                        new_debt = Debt(
+                            customer_id=sale_data.customer_id,
+                            amount=debt_amount,
+                            store_id=store.store_id,
+                            note=debt_note,
+                            status="unpaid",
+                            staff_note=sale_data.staff_note,
+                        )
+                        db.add(new_debt)
+                        await db.flush()
 
-                    debt_alerts.append((customer.fullname or "Customer", float(debt_amount), float(debt_amount)))
+                        debt_alerts.append((customer.fullname or "Customer", float(debt_amount), float(debt_amount)))
 
                 created_ids.append(sale_id)
                 synced_keys.append(str(sale_data.idempotency_key))
@@ -290,19 +296,20 @@ async def get_analytics(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_permission(StaffPermission.VIEW_ANALYTICS)),
 ):
-    db_store = await db.scalar(select(Store).where(Store.store_id == store.store_id))
-    owner_user_id = db_store.user_id if db_store else None
-    owner = await db.scalar(select(User).where(User.user_id == owner_user_id)) if owner_user_id else None
-    current_sub = None
-    if owner and owner.current_subscription_id:
-        current_sub = await db.scalar(
-            select(UserSubscription).where(
-                UserSubscription.subscription_id == owner.current_subscription_id
-            )
+    db_store = await db.scalar(
+        select(Store)
+        .options(
+            joinedload(Store.user)
+            .joinedload(User.current_subscription)
+            .joinedload(UserSubscription.plan)
         )
-    plan = None
-    if current_sub and current_sub.plan_id:
-        plan = await db.scalar(select(Plan).where(Plan.slug == current_sub.plan_id))
+        .where(Store.store_id == store.store_id)
+    )
+    owner = db_store.user if db_store else None
+    owner_user_id = db_store.user_id if db_store else None
+    current_sub = owner.current_subscription if owner else None
+    plan = current_sub.plan if current_sub else None
+
     if not plan:
         plan = await db.scalar(select(Plan).where(Plan.slug == "free"))
 

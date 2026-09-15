@@ -133,7 +133,7 @@ onMounted(async () => {
   <div class="max-w-4xl space-y-6">
     <div>
       <h2 class="text-xl font-bold text-(--ui-text-highlighted)">Account Settings</h2>
-      <p class="text-sm text-(--ui-text-muted)">View your staff profile, terminal preferences, and security credentials.</p>
+      <p class="text-sm text-(--ui-text-muted)">View your user profile, terminal preferences, and security credentials.</p>
     </div>
 
     <div class="rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) p-6 space-y-6">
@@ -143,39 +143,39 @@ onMounted(async () => {
           <div class="flex items-center gap-2">
             <h3 class="text-lg font-bold text-(--ui-text-highlighted)">{{ auth.fullName }}</h3>
             <UBadge color="primary" variant="subtle" size="xs" class="capitalize">
-              {{ auth.staff?.role?.replace('_', ' ') || 'Staff' }}
+              {{ auth.user?.role?.replace('_', ' ') || 'User' }}
             </UBadge>
             <UBadge
-              :color="auth.staff?.status === 'active' ? 'success' : 'warning'"
+              :color="auth.user?.status === 'active' ? 'success' : 'warning'"
               variant="subtle"
               size="xs"
               class="capitalize"
             >
-              {{ auth.staff?.status || 'Active' }}
+              {{ auth.user?.status || 'Active' }}
             </UBadge>
           </div>
-          <p class="text-xs text-(--ui-text-dimmed)">Staff ID: {{ auth.staff?.staff_id }}</p>
+          <p class="text-xs text-(--ui-text-dimmed)">User ID: {{ auth.user?.user_id }}</p>
         </div>
       </div>
 
       <div class="border-t border-(--ui-border) pt-4">
         <h4 class="text-xs font-semibold text-(--ui-text-dimmed) uppercase tracking-wider mb-4">
-          Profile Information (Managed by Admin)
+          Profile Information
         </h4>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <span class="text-xs text-(--ui-text-dimmed) block">Email Address</span>
-            <span class="font-medium text-(--ui-text-highlighted)">{{ auth.staff?.email || '—' }}</span>
+            <span class="font-medium text-(--ui-text-highlighted)">{{ auth.user?.email || '—' }}</span>
           </div>
           <div>
             <span class="text-xs text-(--ui-text-dimmed) block">Phone Number</span>
-            <span class="font-medium text-(--ui-text-highlighted)">{{ auth.staff?.phone || 'Not Provided' }}</span>
+            <span class="font-medium text-(--ui-text-highlighted)">{{ auth.user?.phone || 'Not Provided' }}</span>
           </div>
           <div>
             <span class="text-xs text-(--ui-text-dimmed) block">Assigned Permissions</span>
             <div class="flex flex-wrap gap-1.5 mt-1">
               <UBadge
-                v-for="perm in (auth.staff?.permission || [])"
+                v-for="perm in (auth.user?.permission || [])"
                 :key="typeof perm === 'string' ? perm : ((perm as any)?.value || String(perm))"
                 :color="(typeof perm === 'string' ? perm : ((perm as any)?.value || String(perm))) === 'manage:all' ? 'error' : 'info'"
                 variant="subtle"
@@ -183,12 +183,12 @@ onMounted(async () => {
               >
                 {{ typeof perm === 'string' ? perm : ((perm as any)?.value || String(perm)) }}
               </UBadge>
-              <span v-if="!auth.staff?.permission?.length" class="text-xs text-(--ui-text-dimmed)">No permissions assigned</span>
+              <span v-if="!auth.user?.permission?.length" class="text-xs text-(--ui-text-dimmed)">No permissions assigned</span>
             </div>
           </div>
           <div>
             <span class="text-xs text-(--ui-text-dimmed) block">Last Login</span>
-            <span class="font-medium text-(--ui-text-highlighted)">{{ auth.staff?.last_login ? new Date(auth.staff.last_login).toLocaleString() : 'Recent' }}</span>
+            <span class="font-medium text-(--ui-text-highlighted)">{{ auth.user?.last_login ? new Date(auth.user.last_login).toLocaleString() : 'Recent' }}</span>
           </div>
         </div>
       </div>

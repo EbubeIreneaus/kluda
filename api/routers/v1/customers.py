@@ -1,3 +1,5 @@
+from datetime import timezone
+from datetime import datetime
 from sqlalchemy.orm import selectinload
 from schemas.business import StoreResponseMini
 import re
@@ -27,7 +29,12 @@ router = APIRouter(prefix="/{store_id}/customer", tags=["Customer"])
 
 
 @router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
-@router.post("/", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+@router.post(
+    "/",
+    response_model=CustomerResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 async def create_customer(
     customer_data: CustomerCreate,
     store_id: uuid.UUID,
@@ -39,16 +46,6 @@ async def create_customer(
     ),
     actor: User = Depends(require_permission(StaffPermission.CREATE_CUSTOMER)),
 ):
-    existing = await db.execute(
-        select(Customer).where(
-            Customer.email == customer_data.email, Customer.store_id == store.store_id
-        )
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Your customer with this email already exists",
-        )
 
     new_customer = Customer(
         customer_id=uuid.uuid4(),
@@ -79,17 +76,17 @@ async def create_customer(
         ip_address=get_client_ip(request),
     )
 
-    await db.commit()
     await db.refresh(new_customer)
     await ws_manager.broadcast(
         store.store_id,
         {
             "event": "add_customer",
-            "data": CustomerResponse.model_validate(new_customer).model_dump(mode="json"),
+            "data": CustomerResponse.model_validate(new_customer).model_dump(
+                mode="json"
+            ),
         },
     )
     return new_customer
-
 
 @router.get("", response_model=list[CustomerResponse])
 @router.get("/", response_model=list[CustomerResponse], include_in_schema=False)
@@ -102,7 +99,9 @@ async def get_customers(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_permission(StaffPermission.VIEW_CUSTOMER)),
 ):
-    stmt = select(Customer).where(Customer.store_id == store.store_id, Customer.status == CustomerStatus.ACTIVE)
+    stmt = select(Customer).where(
+        Customer.store_id == store.store_id, Customer.deleted == False
+    )
 
     if search and search.strip():
         terms = [re.sub(r"[^\w]", "", term) for term in search.split() if term.strip()]
@@ -133,7 +132,6 @@ async def get_customers(
     results = (await db.scalars(stmt)).all()
     return results
 
-
 @router.get("/{customer_id}", response_model=CustomerResponse)
 async def get_customer(
     customer_id: uuid.UUID,
@@ -144,7 +142,9 @@ async def get_customer(
 ):
     res = await db.execute(
         select(Customer).where(
-            Customer.customer_id == customer_id, Customer.store_id == store.store_id, Customer.status != CustomerStatus.DELETED
+            Customer.customer_id == customer_id,
+            Customer.store_id == store.store_id,
+            Customer.deleted == False,
         )
     )
     customer = res.scalar_one_or_none()
@@ -156,7 +156,6 @@ async def get_customer(
         )
 
     return customer
-
 
 @router.put("/{customer_id}")
 async def update_customer(
@@ -173,7 +172,9 @@ async def update_customer(
 ):
     res = await db.execute(
         select(Customer).where(
-            Customer.customer_id == customer_id, Customer.store_id == store.store_id, Customer.status != CustomerStatus.DELETED
+            Customer.customer_id == customer_id,
+            Customer.store_id == store.store_id,
+            Customer.deleted == False,
         )
     )
     customer = res.scalar_one_or_none()
@@ -183,12 +184,21 @@ async def update_customer(
             detail=f"Customer with ID '{customer_id}' not found",
         )
 
-    values = update_data.model_dump(exclude_unset=True, exclude_none=True)
+    values = update_data.model_dump(
+        exclude_unset=True, exclude_none=True, exclude={"deleted", "deleted_at"}
+    )
     if values:
         old_values = {k: str(getattr(customer, k, "")) for k in values.keys()}
-        changes = {k: {"old": old_values.get(k), "new": str(v)} for k, v in values.items()}
+        changes = {
+            k: {"old": old_values.get(k), "new": str(v)} for k, v in values.items()
+        }
         await db.execute(
-            update(Customer).values(**values).where(Customer.customer_id == customer_id,Customer.status != CustomerStatus.DELETED)
+            update(Customer)
+            .values(**values)
+            .where(
+                Customer.customer_id == customer_id,
+                Customer.deleted == False,
+            )
         )
         await record_store_audit(
             db=db,
@@ -213,7 +223,6 @@ async def update_customer(
     )
     return {"success": True}
 
-
 @router.delete("/{customer_id}")
 async def delete_customer(
     customer_id: uuid.UUID,
@@ -228,7 +237,8 @@ async def delete_customer(
 ):
     res = await db.execute(
         select(Customer).where(
-            Customer.customer_id == customer_id, Customer.store_id == store.store_id, Customer.status != CustomerStatus.DELETED
+            Customer.customer_id == customer_id,
+            Customer.store_id == store.store_id,
         )
     )
     customer = res.scalar_one_or_none()
@@ -239,7 +249,9 @@ async def delete_customer(
             detail=f"Customer with ID '{customer_id}' not found",
         )
 
-    customer.status = CustomerStatus.DELETED
+    customer.deleted = True
+    customer.deleted_at = datetime.now(timezone.utc)
+
     await record_store_audit(
         db=db,
         store_id=store.store_id,
@@ -258,12 +270,16 @@ async def delete_customer(
     )
     return {"message": f"Customer '{customer_id}' deactivated successfully"}
 
-
 router_debt = APIRouter(prefix="/{store_id}/debt", tags=["Debt"])
 
 
 @router_debt.post("", response_model=DebtResponse, status_code=status.HTTP_201_CREATED)
-@router_debt.post("/", response_model=DebtResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+@router_debt.post(
+    "/",
+    response_model=DebtResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 async def create_debt(
     store_id: uuid.UUID,
     debt_data: DebtCreate,
@@ -280,6 +296,7 @@ async def create_debt(
         res = await db.execute(
             select(Customer).where(
                 Customer.customer_id == debt_data.customer_id,
+                Customer.deleted == False,
                 Customer.store_id == store.store_id,
             )
         )
@@ -294,8 +311,10 @@ async def create_debt(
         debt_id=uuid.uuid4(),
         customer_id=debt_data.customer_id,
         amount=debt_data.amount,
+        note=debt_data.note,
         status=debt_data.status,
         staff_note=debt_data.staff_note,
+        store_id=store.store_id,
     )
 
     db.add(new_debt)
@@ -321,14 +340,20 @@ async def create_debt(
     )
 
     await db.commit()
-    await db.refresh(new_debt)
-    await ws_manager.broadcast(
-        store.store_id,
-        {
-            "event": "add_debt",
-            "data": DebtResponse.model_validate(new_debt).model_dump(mode="json"),
-        },
+    loaded_debt = await db.scalar(
+        select(Debt)
+        .options(selectinload(Debt.customer))
+        .where(Debt.debt_id == new_debt.debt_id)
     )
+    if loaded_debt:
+        await ws_manager.broadcast(
+            store.store_id,
+            {
+                "event": "add_debt",
+                "data": DebtResponse.model_validate(loaded_debt).model_dump(mode="json"),
+            },
+        )
+        return loaded_debt
     return new_debt
 
 
@@ -345,8 +370,8 @@ async def get_debts(
 ):
     stmt = (
         select(Debt)
-        .options(joinedload(Debt.customer))
-        .where(Customer.store_id == store.store_id)
+        .options(selectinload(Debt.customer))
+        .where(Debt.store_id == store.store_id)
     )
 
     if search and search.strip():
@@ -385,8 +410,8 @@ async def get_debt(
 ):
     res = await db.execute(
         select(Debt)
-        .options(joinedload(Debt.customer))
-        .where(Debt.debt_id == debt_id, Customer.store_id == store.store_id)
+        .options(selectinload(Debt.customer))
+        .where(Debt.debt_id == debt_id, Debt.store_id == store.store_id)
     )
     debt = res.scalar_one_or_none()
 
@@ -414,8 +439,8 @@ async def update_debt(
 ):
     res = await db.execute(
         select(Debt)
-        .options(joinedload(Debt.customer))
-        .where(Debt.debt_id == debt_id, Customer.store_id == store.store_id)
+        .options(selectinload(Debt.customer))
+        .where(Debt.debt_id == debt_id, Debt.store_id == store.store_id)
     )
     debt = res.scalar_one_or_none()
     if not debt:
@@ -429,11 +454,19 @@ async def update_debt(
         old_values = {}
         for k in values.keys():
             old_val = getattr(debt, k, None)
-            old_values[k] = float(old_val) if isinstance(old_val, (int, float)) or hasattr(old_val, "as_tuple") else str(old_val) if old_val is not None else None
+            old_values[k] = (
+                float(old_val)
+                if isinstance(old_val, (int, float)) or hasattr(old_val, "as_tuple")
+                else str(old_val) if old_val is not None else None
+            )
 
         changes = {}
         for k, v in values.items():
-            new_val = float(v) if isinstance(v, (int, float)) or hasattr(v, "as_tuple") else str(v) if v is not None else None
+            new_val = (
+                float(v)
+                if isinstance(v, (int, float)) or hasattr(v, "as_tuple")
+                else str(v) if v is not None else None
+            )
             changes[k] = {"old": old_values.get(k), "new": new_val}
 
         await db.execute(update(Debt).values(**values).where(Debt.debt_id == debt_id))
@@ -451,14 +484,19 @@ async def update_debt(
         )
 
     await db.commit()
-    await db.refresh(debt)
-    await ws_manager.broadcast(
-        store.store_id,
-        {
-            "event": "update_debt",
-            "data": DebtResponse.model_validate(debt).model_dump(mode="json"),
-        },
+    updated_debt = await db.scalar(
+        select(Debt)
+        .options(selectinload(Debt.customer))
+        .where(Debt.debt_id == debt_id, Debt.store_id == store.store_id)
     )
+    if updated_debt:
+        await ws_manager.broadcast(
+            store.store_id,
+            {
+                "event": "update_debt",
+                "data": DebtResponse.model_validate(updated_debt).model_dump(mode="json"),
+            },
+        )
     return {"success": True}
 
 
@@ -477,7 +515,7 @@ async def delete_debt(
     res = await db.execute(
         select(Debt)
         .options(selectinload(Debt.customer))
-        .where(Debt.debt_id == debt_id, Customer.store_id == store.store_id)
+        .where(Debt.debt_id == debt_id, Debt.store_id == store.store_id)
     )
     debt = res.scalar_one_or_none()
 
@@ -496,7 +534,10 @@ async def delete_debt(
         actor=actor,
         target_id=str(debt_id),
         target_name=debt.customer.fullname if debt.customer else "Unknown Customer",
-        details={"amount": float(debt.amount) if debt.amount is not None else None, "status": "paid"},
+        details={
+            "amount": float(debt.amount) if debt.amount is not None else None,
+            "status": "paid",
+        },
         ip_address=get_client_ip(request),
     )
     await db.commit()

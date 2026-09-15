@@ -3,21 +3,20 @@ definePageMeta({
   ssr: false,
 });
 
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
+import { storeToRefs } from "pinia";
 import { useCartStore } from "~/stores/cart";
 import { useSalesStore } from "~/stores/sales";
 import { useProductsStore } from "~/stores/product";
 import { useCustomerStore } from "~/stores/customer";
 import { useAuthStore } from "~/stores/auth";
+import PosScannerBar from "~/components/pos/PosScannerBar.vue";
 
 const cart = useCartStore();
 const salesStore = useSalesStore();
-const { format } = useFormatCurrency();
-const toast = useToast();
-
-const config = useRuntimeConfig();
-const apiBase = config.public.apiBase;
+const productStore = useProductsStore();
 const auth = useAuthStore();
+const toast = useToast();
 
 const {
   isQuotaBlocked,
@@ -27,16 +26,8 @@ const {
   fetchCurrentSubscription,
 } = useSubscription();
 
-const searchQuery = ref("");
-const barcodeRef = ref<any>();
-const isScanning = ref(true);
-
 const { vibrate } = useVibrate({ pattern: [200], interval: 100 });
-const showSearchResults = ref(false);
-
-const showReceipt = ref(false);
-const showCustomerSearch = ref(false);
-const customerSearch = ref("");
+const { playScanSound } = useAudioChime();
 
 const {
   isConnected: isPrinterConnected,
@@ -46,6 +37,11 @@ const {
   printReceipt,
 } = usePrinter();
 
+const { customers: fetchedCustomers } = storeToRefs(useCustomerStore());
+
+const scannerBarRef = ref<InstanceType<typeof PosScannerBar>>();
+const showReceipt = ref(false);
+const showCustomerSearch = ref(false);
 const showPrinterModal = ref(false);
 
 const currentStore = computed(() => {
@@ -56,48 +52,24 @@ const currentStore = computed(() => {
   );
 });
 
-const productStore = useProductsStore();
-const { playScanSound } = useAudioChime();
-
-const { customers: fetchedCustomers } = storeToRefs(useCustomerStore());
-
 const activeProducts = computed(() => {
   return productStore.products.filter((p: any) => !p.deleted);
-});
-
-const searchResults = computed(() => {
-  if (!searchQuery.value || searchQuery.value.length < 2) return [];
-  const q = searchQuery.value.toLowerCase();
-  return activeProducts.value
-    .filter(
-      (p: any) => p.name.toLowerCase().includes(q) || p.barcode_id.includes(q),
-    )
-    .slice(0, 6);
 });
 
 const activeCustomers = computed(() => {
   return fetchedCustomers.value;
 });
 
-const customerResults = computed(() => {
-  if (!customerSearch.value) return activeCustomers.value;
-  const q = customerSearch.value.toLowerCase();
-  return activeCustomers.value.filter(
-    (c) =>
-      c.fullname.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q) ||
-      c.phone.includes(q),
+const selectedCustomerName = computed(() => {
+  if (!cart.customerId) return null;
+  return (
+    activeCustomers.value.find((c) => c.customer_id === cart.customerId)
+      ?.fullname || null
   );
 });
 
 function focusBarcode() {
-  nextTick(() => {
-    const inputEl =
-      barcodeRef.value?.$el?.querySelector("input") || barcodeRef.value?.$el;
-    if (inputEl && typeof inputEl.focus === "function") {
-      inputEl.focus();
-    }
-  });
+  scannerBarRef.value?.focusBarcode();
 }
 
 function handleScannedBarcode(code: string) {
@@ -149,50 +121,9 @@ function handleScannedBarcode(code: string) {
   }
 }
 
-function handleBarcodeScan() {
-  const query = searchQuery.value.trim();
-  if (!query) return;
-
-  let product = activeProducts.value.find((p: any) => p.barcode_id === query);
-
-  if (!product) {
-    product = activeProducts.value.find(
-      (p: any) => p.name.toLowerCase() === query.toLowerCase(),
-    );
-  }
-
-  if (!product && searchResults.value.length === 1 && searchResults.value[0]) {
-    product = searchResults.value[0];
-  }
-
-  if (product) {
-    handleScannedBarcode(product.barcode_id);
-  } else {
-    // If not found, show toast
-    toast.add({
-      title: "Not Found",
-      description: `No product matches "${query}"`,
-      color: "error",
-      icon: "i-lucide-alert-circle",
-    });
-  }
-
-  searchQuery.value = "";
-  showSearchResults.value = false;
-  focusBarcode();
-}
-
-function onBarcodeKeydown(e: KeyboardEvent) {
-  if (e.key === "Enter") {
-    handleBarcodeScan();
-  }
-}
-
-function addFromSearch(product: any) {
+function handleQuickAdd(product: any) {
   const existing = cart.items.find((item) => item.slug === product.slug);
   cart.addItem(product);
-  searchQuery.value = "";
-  showSearchResults.value = false;
 
   if (existing) {
     toast.add({
@@ -212,7 +143,7 @@ function addFromSearch(product: any) {
   focusBarcode();
 }
 
-function selectCustomer(customer: any) {
+function handleSelectCustomer(customer: any) {
   cart.customerId = customer.customer_id;
   showCustomerSearch.value = false;
   toast.add({
@@ -223,7 +154,7 @@ function selectCustomer(customer: any) {
   focusBarcode();
 }
 
-function completeSale() {
+function handleCompleteSale() {
   if (isQuotaBlocked.value) {
     toast.add({
       title: isOfflineLeaseExpired.value
@@ -251,7 +182,9 @@ function completeSale() {
     });
     return;
   }
-  cart.amountReceived = cart.grandTotal;
+  if (cart.paymentMethod !== "debt") {
+    cart.amountReceived = cart.grandTotal;
+  }
   showReceipt.value = true;
 }
 
@@ -289,20 +222,19 @@ async function finalizeAndReset(shouldPrint = false) {
     idempotency_key: key,
     items: cart.items.map((item) => ({
       stock_slug: item.slug,
-      amount: item.unit_price, // already in kobo
+      amount: item.unit_price,
       quantities: item.quantity,
     })),
-    discount: cart.discount, // already in kobo
+    discount: cart.discount,
     customer_id: cart.customerId,
     payment_method: cart.paymentMethod,
-    amount_recived: cart.amountReceived, // already in kobo
+    amount_recived: cart.amountReceived,
     staff_note: cart.staffNote || null,
     status: "completed" as const,
   };
 
   await salesStore.addSale(saleData);
 
-  // Dispatch to thermal printer if requested or auto-print is enabled
   if ((shouldPrint || autoPrint.value) && isPrinterConnected.value) {
     printReceipt(receiptPayload);
   }
@@ -326,682 +258,80 @@ async function handlePrintAndClose() {
   await finalizeAndReset(true);
 }
 
-const selectedCustomerName = computed(() => {
-  if (!cart.customerId) return null;
-  return (
-    activeCustomers.value.find((c) => c.customer_id === cart.customerId)
-      ?.fullname || null
-  );
-});
-
-const videoRef = ref<HTMLVideoElement>();
-
-const {
-  isCameraActive,
-  isCameraLoading,
-  hasTorch,
-  isTorchActive,
-  isNativeEngine,
-  startScanner,
-  stopScanner,
-  toggleTorch,
-  triggerAutofocus,
-} = useBarcodeScanner({
-  cooldownMs: 1500,
-  throttleMs: 100,
-  playBeep: false,
-  vibrate: false,
-});
-
-async function startCameraScanner() {
-  await nextTick();
-  if (videoRef.value) {
-    await startScanner(videoRef.value, (code) => {
-      handleScannedBarcode(code);
-    });
-  }
-}
-
-function stopCameraScanner() {
-  stopScanner();
-}
-
-function toggleCameraScanner() {
-  if (isCameraActive.value) {
-    stopCameraScanner();
-  } else {
-    startCameraScanner();
-  }
-}
-
 onMounted(() => {
   fetchCurrentSubscription();
   focusBarcode();
 });
-
-onUnmounted(() => {
-  stopCameraScanner();
-});
-
-const paymentMethods = [
-  { label: "Cash", value: "cash", icon: "i-lucide-banknote" },
-  { label: "POS", value: "pos", icon: "i-lucide-credit-card" },
-  { label: "Transfer", value: "transfer", icon: "i-lucide-send" },
-  { label: "Online", value: "online", icon: "i-lucide-globe" },
-  { label: "Debt", value: "debt", icon: "i-lucide-clock" },
-];
-
-function handleSearchBlur() {
-  setTimeout(() => {
-    showSearchResults.value = false;
-  }, 200);
-}
 </script>
 
 <template>
   <ClientOnly>
     <div class="flex flex-col xl:flex-row gap-4 h-[calc(100vh-7rem)]">
-    <div class="flex-1 flex flex-col min-h-0 space-y-4">
-      <div class="space-y-3">
-        <div class="relative">
-          <div class="flex items-center justify-between gap-2 mb-1.5">
-            <div class="flex items-center gap-1.5">
-              <span class="relative flex h-2.5 w-2.5">
-                <span
-                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
-                />
-                <span
-                  class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"
-                />
-              </span>
-              <span
-                class="text-xs font-medium text-green-600 dark:text-green-400"
-                >Scanner Active</span
-              >
-            </div>
-
-            <!-- Thermal Printer Hardware Status Indicator -->
-            <button
-              type="button"
-              class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer"
-              :class="[
-                isPrinterConnected
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                  : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:text-neutral-200',
-              ]"
-              @click="showPrinterModal = true"
-            >
-              <UIcon name="i-lucide-printer" class="w-3.5 h-3.5" />
-              <span>{{
-                isPrinterConnected ? printerName : "Connect Printer"
-              }}</span>
-              <span
-                v-if="isPrinterConnected"
-                class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
-              />
-            </button>
-          </div>
-          <div class="flex items-center gap-2">
-            <UButton
-              :color="isCameraActive ? 'error' : 'primary'"
-              variant="solid"
-              size="xl"
-              :icon="isCameraActive ? 'i-lucide-camera-off' : 'i-lucide-camera'"
-              class="shrink-0"
-              @click="toggleCameraScanner"
-            />
-            <div class="flex-1 scanner-active rounded-xl">
-              <UInput
-                ref="barcodeRef"
-                v-model="searchQuery"
-                placeholder="Enter name or scan barcode..."
-                icon="i-lucide-scan-barcode"
-                size="xl"
-                @focus="showSearchResults = true"
-                @blur="handleSearchBlur"
-                @keydown="onBarcodeKeydown"
-              />
-            </div>
-          </div>
-
-          <div
-            v-show="isCameraActive"
-            class="overflow-hidden bg-black flex items-center justify-center mt-2.5 fixed inset-0 z-[60] p-4 flex flex-col xl:relative xl:inset-auto xl:z-10 xl:aspect-video xl:max-h-64 xl:rounded-xl xl:border xl:border-(--ui-border) xl:p-0 xl:mt-2.5"
-          >
-            <!-- Camera Top Controls (Torch, Fast ML Badge & Close) -->
-            <div class="absolute top-3 right-3 flex items-center gap-2 z-[70]">
-              <!-- Hardware Acceleration Badge -->
-              <span
-                v-if="isNativeEngine"
-                class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/80 backdrop-blur-md text-white border border-emerald-400/40 shadow-lg tracking-wider uppercase font-mono"
-              >
-                Fast ML
-              </span>
-
-              <!-- Flash / Torch Toggle -->
-              <button
-                v-if="hasTorch"
-                type="button"
-                class="size-10 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-lg active:scale-95"
-                :class="{ 'bg-amber-500! text-black! border-amber-400! shadow-amber-500/50': isTorchActive }"
-                title="Toggle Flashlight / Night Mode"
-                @click="toggleTorch"
-              >
-                <UIcon :name="isTorchActive ? 'i-lucide-zap' : 'i-lucide-zap-off'" class="size-5" />
-              </button>
-
-              <!-- Close Scanner Button -->
-              <button
-                type="button"
-                class="size-10 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition cursor-pointer shadow-lg active:scale-95"
-                title="Close Camera"
-                @click="stopCameraScanner"
-              >
-                <UIcon name="i-lucide-x" class="size-5" />
-              </button>
-            </div>
-
-            <!-- Loading state indicator -->
-            <div
-              v-if="isCameraLoading"
-              class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center gap-2 z-[65] text-zinc-300"
-            >
-              <UIcon name="i-lucide-loader-2" class="size-7 animate-spin text-primary-400" />
-              <span class="text-xs font-medium">Starting camera...</span>
-            </div>
-
-            <video
-              ref="videoRef"
-              class="w-full h-full object-cover rounded-xl cursor-pointer"
-              autoplay
-              playsinline
-              muted
-              title="Tap to focus"
-              @click="triggerAutofocus"
-            />
-            <div
-              class="absolute inset-0 flex items-center justify-center pointer-events-auto cursor-pointer"
-              title="Tap to focus"
-              @click="triggerAutofocus"
-            >
-              <div
-                class="w-2/3 h-1/3 border-2 border-dashed border-emerald-500 rounded-lg opacity-65 relative transition hover:opacity-100"
-              >
-                <div
-                  class="absolute inset-x-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"
-                  style="top: 50%"
-                />
-                <span class="absolute -bottom-5 inset-x-0 text-center text-[10px] text-emerald-400 font-medium tracking-wide drop-shadow">
-                  Tap to Focus
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <Transition name="fade">
-            <div
-              v-if="showSearchResults && searchResults.length"
-              class="relative xl:absolute z-50 xl:top-full xl:mt-1 mt-2 w-full rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) shadow-xl overflow-hidden"
-            >
-              <button
-                v-for="product in searchResults"
-                :key="product.slug"
-                class="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-(--ui-bg-accented) transition border-b border-(--ui-border)/50 last:border-0"
-                @mousedown.prevent="addFromSearch(product)"
-              >
-                <div>
-                  <p class="text-sm font-medium text-(--ui-text-highlighted)">
-                    {{ product.name }}
-                  </p>
-                  <p class="text-xs text-(--ui-text-dimmed) font-mono mt-0.5">
-                    {{ product.barcode_id }}
-                  </p>
-                </div>
-                <span
-                  class="text-sm font-semibold text-green-600 dark:text-green-400"
-                  >{{ format(product.unit_price) }}</span
-                >
-              </button>
-            </div>
-          </Transition>
-        </div>
-      </div>
-
-      <div class="hidden xl:block flex-1 overflow-y-auto min-h-0">
-        <p
-          class="text-xs font-medium text-(--ui-text-dimmed) uppercase tracking-wider mb-3"
-        >
-          Quick Add
-        </p>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          <button
-            v-for="product in activeProducts"
-            :key="product.slug"
-            class="card-hover flex flex-col items-start p-3.5 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) text-left transition-all hover:border-green-500/30"
-            @click="cart.addItem(product)"
-          >
-            <div
-              class="flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/10 mb-2.5"
-            >
-              <UIcon
-                name="i-lucide-package"
-                class="w-5 h-5 text-green-600 dark:text-green-400"
-              />
-            </div>
-            <p
-              class="text-sm font-medium text-(--ui-text-highlighted) leading-tight line-clamp-2"
-            >
-              {{ product.name }}
-            </p>
-            <p class="text-xs font-mono text-(--ui-text-dimmed) mt-1">
-              {{ product.barcode_id }}
-            </p>
-            <p
-              class="text-sm font-semibold text-green-600 dark:text-green-400 mt-auto pt-2"
-            >
-              {{ format(product.unit_price) }}
-            </p>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      class="xl:w-[420px] flex flex-col min-h-0 rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated)"
-    >
-      <div
-        class="flex items-center justify-between px-5 py-4 border-b border-(--ui-border)"
-      >
-        <div class="flex items-center gap-2">
-          <UIcon
-            name="i-lucide-shopping-cart"
-            class="w-5 h-5 text-(--ui-text-muted)"
-          />
-          <h3 class="font-semibold text-(--ui-text-highlighted)">Cart</h3>
-          <UBadge
-            v-if="cart?.itemCount && cart.itemCount > 0"
-            color="primary"
-            variant="subtle"
-            size="xs"
-            >{{ cart?.itemCount }}</UBadge
-          >
-        </div>
-        <UButton
-          v-if="cart && !cart.isEmpty"
-          variant="ghost"
-          color="error"
-          size="xs"
-          icon="i-lucide-trash-2"
-          @click="cart.clearCart()"
-        >
-          Clear
-        </UButton>
-      </div>
-
-      <div
-        class="flex-1 overflow-y-auto xl:max-h-none max-h-[300px] min-h-0 p-4 space-y-2"
-      >
-        <template v-if="cart.isEmpty">
-          <div
-            class="flex flex-col items-center justify-center h-full text-center py-8"
-          >
-            <div
-              class="w-16 h-16 rounded-full bg-(--ui-bg-accented) flex items-center justify-center mb-4"
-            >
-              <UIcon
-                name="i-lucide-scan-barcode"
-                class="w-8 h-8 text-(--ui-text-dimmed)"
-              />
-            </div>
-            <p class="text-sm font-medium text-(--ui-text-muted)">
-              No items yet
-            </p>
-            <p class="text-xs text-(--ui-text-dimmed) mt-1">
-              Scan a barcode or search to add products
-            </p>
-          </div>
-        </template>
-
-        <div
-          v-for="item in cart.items"
-          :key="item.slug"
-          class="p-3 rounded-xl bg-(--ui-bg-accented)/50 border border-(--ui-border)/60 flex flex-col gap-2.5 transition-all"
-        >
-          <!-- Top Row: Product Name (Full Width, line-clamp-2) & Delete Button -->
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex-1 min-w-0">
-              <p
-                class="text-sm font-semibold text-(--ui-text-highlighted) leading-snug line-clamp-2"
-              >
-                {{ item.name }}
-              </p>
-              <p class="text-[11px] text-(--ui-text-dimmed) mt-0.5 font-mono">
-                {{ format(item.unit_price) }} each
-              </p>
-            </div>
-            <UButton
-              variant="ghost"
-              color="error"
-              size="xs"
-              icon="i-lucide-x"
-              class="shrink-0 -mr-1 -mt-1 text-(--ui-text-dimmed) hover:text-rose-500 hover:bg-rose-500/10 transition rounded-lg"
-              title="Remove item"
-              @click="cart.removeItem(item.slug)"
-            />
-          </div>
-
-          <!-- Bottom Row: Quantity Stepper & Subtotal -->
-          <div
-            class="flex items-center justify-between gap-3 pt-1 border-t border-(--ui-border)/40"
-          >
-            <!-- Stepper with touch-friendly tap targets -->
-            <div
-              class="flex items-center gap-1.5 bg-(--ui-bg) border border-(--ui-border) rounded-lg p-0.5"
-            >
-              <UButton
-                variant="ghost"
-                color="neutral"
-                size="xs"
-                icon="i-lucide-minus"
-                class="size-7 p-0 flex items-center justify-center rounded-md"
-                :disabled="item.quantity <= 1"
-                @click="cart.updateQuantity(item.slug, item.quantity - 1)"
-              />
-              <span
-                class="w-8 text-center text-xs font-bold text-(--ui-text-highlighted) font-mono"
-                >{{ item.quantity }}</span
-              >
-              <UButton
-                variant="ghost"
-                color="neutral"
-                size="xs"
-                icon="i-lucide-plus"
-                class="size-7 p-0 flex items-center justify-center rounded-md"
-                @click="cart.updateQuantity(item.slug, item.quantity + 1)"
-              />
-            </div>
-
-            <!-- Item Total -->
-            <div class="text-right">
-              <p
-                class="text-sm font-bold text-(--ui-text-highlighted) font-mono"
-              >
-                {{ format(item.unit_price * item.quantity) }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="border-t border-(--ui-border) p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-(--ui-text-dimmed)">Customer</span>
-          <UButton
-            variant="ghost"
-            :color="cart.customerId ? 'primary' : 'neutral'"
-            size="xs"
-            :icon="
-              cart.customerId ? 'i-lucide-user-check' : 'i-lucide-user-plus'
-            "
-            @click="showCustomerSearch = true"
-          >
-            {{ selectedCustomerName || "Link customer" }}
-          </UButton>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-(--ui-text-dimmed) whitespace-nowrap"
-            >Discount (₦)</span
-          >
-          <UInput
-            :model-value="cart.discount / 100"
-            type="number"
-            size="sm"
-            placeholder="0.00"
-            class="flex-1"
-            @update:model-value="cart.discount = Number($event) * 100"
-          />
-        </div>
-
-        <div>
-          <p class="text-xs text-(--ui-text-dimmed) mb-2">Payment Method</p>
-          <div class="grid grid-cols-5 gap-1.5">
-            <button
-              v-for="method in paymentMethods"
-              :key="method.value"
-              :class="[
-                'flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-xs font-medium transition-all',
-                cart.paymentMethod === method.value
-                  ? 'bg-green-500/15 text-green-600 dark:text-green-400 ring-1 ring-green-500/30'
-                  : 'bg-(--ui-bg-accented) text-(--ui-text-muted) hover:bg-(--ui-bg-accented)/80',
-              ]"
-              @click="cart.paymentMethod = method.value as any"
-            >
-              <UIcon :name="method.icon" class="w-4 h-4" />
-              <span>{{ method.label }}</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="space-y-1.5 pt-2 border-t border-(--ui-border)">
-          <div class="flex justify-between text-sm">
-            <span class="text-(--ui-text-muted)">Subtotal</span>
-            <span class="font-medium text-(--ui-text-highlighted)">{{
-              format(cart.subtotal)
-            }}</span>
-          </div>
-          <div v-if="cart.discount > 0" class="flex justify-between text-sm">
-            <span class="text-(--ui-text-muted)">Discount</span>
-            <span class="font-medium text-rose-500"
-              >-{{ format(cart.discount) }}</span
-            >
-          </div>
-          <div class="flex justify-between text-lg font-bold pt-1">
-            <span class="text-(--ui-text-highlighted)">Total</span>
-            <span class="text-green-600 dark:text-green-400">{{
-              format(cart.grandTotal)
-            }}</span>
-          </div>
-          <div
-            v-if="cart.paymentMethod !== 'debt' && cart.change > 0"
-            class="flex justify-between text-sm"
-          >
-            <span class="text-(--ui-text-muted)">Change</span>
-            <span class="font-medium text-blue-500">{{
-              format(cart.change)
-            }}</span>
-          </div>
-        </div>
-
-        <div
-          v-if="isQuotaBlocked"
-          class="p-3 bg-rose-50 dark:bg-rose-950/25 border border-rose-300 dark:border-rose-800/40 rounded-xl text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2.5 mb-3 shadow-xs"
-        >
-          <UIcon
-            name="i-lucide-alert-triangle"
-            class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5"
-          />
-          <div class="space-y-1">
-            <p class="font-bold text-rose-950 dark:text-rose-100">
-              {{
-                isOfflineLeaseExpired
-                  ? "Offline Lease Expired"
-                  : "Sales Limit Reached"
-              }}
-            </p>
-            <p class="leading-relaxed opacity-95 text-rose-900 dark:text-rose-200">{{ quotaBlockReason }}</p>
-            <p
-              class="text-[11px] text-rose-700 dark:text-rose-300 italic pt-1 border-t border-rose-200 dark:border-rose-800/30"
-            >
-              Notice: {{ offlineDisclaimer }}
-            </p>
-          </div>
-        </div>
-
-        <UButton
-          block
-          size="lg"
-          :disabled="cart.isEmpty || isQuotaBlocked"
-          @click="completeSale"
-        >
-          <UIcon name="i-lucide-check-circle" class="w-5 h-5 mr-2" />
-          Complete Sale
-        </UButton>
-      </div>
-    </div>
-
-    <AppBottomSheet
-      v-model="showCustomerSearch"
-      title="Link Customer"
-      description="Search and assign a registered customer to this order."
-    >
-      <div class="space-y-4">
-        <UInput
-          v-model="customerSearch"
-          placeholder="Search customers..."
-          icon="i-lucide-search"
+      <!-- Left Column: Scanner Bar + Quick Add Grid -->
+      <div class="flex-1 flex flex-col min-h-0 space-y-4 " >
+        <PosScannerBar
+          ref="scannerBarRef"
+          :active-products="activeProducts"
+          :is-printer-connected="isPrinterConnected"
+          :printer-name="printerName"
+          @scan-barcode="handleScannedBarcode"
+          @add-product="handleQuickAdd"
+          @open-printer="showPrinterModal = true"
         />
-        <div class="space-y-2 max-h-64 overflow-y-auto">
-          <button
-            v-for="customer in customerResults"
-            :key="customer.customer_id"
-            class="flex items-center gap-3 w-full p-3 rounded-lg text-left hover:bg-(--ui-bg-accented) transition"
-            @click="selectCustomer(customer)"
-          >
-            <UAvatar
-              :text="
-                customer.fullname
-                  .split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-              "
-              size="sm"
-            />
-            <div>
-              <p class="text-sm font-medium text-(--ui-text-highlighted)">
-                {{ customer.fullname }}
-              </p>
-              <p class="text-xs text-(--ui-text-dimmed)">
-                {{ customer.phone }} • {{ customer.email }}
-              </p>
-            </div>
-          </button>
-        </div>
+
+        <PosQuickAddGrid
+          :products="activeProducts"
+          @add="handleQuickAdd"
+        />
       </div>
-    </AppBottomSheet>
 
-    <AppBottomSheet
-      v-model="showReceipt"
-      title="Receipt"
-      description="Order completed successfully."
-    >
-      <div class="space-y-4">
-        <div
-          class="text-center border-b border-dashed border-(--ui-border) pb-4"
-        >
-          <div
-            class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#090d16] border border-emerald-500/40 overflow-hidden mb-2"
-          >
-            <img
-              src="/kluda_icon.jpg"
-              alt="Kluda"
-              class="w-full h-full object-cover"
-            />
-          </div>
-          <h3
-            class="font-black text-lg tracking-wider text-(--ui-text-highlighted)"
-          >
-            KLUDA
-          </h3>
-          <p class="text-xs text-(--ui-text-dimmed)">
-            {{ new Date().toLocaleString() }}
-          </p>
-        </div>
-
-        <div class="space-y-2">
-          <div
-            v-for="item in cart.items"
-            :key="item.slug"
-            class="flex justify-between text-sm"
-          >
-            <span class="text-(--ui-text-muted)"
-              >{{ item.name }} × {{ item.quantity }}</span
-            >
-            <span class="font-medium text-(--ui-text-highlighted)">{{
-              format(item.unit_price * item.quantity)
-            }}</span>
-          </div>
-        </div>
-
-        <div
-          class="border-t border-dashed border-(--ui-border) pt-3 space-y-1"
-        >
-          <div class="flex justify-between font-bold text-lg">
-            <span>Total</span>
-            <span class="text-green-600 dark:text-green-400">{{
-              format(cart.grandTotal)
-            }}</span>
-          </div>
-          <div class="flex justify-between text-sm text-(--ui-text-muted)">
-            <span>Payment</span>
-            <span class="capitalize">{{ cart.paymentMethod }}</span>
-          </div>
-        </div>
-
-        <div class="flex justify-center pt-2">
-          <div class="p-3 bg-white rounded-lg">
-            <div
-              class="w-24 h-24 bg-gray-200 rounded flex items-center justify-center"
-            >
-              <UIcon
-                name="i-lucide-qr-code"
-                class="w-16 h-16 text-gray-600"
-              />
-            </div>
-          </div>
-        </div>
-
-        <p class="text-center text-xs text-(--ui-text-dimmed)">
-          Thank you for your purchase!
-        </p>
-
-        <div class="flex gap-2">
-          <UButton
-            block
-            variant="outline"
-            color="neutral"
-            :loading="isPrinting"
-            @click="handlePrintAndClose"
-          >
-            <UIcon
-              name="i-lucide-printer"
-              class="w-4 h-4 mr-1 text-emerald-400"
-            />
-            {{ isPrinterConnected ? "Print & Close" : "Pair & Print" }}
-          </UButton>
-          <UButton block color="primary" @click="finalizeAndReset(false)">
-            Done
-          </UButton>
-        </div>
-      </div>
-    </AppBottomSheet>
-
-    <PosPrinterSettingsModal v-model:open="showPrinterModal" />
-
-    <div
-      v-if="salesStore.isSyncing"
-      class="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm flex flex-col items-center justify-center text-white"
-    >
-      <UIcon
-        name="i-lucide-loader-2"
-        class="w-10 h-10 animate-spin text-green-500 mb-3"
+      <!-- Right Column: Cart Panel -->
+      <PosCartPanel
+        :selected-customer-name="selectedCustomerName"
+        :is-quota-blocked="isQuotaBlocked"
+        :quota-block-reason="quotaBlockReason"
+        :is-offline-lease-expired="isOfflineLeaseExpired"
+        :offline-disclaimer="offlineDisclaimer"
+        @link-customer="showCustomerSearch = true"
+        @complete-sale="handleCompleteSale"
       />
-      <p class="font-semibold text-lg">Syncing local sales...</p>
-      <p class="text-xs text-gray-400 mt-1">
-        Please wait while we sync offline data to the server
-      </p>
+
+      <!-- Customer Select Modal -->
+      <PosCustomerSelectModal
+        v-model:open="showCustomerSearch"
+        :customers="activeCustomers"
+        @select="handleSelectCustomer"
+      />
+
+      <!-- Receipt Preview & Print Modal -->
+      <PosReceiptModal
+        v-model:open="showReceipt"
+        :cart="cart"
+        :is-printing="isPrinting"
+        :is-printer-connected="isPrinterConnected"
+        @print-and-close="handlePrintAndClose"
+        @done="finalizeAndReset(false)"
+      />
+
+      <!-- Thermal Printer Settings Modal -->
+      <PosPrinterSettingsModal v-model:open="showPrinterModal" />
+
+      <!-- Offline Sync Overlay Indicator -->
+      <div
+        v-if="salesStore.isSyncing"
+        class="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm flex flex-col items-center justify-center text-white"
+      >
+        <UIcon
+          name="i-lucide-loader-2"
+          class="w-10 h-10 animate-spin text-green-500 mb-3"
+        />
+        <p class="font-semibold text-lg">Syncing local sales...</p>
+        <p class="text-xs text-gray-400 mt-1">
+          Please wait while we sync offline data to the server
+        </p>
+      </div>
     </div>
-  </div>
+
     <template #fallback>
       <div class="flex items-center justify-center min-h-[400px]">
         <UIcon name="i-lucide-loader" class="w-8 h-8 animate-spin text-primary-500" />

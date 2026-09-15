@@ -80,6 +80,7 @@ async def create_stock(
                 Stock.store_id == store.store_id
             )
         )
+
         if existing_barcode.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -411,7 +412,7 @@ async def delete_stock(
         target_id=stock.slug,
         target_name=stock.name,
         details={
-            "price": float(stock.price) if stock.price is not None else None,
+            "price": float(stock.unit_price) if stock.unit_price is not None else None,
             "quantities": float(stock.quantities) if stock.quantities is not None else None,
             "barcode_id": stock.barcode_id,
         },

@@ -1,10 +1,8 @@
 import { ref } from "vue";
-import { db, type LocalStaffMember } from "~/utils/db";
 
 export interface PinAuthOptions {
   title?: string;
   description?: string;
-  targetStaffId?: string;
   requiredPermission?: string;
 }
 
@@ -12,7 +10,6 @@ export interface PinModalState {
   isOpen: boolean;
   title: string;
   description: string;
-  targetStaffId?: string;
   requiredPermission?: string;
   resolve?: (value: boolean) => void;
 }
@@ -58,58 +55,10 @@ export function usePinAuth() {
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   }
 
-  async function verifyStaffPin(
-    pin: string,
-    staff: LocalStaffMember,
-  ): Promise<boolean> {
-    if (!staff.pin_hash || !staff.pin_salt) return false;
-    const computed = await computeSha256(pin, staff.pin_salt);
-    return computed === staff.pin_hash;
-  }
-
-  async function syncStaffCredentials(): Promise<void> {
-    const storeId = auth.store_id || auth.staff?.store_id;
-    if (auth.staff && auth.staff.staff_id && (auth.staff as any).pin_hash) {
-      try {
-        await db.staffMembers.put({
-          staff_id: auth.staff.staff_id,
-          first_name: auth.staff.first_name,
-          last_name: auth.staff.last_name,
-          role: auth.staff.role,
-          email: auth.staff.email,
-          permission: auth.staff.permission || [],
-          pin_hash: (auth.staff as any).pin_hash || null,
-          pin_salt: (auth.staff as any).pin_salt || null,
-          has_pin: true,
-          status: auth.staff.status,
-        });
-      } catch {}
-    }
-
-    if (!storeId || (typeof navigator !== "undefined" && !navigator.onLine))
-      return;
-    try {
-      const staffList = await api<any[]>(`/${storeId}/staff`);
-      if (Array.isArray(staffList) && staffList.length > 0) {
-        const localMembers: LocalStaffMember[] = staffList
-          .filter((s) => s && s.staff_id)
-          .map((s) => ({
-            staff_id: s.staff_id,
-            first_name: s.first_name,
-            last_name: s.last_name,
-            role: s.role,
-            email: s.email,
-            permission: s.permission || [],
-            pin_hash: s.pin_hash || null,
-            pin_salt: s.pin_salt || null,
-            has_pin: !!s.has_pin || !!s.pin_hash,
-            status: s.status,
-          }));
-        if (localMembers.length > 0) {
-          await db.staffMembers.bulkPut(localMembers);
-        }
-      }
-    } catch {}
+  async function verifyPin(pin: string): Promise<boolean> {
+    if (!auth.user?.pin_hash || !auth.user?.pin_salt) return false;
+    const computed = await computeSha256(pin, auth.user.pin_salt);
+    return computed === auth.user.pin_hash;
   }
 
   async function setPinOnline(
@@ -117,7 +66,6 @@ export function usePinAuth() {
   ): Promise<{ success: boolean; message?: string }> {
     const storeId =
       auth.store_id ||
-      auth.staff?.store_id ||
       (import.meta.client ? localStorage.getItem("pos_store_id") : null);
     if (!storeId) return { success: false, message: "No store ID found" };
     try {
@@ -138,41 +86,14 @@ export function usePinAuth() {
         res?.has_pin ||
         res?.message
       ) {
-        if (!auth.staff && import.meta.client) {
-          const cached = localStorage.getItem("pos_staff");
-          if (cached) {
-            try {
-              auth.staff = JSON.parse(cached);
-            } catch {}
-          }
-        }
-        if (auth.staff) {
-          auth.staff.has_pin = true;
-          auth.staff.pin_hash = res.pin_hash || null;
-          auth.staff.pin_salt = res.pin_salt || null;
+        if (auth.user) {
+          auth.user.has_pin = true;
+          auth.user.pin_hash = res.pin_hash || null;
+          auth.user.pin_salt = res.pin_salt || null;
           if (import.meta.client) {
-            localStorage.setItem("pos_staff", JSON.stringify(auth.staff));
+            localStorage.setItem("pos_user", JSON.stringify(auth.user));
             localStorage.setItem("has_set_pin", "true");
           }
-          if (res.pin_hash && res.pin_salt && auth.staff.staff_id) {
-            try {
-              await db.staffMembers.put({
-                staff_id: auth.staff.staff_id,
-                first_name: auth.staff.first_name,
-                last_name: auth.staff.last_name,
-                role: auth.staff.role,
-                email: auth.staff.email,
-                permission: auth.staff.permission || [],
-                pin_hash: res.pin_hash,
-                pin_salt: res.pin_salt,
-                has_pin: true,
-                status: auth.staff.status,
-              });
-            } catch {}
-          }
-        }
-        if (import.meta.client) {
-          localStorage.setItem("has_set_pin", "true");
         }
         return {
           success: true,
@@ -193,9 +114,9 @@ export function usePinAuth() {
 
   function requirePinAuth(options?: PinAuthOptions): Promise<boolean> {
     if (
-      auth.staff &&
-      !auth.staff.has_pin &&
-      !(auth.staff as any)?.pin_hash &&
+      auth.user &&
+      !auth.user.has_pin &&
+      !auth.user.pin_hash &&
       localStorage.getItem("has_set_pin") !== "true"
     ) {
       openSetPinModal();
@@ -209,7 +130,6 @@ export function usePinAuth() {
         description:
           options?.description ||
           "Enter your 4-digit PIN to authorize this action",
-        targetStaffId: options?.targetStaffId,
         requiredPermission: options?.requiredPermission,
         resolve,
       };
@@ -269,8 +189,7 @@ export function usePinAuth() {
     setTerminalUnlockProof,
     clearTerminalUnlockProof,
     computeSha256,
-    verifyStaffPin,
-    syncStaffCredentials,
+    verifyPin,
     setPinOnline,
     requirePinAuth,
     withPinAuth,

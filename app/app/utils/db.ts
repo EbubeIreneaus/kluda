@@ -35,9 +35,9 @@ export interface LocalProduct {
 export interface LocalCustomer {
   customer_id: string
   fullname: string
-  email: string
-  phone: string
-  address: string
+  email?: string
+  phone?: string
+  address?: string
   status: string
   created_at: string
 }
@@ -50,19 +50,6 @@ export interface LocalDebtor {
   note: string
   status: string
   created_at: string
-}
-
-export interface LocalStaffMember {
-  staff_id: string
-  first_name: string
-  last_name: string
-  role: string
-  email: string
-  permission: string[]
-  pin_hash: string | null
-  pin_salt: string | null
-  has_pin: boolean
-  status: string
 }
 
 export interface LocalSale {
@@ -96,7 +83,6 @@ export class POSDatabase extends Dexie {
   customers!: Table<LocalCustomer, string>
   salesCache!: Table<LocalSale, string>
   debtors!: Table<LocalDebtor, string>
-  staffMembers!: Table<LocalStaffMember, string>
 
   constructor(dbName = 'RetailPOS_DB') {
     super(dbName)
@@ -114,6 +100,9 @@ export class POSDatabase extends Dexie {
       salesCache:   'sale_id, date',
       debtors:      'debtor_id',
       staffMembers: 'staff_id, role',
+    })
+    this.version(3).stores({
+      staffMembers: null,
     })
   }
 }

@@ -26,9 +26,7 @@ const search = ref('')
 const showAddStaffModal = ref(false)
 
 const canAddStaff = computed(() => {
-  if (auth.isOwner) return true
-  const perms = auth.staff?.permission || []
-  return perms.includes('create:staff') || perms.includes('manage:all') || perms.includes('manage:staff')
+  return auth.hasPermission('create:staff') || auth.hasPermission('manage:staff')
 })
 
 const statusColors: Record<string, string> = {
@@ -38,12 +36,12 @@ const statusColors: Record<string, string> = {
 }
 
 function getStaffUrl(path = '') {
-  const storeId = auth.store_id || auth.staff?.store_id || ''
+  const storeId = auth.store_id || ''
   return `${apiBase}/${storeId}/staff${path}`
 }
 
 async function fetchStaffs() {
-  const storeId = auth.store_id || auth.staff?.store_id
+  const storeId = auth.store_id
   if (!storeId) return
 
   isLoading.value = true
@@ -353,7 +351,7 @@ onMounted(() => {
 
     <StaffCreateModal
       v-model="showAddStaffModal"
-      :store-id="auth.store_id || auth.staff?.store_id"
+      :store-id="auth.store_id || undefined"
       @created="fetchStaffs"
     />
   </div>

@@ -211,10 +211,10 @@ class PasswordResetSubmitRequest(BaseModel):
 
 
 class CustomerCreate(BaseModel):
-    fullname: str | None = None
+    fullname: str
     phone: str | None = None
     address: str | None = None
-    email: EmailStr
+    email: EmailStr | None = None
     status: CustomerStatus = CustomerStatus.ACTIVE
 
 
@@ -233,7 +233,7 @@ class CustomerResponse(BaseModel):
     fullname: str | None = None
     phone: str | None = None
     address: str | None = None
-    email: EmailStr
+    email: EmailStr | None
     status: CustomerStatus | str
     created_at: datetime
 
@@ -241,12 +241,14 @@ class CustomerResponse(BaseModel):
 class DebtCreate(BaseModel):
     customer_id: uuid.UUID | None = None
     amount: int
+    note: str | None = None
     status: str = "unpaid"
     staff_note: str | None = None
 
 
 class DebtUpdate(BaseModel):
     amount: int | None = None
+    note: str | None = None
     status: str | None = None
     staff_note: str | None = None
 
@@ -255,9 +257,11 @@ class DebtResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     debt_id: uuid.UUID
-    customer: CustomerResponse
+    customer: CustomerResponse | None = None
     amount: int
+    note: str | None = None
     status: str
     staff_note: str | None = None
+    store_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime

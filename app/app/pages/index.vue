@@ -70,11 +70,9 @@ const totalProducts = computed(() => {
 });
 
 const staffName = computed(() => {
-  if (auth.staff) {
-    const name =
-      `${auth.staff.first_name || ""} ${auth.staff.last_name || ""}`.trim();
-    if (name) return name;
-    if (auth.staff.role === "owner") return "Store Owner";
+  if (auth.user) {
+    if (auth.user.fullname) return auth.user.fullname;
+    if (auth.user.role === "owner") return "Store Owner";
   }
   return "Store Cashier";
 });

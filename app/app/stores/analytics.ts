@@ -55,7 +55,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         params.date_to = dateTo
       }
 
-      const storeId = auth.store_id || auth.staff?.store_id || ''
+      const storeId = auth.store_id || ''
       const query = new URLSearchParams(params).toString()
       const result = await $fetch<AnalyticsData>(`${apiBase}/${storeId}/sales/analytics?${query}`, {
         headers: { Authorization: `Bearer ${auth.token ?? ''}` }

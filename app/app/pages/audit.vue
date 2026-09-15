@@ -10,7 +10,7 @@ const canViewAudit = computed(() => {
 })
 
 const effectiveStoreId = computed(() => {
-  return auth.store_id || auth.staff?.store_id || ''
+  return auth.store_id || ''
 })
 
 const loading = ref(false)
