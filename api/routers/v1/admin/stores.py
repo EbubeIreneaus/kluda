@@ -190,7 +190,9 @@ async def admin_reset_store_demo_data(
     db: AsyncSession = Depends(get_db),
     admin: Admin = Depends(require_admin_permission(AdminPermission.MANAGE_STORES)),
 ):
-    result = await execute_demo_reset(db=db, store_id=store_id, wipe_mode=payload.wipe_mode)
+    result = await execute_demo_reset(
+        db=db, store_id=store_id, wipe_mode=payload.wipe_mode, bypass_allowlist=True
+    )
     await record_audit_log(
         db=db,
         admin_id=admin.admin_id,

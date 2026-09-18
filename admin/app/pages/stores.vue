@@ -1,6 +1,7 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 const { apiFetch } = useAdminApi()
 const { canManageStores } = useAdminPermission()
+const toast = useToast()
 
 interface StoreStaffItem {
   id: number
@@ -40,6 +41,9 @@ const selectedStatus = ref('')
 const selectedStore = ref<StoreDetail | null>(null)
 const isDetailOpen = ref(false)
 const isUpdating = ref(false)
+const isResetting = ref(false)
+const wipeMode = ref<'sales_only' | 'full_wipe'>('sales_only')
+const confirmStoreNameInput = ref('')
 
 function isActive(status?: string | null) {
   return (status || '').toLowerCase() === 'active'
@@ -63,11 +67,59 @@ async function fetchStores() {
 
 async function viewStore(store: any) {
   try {
+    confirmStoreNameInput.value = ''
+    wipeMode.value = 'sales_only'
     const detail = await apiFetch<StoreDetail>(`/admin/stores/${store.store_id}`)
     selectedStore.value = detail
     isDetailOpen.value = true
   } catch {
     // ignore
+  }
+}
+
+async function executeStoreReset() {
+  if (!selectedStore.value) return
+  if (confirmStoreNameInput.value.trim().toLowerCase() !== selectedStore.value.name.trim().toLowerCase()) {
+    toast.add({
+      title: 'Store Name Mismatch',
+      description: `Please type "${selectedStore.value.name}" exactly to confirm deletion.`,
+      color: 'warning'
+    })
+    return
+  }
+
+  isResetting.value = true
+  try {
+    const result = await apiFetch<any>(`/admin/stores/${selectedStore.value.store_id}/reset-demo-data`, {
+      method: 'POST',
+      body: { wipe_mode: wipeMode.value }
+    })
+
+    const deleted = result.deleted_counts || {}
+    const countsMsg = [
+      `${deleted.sales || 0} sales`,
+      `${deleted.debts || 0} debts`,
+      `${deleted.stock_histories || 0} ledger logs`,
+      wipeMode.value === 'full_wipe' ? `${deleted.products || 0} products, ${deleted.customers || 0} customers` : null
+    ].filter(Boolean).join(', ')
+
+    toast.add({
+      title: 'Store Records Wiped',
+      description: `Successfully wiped: ${countsMsg}.`,
+      color: 'success'
+    })
+
+    confirmStoreNameInput.value = ''
+    await viewStore(selectedStore.value)
+    await fetchStores()
+  } catch (err: any) {
+    toast.add({
+      title: 'Failed to Reset Store',
+      description: err?.data?.detail || err?.message || 'An error occurred during data wipe.',
+      color: 'error'
+    })
+  } finally {
+    isResetting.value = false
   }
 }
 
@@ -354,6 +406,76 @@ watch([search, selectedStatus], () => {
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Danger Zone: Store Data & Records Purge -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-rose-950/20 border border-rose-900/40 flex flex-col gap-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <div class="size-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+                <UIcon name="i-lucide-alert-triangle" class="size-4 text-rose-400" />
+              </div>
+              <div>
+                <h4 class="font-bold text-rose-300 text-sm">Danger Zone: Store Data & Records Purge</h4>
+                <p class="text-zinc-400 text-xs mt-0.5">Administrative purge of sales, debt records, or entire store account data</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider bg-rose-500/10 text-rose-400 border-rose-500/20">
+              Admin Only
+            </span>
+          </div>
+
+          <div class="text-xs text-zinc-300 space-y-3 bg-zinc-950/60 p-4 rounded-xl border border-rose-900/30">
+            <div class="font-semibold text-zinc-200">Select Wipe Mode:</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label 
+                class="flex flex-col gap-1 p-3 rounded-xl border cursor-pointer transition-all"
+                :class="wipeMode === 'sales_only' ? 'bg-rose-950/40 border-rose-500 text-white' : 'bg-zinc-900/40 border-zinc-800 text-zinc-400 hover:border-zinc-700'"
+              >
+                <div class="flex items-center gap-2 font-medium text-xs">
+                  <input type="radio" v-model="wipeMode" value="sales_only" class="text-rose-500 focus:ring-rose-500" />
+                  <span>Records Only (Sales & Debts)</span>
+                </div>
+                <span class="text-[11px] text-zinc-500 ml-5">Wipes sales transactions, debt ledgers, and stock audits. Preserves inventory products and customers.</span>
+              </label>
+
+              <label 
+                class="flex flex-col gap-1 p-3 rounded-xl border cursor-pointer transition-all"
+                :class="wipeMode === 'full_wipe' ? 'bg-rose-950/40 border-rose-500 text-white' : 'bg-zinc-900/40 border-zinc-800 text-zinc-400 hover:border-zinc-700'"
+              >
+                <div class="flex items-center gap-2 font-medium text-xs">
+                  <input type="radio" v-model="wipeMode" value="full_wipe" class="text-rose-500 focus:ring-rose-500" />
+                  <span>Full Store Wipe (Purge All)</span>
+                </div>
+                <span class="text-[11px] text-zinc-500 ml-5">Completely purges sales, debts, ledger history, all stock items/products, and customer profiles.</span>
+              </label>
+            </div>
+
+            <!-- Confirmation safety step -->
+            <div class="pt-3 flex flex-col gap-2 border-t border-zinc-800/80">
+              <p class="text-xs text-zinc-400">
+                To confirm this destructive action, type the store name <span class="font-mono font-semibold text-rose-400 select-all">{{ selectedStore.name }}</span> below:
+              </p>
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <UInput
+                  v-model="confirmStoreNameInput"
+                  :placeholder="`Type '${selectedStore.name}' to confirm`"
+                  size="sm"
+                  class="flex-1"
+                  :disabled="isResetting || !canManageStores"
+                />
+                <UButton
+                  label="Purge Store Data"
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  size="sm"
+                  :disabled="!canManageStores || isResetting || confirmStoreNameInput.trim().toLowerCase() !== selectedStore.name.trim().toLowerCase()"
+                  :loading="isResetting"
+                  @click="executeStoreReset"
+                />
+              </div>
             </div>
           </div>
         </div>
