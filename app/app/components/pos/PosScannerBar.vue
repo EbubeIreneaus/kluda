@@ -55,7 +55,7 @@ function focusBarcode() {
     const inputEl =
       barcodeRef.value?.$el?.querySelector("input") || barcodeRef.value?.$el;
     if (inputEl && typeof inputEl.focus === "function") {
-      inputEl.focus();
+      // inputEl.focus();
     }
   });
 }
@@ -197,6 +197,7 @@ defineExpose({
         />
         <div class="flex-1 scanner-active rounded-xl">
           <UInput
+            :autofocus="false"
             ref="barcodeRef"
             v-model="searchQuery"
             placeholder="Enter name or scan barcode..."
