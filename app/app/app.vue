@@ -33,34 +33,6 @@ useSeoMeta({
 
 const isAppReady = ref(true)
 const auth = useAuthStore()
-const { openSetPinModal, checkTerminalLock } = usePinAuth()
-
-onMounted(async () => {
-  if (auth.isLoggedIn) {
-    checkTerminalLock()
-    checkPinStatus()
-  }
-})
-
-watch(() => auth.isLoggedIn, async (loggedIn) => {
-  if (loggedIn) {
-    checkTerminalLock()
-    checkPinStatus()
-  }
-})
-
-function checkPinStatus() {
-  if (
-    auth.isLoggedIn &&
-    auth.user &&
-    !auth.user.has_pin &&
-    !auth.user.pin_hash &&
-    import.meta.client &&
-    localStorage.getItem('has_set_pin') !== 'true'
-  ) {
-    openSetPinModal()
-  }
-}
 </script>
 
 <template>
@@ -68,10 +40,6 @@ function checkPinStatus() {
     <VitePwaManifest />
     <PwaUpdateBanner />
     <PwaInstallModal />
-    <PwaStandaloneGatekeeper />
-    <TerminalLockScreen />
-    <PinAuthModal />
-    <SetPinModal />
     <NetworkStatusBar />
     <NuxtLoadingIndicator color="#10b981" :height="3" />
 

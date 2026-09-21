@@ -30,7 +30,7 @@ function checkInstallState() {
   // On real iOS devices, show modal since iOS doesn't have beforeinstallprompt
   if (isAppleMobile) {
     setTimeout(() => {
-      if (!isInstalled.value) {
+      if (!isInstalled.value && sessionStorage.getItem('dismissed_pwa_prompt') !== 'true') {
         isModalOpen.value = true
       }
     }, 1200)
@@ -44,7 +44,7 @@ onMounted(() => {
   window.addEventListener('beforeinstallprompt', (e: any) => {
     e.preventDefault()
     deferredPrompt.value = e
-    if (!isInstalled.value) {
+    if (!isInstalled.value && sessionStorage.getItem('dismissed_pwa_prompt') !== 'true') {
       isModalOpen.value = true
     }
   })
@@ -72,6 +72,9 @@ async function handleInstall() {
 
 function handleDismiss() {
   isModalOpen.value = false
+  if (import.meta.client) {
+    sessionStorage.setItem('dismissed_pwa_prompt', 'true')
+  }
 }
 </script>
 

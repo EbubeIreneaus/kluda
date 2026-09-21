@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { getStockBadge, type ProductItem } from '~/components/products/types'
 import AddProductSheet from '~/components/products/AddProductSheet.vue'
 import EditProductSheet from '~/components/products/EditProductSheet.vue'
@@ -38,6 +38,76 @@ const products = computed<ProductItem[]>(() => {
     status: p.deleted ? 'inactive' : 'active',
     description: p.description || ''
   }))
+})
+
+// Store Inventory Valuation (Store Worth)
+const canViewStoreWorth = computed(() => {
+  return auth.isOwner || auth.hasPermission('view:profit') || auth.hasPermission('view:analytics') || auth.hasPermission('manage:all')
+})
+const isWorthVisible = ref(true)
+
+const activeProducts = computed(() => products.value.filter(p => p.status === 'active'))
+
+const totalRetailWorth = computed(() => {
+  return activeProducts.value.reduce((sum, p) => {
+    const qty = Math.max(0, Number(p.quantity) || 0)
+    return sum + (qty * (p.price || 0))
+  }, 0)
+})
+
+const totalCostWorth = computed(() => {
+  return activeProducts.value.reduce((sum, p) => {
+    const qty = Math.max(0, Number(p.quantity) || 0)
+    const cost = p.cost_price && p.cost_price > 0 ? p.cost_price : 0
+    return sum + (qty * cost)
+  }, 0)
+})
+
+const totalStockUnits = computed(() => {
+  return activeProducts.value.reduce((sum, p) => {
+    return sum + Math.max(0, Number(p.quantity) || 0)
+  }, 0)
+})
+
+const potentialProfit = computed(() => {
+  if (totalCostWorth.value <= 0) return 0
+  return Math.max(0, totalRetailWorth.value - totalCostWorth.value)
+})
+
+const potentialMarginPct = computed(() => {
+  if (totalRetailWorth.value <= 0 || totalCostWorth.value <= 0) return 0
+  return Math.round((potentialProfit.value / totalRetailWorth.value) * 100)
+})
+
+const activeTooltip = ref<'worth' | 'cost' | 'profit' | 'stock' | null>(null)
+
+const metricExplanations: Record<string, { title: string; desc: string }> = {
+  worth: {
+    title: 'Store Worth (Selling Value)',
+    desc: 'The total money you will make if you sell every single item currently in your shop at your set selling prices.'
+  },
+  cost: {
+    title: 'Cost Capital (Money Invested)',
+    desc: 'The actual money you spent buying the goods currently in your shop from suppliers (Cost Price × Quantity).'
+  },
+  profit: {
+    title: 'Expected Profit',
+    desc: 'The take-home profit you will make after selling all items in stock, once you recover what you spent buying them.'
+  },
+  stock: {
+    title: 'Total Stock',
+    desc: 'The total number of physical pieces/units currently on your shelves across all products.'
+  }
+}
+
+function toggleMetricTooltip(metric: 'worth' | 'cost' | 'profit' | 'stock') {
+  activeTooltip.value = activeTooltip.value === metric ? null : metric
+}
+
+onMounted(() => {
+  if (!productStore.products.length) {
+    productStore.fetchProducts()
+  }
 })
 
 const filteredProducts = computed(() => {
@@ -128,6 +198,142 @@ async function confirmDelete(product: ProductItem) {
           Add Product
         </UButton>
       </div>
+    </div>
+
+    <!-- High-Contrast Store Valuation Banner with Layman Tooltips -->
+    <div
+      v-if="canViewStoreWorth && products.length > 0"
+      class="rounded-2xl border border-emerald-300/80 dark:border-emerald-500/30 bg-linear-to-r from-emerald-50/90 via-white to-emerald-50/60 dark:from-emerald-950/60 dark:via-zinc-900 dark:to-zinc-900 px-4 py-3 text-xs shadow-xs dark:shadow-md transition-colors"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <!-- Store Worth (Primary) -->
+        <div class="flex items-center gap-3">
+          <div class="size-8 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-300/80 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30 flex items-center justify-center shrink-0 shadow-xs">
+            <UIcon name="i-lucide-vault" class="size-4.5" />
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+              Store Worth:
+            </span>
+            <span class="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+              <template v-if="isWorthVisible">{{ format(totalRetailWorth) }}</template>
+              <template v-else>••••••••</template>
+            </span>
+            <button
+              type="button"
+              class="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors p-1 rounded-md hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60"
+              :title="isWorthVisible ? 'Hide Worth' : 'Show Worth'"
+              @click="isWorthVisible = !isWorthVisible"
+            >
+              <UIcon :name="isWorthVisible ? 'i-lucide-eye' : 'i-lucide-eye-off'" class="size-3.5" />
+            </button>
+            <button
+              type="button"
+              class="text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors p-1 rounded-md hover:bg-emerald-100/60 dark:hover:bg-zinc-800/60"
+              :class="{ 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10': activeTooltip === 'worth' }"
+              title="Click to explain Store Worth"
+              @click="toggleMetricTooltip('worth')"
+            >
+              <UIcon name="i-lucide-info" class="size-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Secondary Metrics with High Contrast & Info Buttons -->
+        <div class="flex items-center gap-4 sm:gap-6 text-xs text-zinc-700 dark:text-zinc-300 flex-wrap">
+          <!-- Cost Capital -->
+          <div v-if="totalCostWorth > 0" class="flex items-center gap-1.5">
+            <span class="text-zinc-600 dark:text-zinc-400 font-semibold">Cost Capital:</span>
+            <span class="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
+              <template v-if="isWorthVisible">{{ format(totalCostWorth) }}</template>
+              <template v-else>••••••</template>
+            </span>
+            <button
+              type="button"
+              class="text-zinc-400 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors p-0.5 rounded hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+              :class="{ 'text-emerald-600 dark:text-emerald-400': activeTooltip === 'cost' }"
+              title="Click to explain Cost Capital"
+              @click="toggleMetricTooltip('cost')"
+            >
+              <UIcon name="i-lucide-info" class="size-3.5" />
+            </button>
+          </div>
+
+          <!-- Expected Profit -->
+          <div v-if="potentialProfit > 0" class="flex items-center gap-1.5">
+            <span class="text-zinc-600 dark:text-zinc-400 font-semibold">Expected Profit:</span>
+            <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+              <template v-if="isWorthVisible">{{ format(potentialProfit) }}</template>
+              <template v-else>••••••</template>
+            </span>
+            <span v-if="isWorthVisible && potentialMarginPct > 0" class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300/80 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/25 px-1.5 py-0.5 rounded font-bold">
+              +{{ potentialMarginPct }}%
+            </span>
+            <button
+              type="button"
+              class="text-zinc-400 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors p-0.5 rounded hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+              :class="{ 'text-emerald-600 dark:text-emerald-400': activeTooltip === 'profit' }"
+              title="Click to explain Expected Profit"
+              @click="toggleMetricTooltip('profit')"
+            >
+              <UIcon name="i-lucide-info" class="size-3.5" />
+            </button>
+          </div>
+
+          <!-- Total Stock Units -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-zinc-600 dark:text-zinc-400 font-semibold">Total Stock:</span>
+            <span class="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
+              {{ totalStockUnits.toLocaleString() }}
+            </span>
+            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">units</span>
+            <button
+              type="button"
+              class="text-zinc-400 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors p-0.5 rounded hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+              :class="{ 'text-emerald-600 dark:text-emerald-400': activeTooltip === 'stock' }"
+              title="Click to explain Total Stock"
+              @click="toggleMetricTooltip('stock')"
+            >
+              <UIcon name="i-lucide-info" class="size-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expandable Layman Tooltip Ribbon on Click -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        enter-from-class="opacity-0 -translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-all duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-1"
+      >
+        <div
+          v-if="activeTooltip && metricExplanations[activeTooltip]"
+          class="mt-3 pt-2.5 flex items-start justify-between gap-3 text-xs bg-emerald-50/90 dark:bg-zinc-950/80 p-2.5 rounded-xl border border-emerald-200/80 dark:border-zinc-800 shadow-xs"
+        >
+          <div class="flex items-start gap-2.5">
+            <UIcon name="i-lucide-info" class="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+            <div class="space-y-0.5">
+              <span class="font-bold text-zinc-900 dark:text-white tracking-wide">
+                {{ metricExplanations[activeTooltip]?.title }}:
+              </span>
+              <p class="text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                {{ metricExplanations[activeTooltip]?.desc }}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="text-zinc-400 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white p-1 rounded-md hover:bg-zinc-200/60 dark:hover:bg-zinc-800/50 transition-colors shrink-0"
+            title="Dismiss explanation"
+            @click="activeTooltip = null"
+          >
+            <UIcon name="i-lucide-x" class="size-3.5" />
+          </button>
+        </div>
+      </Transition>
     </div>
 
     <!-- Search bar -->

@@ -113,45 +113,21 @@ export function usePinAuth() {
   }
 
   function requirePinAuth(options?: PinAuthOptions): Promise<boolean> {
-    if (
-      auth.user &&
-      !auth.user.has_pin &&
-      !auth.user.pin_hash &&
-      localStorage.getItem("has_set_pin") !== "true"
-    ) {
-      openSetPinModal();
-      return Promise.resolve(false);
-    }
-
-    return new Promise((resolve) => {
-      modalState.value = {
-        isOpen: true,
-        title: options?.title || "Enter Terminal PIN",
-        description:
-          options?.description ||
-          "Enter your 4-digit PIN to authorize this action",
-        requiredPermission: options?.requiredPermission,
-        resolve,
-      };
-    });
+    // PIN UI currently bypassed: auto-authorize to prevent modal popups
+    return Promise.resolve(true);
   }
 
   async function withPinAuth<T>(
     action: () => T | Promise<T>,
     options?: PinAuthOptions,
   ): Promise<T | null> {
-    const isAuthorized = await requirePinAuth(options);
-    if (!isAuthorized) return null;
+    // PIN UI currently bypassed: execute action directly without modal
     return await action();
   }
 
   function checkTerminalLock() {
-    if (import.meta.client && auth.isLoggedIn) {
-      const isUnlocked = sessionStorage.getItem("pos_unlocked") === "true";
-      if (!isUnlocked) {
-        isTerminalLocked.value = true;
-      }
-    }
+    // PIN UI currently bypassed: keep terminal unlocked
+    isTerminalLocked.value = false;
   }
 
   function unlockTerminal(proof?: string | null) {
