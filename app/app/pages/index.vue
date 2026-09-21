@@ -17,6 +17,7 @@ const {
 } = useSubscription();
 
 onMounted(() => {
+  fetchCurrentSubscription();
   salesStore.init();
   productStore.fetchProducts();
 });
