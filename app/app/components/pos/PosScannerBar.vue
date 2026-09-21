@@ -10,6 +10,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "scan-barcode", code: string): void;
   (e: "add-product", product: any): void;
+  (e: "quick-add-typed", query: string): void;
   (e: "open-printer"): void;
 }>();
 
@@ -97,6 +98,14 @@ function handleSelectSearchProduct(product: any) {
   searchQuery.value = "";
   showSearchResults.value = false;
   focusBarcode();
+}
+
+function handleQuickAddTyped() {
+  const q = searchQuery.value.trim();
+  if (!q) return;
+  emit("quick-add-typed", q);
+  searchQuery.value = "";
+  showSearchResults.value = false;
 }
 
 function handleSearchBlur() {
@@ -275,7 +284,7 @@ defineExpose({
       <!-- Search Results Dropdown -->
       <Transition name="fade">
         <div
-          v-if="showSearchResults && searchResults.length"
+          v-if="showSearchResults && (searchResults.length > 0 || searchQuery.trim().length >= 2)"
           class="absolute top-full left-0 right-0 z-50 mt-2 w-full rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) shadow-2xl overflow-hidden max-h-72 overflow-y-auto"
         >
           <button
@@ -299,6 +308,21 @@ defineExpose({
               {{ format(product.unit_price) }}
             </span>
           </button>
+
+          <!-- Quick Add option at bottom of suggestions -->
+          <div
+            v-if="searchQuery.trim().length >= 2"
+            class="p-2 border-t border-(--ui-border)/60 bg-(--ui-bg-accented)/40"
+          >
+            <button
+              type="button"
+              class="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-xs font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-500/10 transition cursor-pointer"
+              @mousedown.prevent="handleQuickAddTyped"
+            >
+              <UIcon name="i-lucide-plus-circle" class="size-4 shrink-0" />
+              <span>Quick add "<strong>{{ searchQuery.trim() }}</strong>" to cart & store</span>
+            </button>
+          </div>
         </div>
       </Transition>
     </div>

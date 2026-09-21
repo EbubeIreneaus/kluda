@@ -17,6 +17,7 @@ const salesStore = useSalesStore();
 const productStore = useProductsStore();
 const auth = useAuthStore();
 const toast = useToast();
+const { showToast: showAndroidToast } = useAndroidToast();
 
 const {
   isQuotaBlocked,
@@ -43,6 +44,9 @@ const scannerBarRef = ref<InstanceType<typeof PosScannerBar>>();
 const showReceipt = ref(false);
 const showCustomerSearch = ref(false);
 const showPrinterModal = ref(false);
+const showQuickAddModal = ref(false);
+const quickAddBarcode = ref<string | null>(null);
+const quickAddInitialName = ref("");
 
 const currentStore = computed(() => {
   return (
@@ -112,13 +116,42 @@ function handleScannedBarcode(code: string) {
       }
     } catch (e) {}
 
-    toast.add({
-      title: "Barcode Not Found",
-      description: `No product matches barcode: ${code}`,
-      color: "error",
-      icon: "i-lucide-alert-circle",
-    });
+    quickAddBarcode.value = code;
+    quickAddInitialName.value = "";
+    showQuickAddModal.value = true;
   }
+}
+
+function handleQuickAddTyped(query: string) {
+  quickAddBarcode.value = null;
+  quickAddInitialName.value = query;
+  showQuickAddModal.value = true;
+}
+
+function onQuickProductAdded(newProduct: any) {
+  cart.addItem({
+    slug: newProduct.slug,
+    name: newProduct.name,
+    unit_price: newProduct.unit_price,
+    barcode_id: newProduct.barcode_id || undefined,
+    new_product: newProduct.is_offline_new
+      ? {
+          name: newProduct.name,
+          barcode_id: newProduct.barcode_id || null,
+          unit_in: newProduct.unit_in || "pcs",
+          unit_price: newProduct.unit_price,
+          cost_price: newProduct.cost_price || 0,
+        }
+      : undefined,
+  });
+
+  playScanSound(true);
+
+  try {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(200);
+    }
+  } catch (e) {}
 }
 
 function handleQuickAdd(product: any) {
@@ -218,15 +251,29 @@ async function finalizeAndReset(shouldPrint = false) {
     total: cart.grandTotal / 100,
   };
 
-  const saleData = {
-    idempotency_key: key,
-    items: cart.items.map((item) => ({
+  const cleanItems = cart.items.map((item) => {
+    const itemData: any = {
       stock_slug: item.slug,
       amount: item.unit_price,
       quantities: item.quantity,
-    })),
-    discount: cart.discount,
-    customer_id: cart.customerId,
+    };
+    if (item.new_product) {
+      itemData.new_product = {
+        name: item.new_product.name,
+        barcode_id: item.new_product.barcode_id || null,
+        unit_in: item.new_product.unit_in || "piece",
+        unit_price: Number(item.new_product.unit_price),
+        cost_price: Number(item.new_product.cost_price || 0),
+      };
+    }
+    return itemData;
+  });
+
+  const saleData = {
+    idempotency_key: key,
+    items: cleanItems,
+    discount: cart.discount || 0,
+    customer_id: cart.customerId || null,
     payment_method: cart.paymentMethod,
     amount_recived: cart.amountReceived,
     staff_note: cart.staffNote || null,
@@ -240,12 +287,7 @@ async function finalizeAndReset(shouldPrint = false) {
   }
 
   showReceipt.value = false;
-  toast.add({
-    title: "Sale completed!",
-    description: "Transaction recorded successfully",
-    color: "success",
-    icon: "i-lucide-check-circle",
-  });
+  showAndroidToast("Sale completed", "i-lucide-check-circle");
   cart.clearCart();
   focusBarcode();
 }
@@ -277,6 +319,7 @@ onMounted(() => {
           class="shrink-0"
           @scan-barcode="handleScannedBarcode"
           @add-product="handleQuickAdd"
+          @quick-add-typed="handleQuickAddTyped"
           @open-printer="showPrinterModal = true"
         />
 
@@ -317,6 +360,14 @@ onMounted(() => {
 
       <!-- Thermal Printer Settings Modal -->
       <PosPrinterSettingsModal v-model:open="showPrinterModal" />
+
+      <!-- Quick Add Scan / Unlisted Product Modal -->
+      <PosQuickAddScanModal
+        v-model:open="showQuickAddModal"
+        :barcode="quickAddBarcode"
+        :initial-name="quickAddInitialName"
+        @product-added="onQuickProductAdded"
+      />
 
       <!-- Non-Blocking Offline Sync Status Indicator -->
       <Transition

@@ -205,7 +205,18 @@ export const useSalesStore = defineStore('sales', () => {
   }
 
   async function recordSale(payload: {
-    items: { stock_slug: string; quantities: number; amount: number }[]
+    items: {
+      stock_slug: string
+      quantities: number
+      amount: number
+      new_product?: {
+        name: string
+        barcode_id?: string | null
+        unit_in?: string
+        unit_price: number
+        cost_price?: number
+      }
+    }[]
     discount: number
     payment_method: 'cash' | 'pos' | 'debt' | 'transfer' | 'online'
     amount_recived: number
@@ -219,10 +230,26 @@ export const useSalesStore = defineStore('sales', () => {
       throw new Error(sub.quotaBlockReason.value || 'Sales limit reached or offline lease expired')
     }
 
-    const newSale: PendingSale = {
+    const rawSale: PendingSale = {
       idempotency_key: payload.idempotency_key || crypto.randomUUID(),
-      items: payload.items,
-      discount: payload.discount,
+      items: payload.items.map((item) => {
+        const itemObj: any = {
+          stock_slug: item.stock_slug,
+          amount: item.amount,
+          quantities: item.quantities,
+        }
+        if (item.new_product) {
+          itemObj.new_product = {
+            name: item.new_product.name,
+            barcode_id: item.new_product.barcode_id || null,
+            unit_in: item.new_product.unit_in || 'piece',
+            unit_price: Number(item.new_product.unit_price),
+            cost_price: Number(item.new_product.cost_price || 0),
+          }
+        }
+        return itemObj
+      }),
+      discount: payload.discount || 0,
       payment_method: payload.payment_method,
       amount_recived: payload.amount_recived,
       customer_id: payload.customer_id || null,
@@ -230,6 +257,8 @@ export const useSalesStore = defineStore('sales', () => {
       created_at: new Date().toISOString(),
       status: 'completed'
     }
+
+    const newSale: PendingSale = JSON.parse(JSON.stringify(rawSale))
 
     await db.pendingSales.add(newSale)
     const storeId = auth.store_id
@@ -239,7 +268,7 @@ export const useSalesStore = defineStore('sales', () => {
 
     const formattedLocalSale = mapPendingToLocalSale(newSale)
     sales.value = [formattedLocalSale, ...sales.value]
-    await db.salesCache.put(formattedLocalSale)
+    await db.salesCache.put(JSON.parse(JSON.stringify(formattedLocalSale)))
 
     const productStore = useProductsStore()
     await productStore.deductStock(newSale.items)
@@ -360,13 +389,8 @@ export const useSalesStore = defineStore('sales', () => {
       }
 
       if (totalSyncedCount > 0 && typeof window !== 'undefined' && localStorage.getItem('pos_offline_alerts') !== 'false') {
-        const toast = useToast()
-        toast.add({
-          title: 'Offline Sales Synced',
-          description: `${totalSyncedCount} offline transaction${totalSyncedCount > 1 ? 's' : ''} uploaded to cloud.`,
-          color: 'success',
-          icon: 'i-lucide-cloud-upload'
-        })
+        const { showToast } = useAndroidToast()
+        showToast(`${totalSyncedCount} sale${totalSyncedCount > 1 ? 's' : ''} synced to cloud`, 'i-lucide-cloud')
       }
     } finally {
       isSyncing.value = false
@@ -376,6 +400,12 @@ export const useSalesStore = defineStore('sales', () => {
   watch(isOnline, (online) => {
     if (online) {
       syncPendingSales()
+    }
+  })
+
+  watch(() => auth.store_id, (newStoreId) => {
+    if (newStoreId) {
+      fetchSales()
     }
   })
 

@@ -119,13 +119,93 @@ export const useProductsStore = defineStore("products", () => {
         const exists = products.value.some((p) => p.slug === newProduct.slug);
         if (!exists) {
           products.value.unshift(newProduct);
-          await db.products.put(newProduct);
+          await db.products.put(JSON.parse(JSON.stringify(newProduct)));
         }
         return newProduct;
       }
     } catch (err) {
       throw err;
     }
+  }
+
+  async function addQuickProduct(data: {
+    name: string;
+    barcode_id?: string | null;
+    unit_price: number;
+    cost_price?: number;
+    unit_in?: string;
+  }): Promise<LocalProduct> {
+    const rawBarcode = data.barcode_id ? data.barcode_id.trim() : "";
+    const cleanName = data.name.trim();
+    const tempSlug = rawBarcode
+      ? `quick_${rawBarcode}`
+      : `quick_${cleanName.toLowerCase().replace(/[^a-z0-9]/g, "-")}_${Date.now()}`;
+
+    const localProd: LocalProduct = {
+      slug: tempSlug,
+      name: cleanName,
+      unit_price: data.unit_price,
+      cost_price: data.cost_price || 0,
+      max_discount: 0,
+      barcode_id: rawBarcode,
+      quantities: 0,
+      unit_in: data.unit_in || "piece",
+      deleted: false,
+      is_offline_new: true,
+    };
+
+    // 1. Immediately save to reactive state and local IndexedDB
+    const existingIdx = products.value.findIndex(
+      (p) =>
+        (rawBarcode && p.barcode_id === rawBarcode) ||
+        p.slug === tempSlug ||
+        p.name.toLowerCase() === cleanName.toLowerCase(),
+    );
+
+    if (existingIdx !== -1) {
+      products.value[existingIdx] = {
+        ...products.value[existingIdx],
+        ...localProd,
+      };
+      await db.products.put(JSON.parse(JSON.stringify(products.value[existingIdx])));
+      return products.value[existingIdx];
+    } else {
+      products.value.unshift(localProd);
+      await db.products.put(JSON.parse(JSON.stringify(localProd)));
+    }
+
+    // 2. Persist to API if online
+    const storeId = auth.store_id;
+    if (storeId && typeof navigator !== "undefined" && navigator.onLine) {
+      try {
+        const res = await api<any>(`/${storeId}/product`, {
+          method: "POST",
+          body: {
+            name: cleanName,
+            barcode_id: rawBarcode || undefined,
+            unit_price: data.unit_price,
+            cost_price: data.cost_price || 0,
+            quantities: 0,
+            unit_in: data.unit_in || "piece",
+          },
+        });
+        if (res && res.slug) {
+          localProd.slug = res.slug;
+          localProd.is_offline_new = false;
+          // Update in memory and local IndexedDB with true server slug
+          const idx = products.value.findIndex(p => p.slug === tempSlug);
+          if (idx !== -1) {
+            products.value[idx] = { ...localProd };
+          }
+          await db.products.delete(tempSlug);
+          await db.products.put(JSON.parse(JSON.stringify(localProd)));
+        }
+      } catch {
+        // If offline or network downtime, is_offline_new remains true and atomic sales sync will handle creation
+      }
+    }
+
+    return localProd;
   }
 
   async function updateProduct(
@@ -304,6 +384,7 @@ export const useProductsStore = defineStore("products", () => {
     lowStockProducts,
     fetchProducts,
     addProduct,
+    addQuickProduct,
     updateProduct,
     deleteProduct,
     adjustStock,

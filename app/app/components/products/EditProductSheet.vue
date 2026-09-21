@@ -198,7 +198,7 @@ async function handleSave() {
       </div>
 
       <!-- Description -->
-      <UFormField label="Description">
+      <UFormField label="Description (Optional)">
         <UTextarea v-model="form.description" :rows="3" />
       </UFormField>
 

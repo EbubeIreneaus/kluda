@@ -8,6 +8,13 @@ export interface CartItem {
   quantity: number
   max_discount: number
   barcode_id?: string
+  new_product?: {
+    name: string
+    barcode_id?: string | null
+    unit_in?: string
+    unit_price: number
+    cost_price?: number
+  }
 }
 
 export const useCartStore = defineStore('cart', () => {
@@ -24,7 +31,20 @@ export const useCartStore = defineStore('cart', () => {
   const change = computed(() => Math.max(0, amountReceived.value - grandTotal.value))
   const isEmpty = computed(() => items.value.length === 0)
 
-  function addItem(product: { slug: string, name: string, unit_price: number, max_discount?: number, barcode_id?: string }) {
+  function addItem(product: {
+    slug: string
+    name: string
+    unit_price: number
+    max_discount?: number
+    barcode_id?: string
+    new_product?: {
+      name: string
+      barcode_id?: string | null
+      unit_in?: string
+      unit_price: number
+      cost_price?: number
+    }
+  }) {
     const existing = items.value.find(item => item.slug === product.slug)
     if (existing) {
       existing.quantity++
@@ -35,7 +55,8 @@ export const useCartStore = defineStore('cart', () => {
         unit_price: product.unit_price,
         quantity: 1,
         max_discount: product.max_discount || 0,
-        barcode_id: product.barcode_id
+        barcode_id: product.barcode_id,
+        new_product: product.new_product
       })
     }
   }

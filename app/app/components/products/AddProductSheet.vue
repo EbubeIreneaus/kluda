@@ -315,7 +315,7 @@ async function handleSubmit() {
       </div>
 
       <!-- Description -->
-      <UFormField label="Description">
+      <UFormField label="Description (Optional)">
         <UTextarea
           v-model="form.description"
           placeholder="Product size, flavor, packaging details..."

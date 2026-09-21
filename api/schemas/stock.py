@@ -28,12 +28,14 @@ class StockCreate(BaseModel):
     cost_price: int | None = 0
     sku: str | None = None
     quantities: float = 1.0
-    unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag', 'sachet'] = "piece"
+    unit_in: Literal[
+        "piece", "kg", "g", "litre", "ml", "pack", "carton", "dozen", "bag", "sachet"
+    ] = "piece"
     max_discount: int = 0
     description: str | None = None
     staff_note: str | None = None
 
-    @field_validator('barcode_id', mode='before')
+    @field_validator("barcode_id", mode="before")
     @classmethod
     def normalize_barcode(cls, v: Any) -> str | None:
         if v is None:
@@ -51,13 +53,27 @@ class StockUpdate(BaseModel):
     cost_price: int | None = None
     sku: str | None = None
     quantities: float | None = None
-    unit_in: Literal['piece', 'kg', 'g', 'litre', 'ml', 'pack', 'carton', 'dozen', 'bag', 'sachet'] | None = None
+    unit_in: (
+        Literal[
+            "piece",
+            "kg",
+            "g",
+            "litre",
+            "ml",
+            "pack",
+            "carton",
+            "dozen",
+            "bag",
+            "sachet",
+        ]
+        | None
+    ) = None
     max_discount: int | None = None
     description: str | None = None
     staff_note: str | None = None
     deleted: bool | None = None
 
-    @field_validator('barcode_id', mode='before')
+    @field_validator("barcode_id", mode="before")
     @classmethod
     def normalize_barcode(cls, v: Any) -> str | None:
         if v is None:
@@ -90,8 +106,8 @@ class StockResponse(BaseModel):
 class StockHistoryCreate(BaseModel):
     stock_slug: str
     quantity: float
-    action_type: Literal['addition', 'subtract'] = "addition"
-    reason: Literal['restock', 'damage', 'adjustment', 'return'] = "restock"
+    action_type: Literal["addition", "subtract"] = "addition"
+    reason: Literal["restock", "damage", "adjustment", "return"] = "restock"
     note: str | None = None
 
 
@@ -111,10 +127,20 @@ class StockHistoryResponse(BaseModel):
 
 # --- Sale & Sale Item Schemas ---
 
+
+class QuickProductCreate(BaseModel):
+    name: str
+    barcode_id: str | None = None
+    unit_in: str = "piece"
+    unit_price: int = 0
+    cost_price: int | None = None
+
+
 class SaleItemCreate(BaseModel):
     stock_slug: str
     amount: int  # in kobo/cent
     quantities: float = 1.0
+    new_product: QuickProductCreate | None = None
 
 
 class SaleItemResponse(BaseModel):
@@ -131,19 +157,19 @@ class SaleCreate(BaseModel):
     items: list[SaleItemCreate]
     discount: int = 0
     customer_id: uuid.UUID | None = None
-    payment_method: Literal['cash', 'pos', 'debt', 'transfer', 'online']
+    payment_method: Literal["cash", "pos", "debt", "transfer", "online"]
     amount_recived: int
     idempotency_key: uuid.UUID
     staff_note: str | None = None
-    status: Literal['pending', 'completed', 'cancelled'] = "completed"
+    status: Literal["pending", "completed", "cancelled"] = "completed"
 
 
 class SaleUpdate(BaseModel):
     discount: int | None = None
-    payment_method: Literal['cash', 'pos', 'debt', 'transfer', 'online'] | None = None
+    payment_method: Literal["cash", "pos", "debt", "transfer", "online"] | None = None
     amount_recived: int | None = None
     staff_note: str | None = None
-    status: Literal['pending', 'completed', 'cancelled'] | None = None
+    status: Literal["pending", "completed", "cancelled"] | None = None
 
 
 class SaleResponse(BaseModel):
@@ -163,6 +189,7 @@ class SaleResponse(BaseModel):
 
 
 # --- Barcode Schemas ---
+
 
 class BarcodeCreate(BaseModel):
     barcode_id: str

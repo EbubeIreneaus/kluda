@@ -4,6 +4,13 @@ export interface PendingSaleItem {
   stock_slug: string
   amount: number
   quantities: number
+  new_product?: {
+    name: string
+    barcode_id?: string | null
+    unit_in?: string
+    unit_price: number
+    cost_price?: number
+  }
 }
 
 export interface PendingSale {
@@ -30,6 +37,7 @@ export interface LocalProduct {
   deleted: boolean
   sku?: string
   description?: string
+  is_offline_new?: boolean
 }
 
 export interface LocalCustomer {

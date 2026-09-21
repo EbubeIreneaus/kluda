@@ -2,6 +2,7 @@ from sqlalchemy.orm import selectinload
 from schemas.business import StoreResponseMini
 import uuid
 import logging
+import re
 from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,13 @@ from libs.deps import require_permission, get_staff_store, get_current_user, has
 from libs.notification_manager import notification_manager
 
 router = APIRouter(prefix="/{store_id}/sales", tags=["Sales"])
+
+
+def _slugify(text: str) -> str:
+    text = text.lower().strip()
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"[\s_-]+", "-", text)
+    return text.strip("-")
 
 
 @router.get("/ping")
@@ -173,13 +181,62 @@ async def create_sales_batch(
                         select(Stock).where(Stock.slug == item_in.stock_slug, Stock.store_id == store.store_id)
                     )
                     stock_item = stk_res.scalar_one_or_none()
+
+                    # Atomic quick-product creation if item_in.new_product is provided
+                    if not stock_item and getattr(item_in, "new_product", None):
+                        np = item_in.new_product
+                        # 1. Match existing active product by barcode in this store to prevent duplicates
+                        if np.barcode_id and str(np.barcode_id).strip():
+                            clean_bc = str(np.barcode_id).strip()
+                            existing_bc = (await db.execute(
+                                select(Stock).where(
+                                    Stock.barcode_id == clean_bc,
+                                    Stock.store_id == store.store_id,
+                                    Stock.deleted == False,
+                                )
+                            )).scalar_one_or_none()
+                            if existing_bc:
+                                stock_item = existing_bc
+
+                        # 2. If not found by barcode, check if active product with same name exists
+                        if not stock_item and np.name and np.name.strip():
+                            clean_name = np.name.strip().lower()
+                            existing_name = (await db.execute(
+                                select(Stock).where(
+                                    func.lower(Stock.name) == clean_name,
+                                    Stock.store_id == store.store_id,
+                                    Stock.deleted == False,
+                                )
+                            )).scalar_one_or_none()
+                            if existing_name:
+                                stock_item = existing_name
+
+                        # 3. If still not found, create the real active Stock product
+                        if not stock_item:
+                            raw_name = np.name.strip() if np.name else "Product"
+                            base_slug = _slugify(raw_name) or "item"
+                            unique_slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
+                            stock_item = Stock(
+                                name=raw_name,
+                                slug=unique_slug,
+                                barcode_id=str(np.barcode_id).strip() if np.barcode_id and str(np.barcode_id).strip() else None,
+                                unit_price=int(np.unit_price or item_in.amount),
+                                cost_price=int(np.cost_price or 0),
+                                quantities=0.0,
+                                unit_in=np.unit_in or "piece",
+                                deleted=False,
+                                store_id=store.store_id,
+                            )
+                            db.add(stock_item)
+                            await db.flush()
+
                     if not stock_item:
                         clean_name = item_in.stock_slug.replace("-", " ").title()
                         stock_item = Stock(
                             name=f"[Archived] {clean_name}",
                             slug=item_in.stock_slug,
                             unit_price=item_in.amount,
-                            quantities=0,
+                            quantities=0.0,
                             unit_in="piece",
                             deleted=True,
                             store_id=store.store_id,

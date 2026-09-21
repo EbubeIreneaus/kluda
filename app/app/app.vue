@@ -41,6 +41,7 @@ const auth = useAuthStore()
     <PwaUpdateBanner />
     <PwaInstallModal />
     <NetworkStatusBar />
+    <AndroidToast />
     <NuxtLoadingIndicator color="#10b981" :height="3" />
 
     <Transition name="splash-fade">

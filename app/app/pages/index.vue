@@ -13,11 +13,12 @@ const {
   usage,
   isOwner,
   daysRemaining,
-  fetchCurrentSubscription
+  fetchCurrentSubscription,
 } = useSubscription();
 
 onMounted(() => {
-  fetchCurrentSubscription();
+  salesStore.init();
+  productStore.fetchProducts();
 });
 
 const isAmountVisible = ref(true);
@@ -42,7 +43,11 @@ const todayRevenueKobo = computed(() => {
 });
 
 const canViewProfit = computed(() => {
-  return auth.isOwner || auth.hasPermission("view:profit") || auth.hasPermission("manage:all");
+  return (
+    auth.isOwner ||
+    auth.hasPermission("view:profit") ||
+    auth.hasPermission("manage:all")
+  );
 });
 
 const todayProfitKobo = computed(() => {
@@ -60,8 +65,26 @@ const todayProfitKobo = computed(() => {
   }, 0);
 });
 
+const hasCompleteCostPricesForToday = computed(() => {
+  if (!todaySales.value.length) return true;
+  for (const sale of todaySales.value) {
+    if (!sale.items || !sale.items.length) continue;
+    for (const item of sale.items) {
+      if (item.cost_price == null || item.cost_price <= 0) {
+        return false;
+      }
+    }
+  }
+  return true;
+});
+
 const profitMarginPercent = computed(() => {
-  if (!todayRevenueKobo.value || todayRevenueKobo.value <= 0) return 0;
+  if (
+    !hasCompleteCostPricesForToday.value ||
+    !todayRevenueKobo.value ||
+    todayRevenueKobo.value <= 0
+  )
+    return 0;
   return Math.round((todayProfitKobo.value / todayRevenueKobo.value) * 100);
 });
 
@@ -69,13 +92,13 @@ const totalProducts = computed(() => {
   return productStore.productCount;
 });
 
-const staffName = computed(() => {
-  if (auth.user) {
-    if (auth.user.fullname) return auth.user.fullname;
-    if (auth.user.role === "owner") return "Store Owner";
-  }
-  return "Store Cashier";
-});
+// const staffName = computed(() => {
+//   if (auth.user) {
+//     if (auth.user.fullname) return auth.user.fullname;
+//     if (auth.user.role === "owner") return "Store Owner";
+//   }
+//   return "Store Cashier";
+// });
 </script>
 
 <template>
@@ -87,35 +110,54 @@ const staffName = computed(() => {
       :class="[
         isExpired || isDue
           ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-          : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+          : 'bg-amber-500/10 border-amber-500/30 text-amber-300',
       ]"
     >
       <div class="flex items-center gap-3">
         <div
           class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          :class="isExpired || isDue ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'"
+          :class="
+            isExpired || isDue
+              ? 'bg-rose-500/20 text-rose-400'
+              : 'bg-amber-500/20 text-amber-400'
+          "
         >
           <UIcon
-            :name="isExpired || isDue ? 'i-lucide-alert-octagon' : 'i-lucide-alert-triangle'"
+            :name="
+              isExpired || isDue
+                ? 'i-lucide-alert-octagon'
+                : 'i-lucide-alert-triangle'
+            "
             class="size-5"
           />
         </div>
         <div>
           <h4 class="text-xs font-bold uppercase tracking-wider text-white">
-            {{ isDue ? 'Subscription Renewal Due' : (isExpired ? 'Store Subscription Inactive' : 'Monthly Sales Limit Reached') }}
+            {{
+              isDue
+                ? "Subscription Renewal Due"
+                : isExpired
+                  ? "Store Subscription Inactive"
+                  : "Monthly Sales Limit Reached"
+            }}
           </h4>
           <p class="text-xs opacity-90 mt-0.5">
-            {{ isDue
-              ? 'Payment failed on Paystack. Update payment details to keep multi-branch checkout active.'
-              : (isExpired
-                ? 'Your store subscription has expired. Renew your plan to continue recording sales.'
-                : `Your organization has reached the ${usage.monthlySalesLimit} sales quota for this month.`)
+            {{
+              isDue
+                ? "Payment failed on Paystack. Update payment details to keep multi-branch checkout active."
+                : isExpired
+                  ? "Your store subscription has expired. Renew your plan to continue recording sales."
+                  : `Your organization has reached the ${usage.monthlySalesLimit} sales quota for this month.`
             }}
           </p>
         </div>
       </div>
 
-      <NuxtLink v-if="isOwner" to="/marchant/billing" class="shrink-0 self-start sm:self-auto">
+      <NuxtLink
+        v-if="isOwner"
+        to="/marchant/billing"
+        class="shrink-0 self-start sm:self-auto"
+      >
         <UButton
           size="xs"
           :color="isExpired || isDue ? 'error' : 'warning'"
@@ -143,29 +185,29 @@ const staffName = computed(() => {
         <div
           class="relative z-10 flex flex-col justify-between min-h-[190px] gap-6"
         >
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-9 h-7 rounded-md bg-gradient-to-tr from-green-400 via-green-300 to-green-500 p-1 flex items-center justify-center shadow-md shadow-green-950/30 border border-green-300/40"
+          <div
+            :class="
+              canViewProfit
+                ? 'grid grid-cols-1 sm:grid-cols-2 gap-4'
+                : 'flex flex-col'
+            "
+          >
+            <div class="flex flex-col">
+              <span
+                class="text-xs font-medium text-emerald-300/90 tracking-wide"
+                >Money Sold Today</span
               >
+              <div class="flex items-center gap-x-4">
                 <div
-                  class="w-full h-full border border-green-600/40 rounded-sm grid grid-cols-2 gap-0.5 opacity-80"
-                />
-              </div>
-              <div class="flex flex-col">
-                <span
-                  class="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest leading-none"
-                  >Cashier</span
+                  class="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1 flex items-center gap-2"
                 >
-                <span
-                  class="text-sm font-bold text-zinc-100 tracking-wide mt-0.5"
-                  >{{ staffName }}</span
-                >
-              </div>
-            </div>
+                  <span v-if="isAmountVisible">{{
+                    format(todayRevenueKobo)
+                  }}</span>
+                  <span v-else class="tracking-widest">••••••••</span>
+                </div>
 
-            <div class="flex items-center gap-2">
-              <button
+                  <button
                 type="button"
                 class="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/10 transition-colors"
                 @click="isAmountVisible = !isAmountVisible"
@@ -175,65 +217,58 @@ const staffName = computed(() => {
                   class="size-4"
                 />
               </button>
-
-              <!-- Dynamic Store Owner Plan Badge -->
-              <NuxtLink
-                to="/marchant/billing"
-                class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-[10px] font-bold text-emerald-300 uppercase tracking-wider transition-all backdrop-blur-sm shadow-xs"
-                title="View Subscription & Organization Plan"
-              >
-                <span
-                  class="w-1.5 h-1.5 rounded-full"
-                  :class="status === 'ACTIVE' ? 'bg-emerald-400 animate-pulse' : (status === 'DUE' ? 'bg-amber-400' : 'bg-rose-400')"
-                />
-                <span>{{ plan.name }}</span>
-                <UIcon name="i-lucide-chevron-right" class="size-3 opacity-60" />
-              </NuxtLink>
-            </div>
-          </div>
-
-          <div :class="canViewProfit ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' : 'flex flex-col'">
-            <div class="flex flex-col">
-              <span class="text-xs font-medium text-emerald-300/90 tracking-wide"
-                >Money Sold Today</span
-              >
-              <div
-                class="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1 flex items-center gap-2"
-              >
-                <span v-if="isAmountVisible">{{ format(todayRevenueKobo) }}</span>
-                <span v-else class="tracking-widest">••••••••</span>
               </div>
-              <span class="text-[11px] text-zinc-400 mt-1">
-                {{
-                  todaySales.length === 1
-                    ? "1 sale completed today"
-                    : `${todaySales.length} sales completed today`
-                }}
-              </span>
             </div>
 
             <!-- Today's Net Profit (Visible to authorized store owners and managers) -->
-            <div v-if="canViewProfit" class="flex flex-col sm:border-l sm:border-white/10 sm:pl-4">
+            <div
+              v-if="canViewProfit"
+              class="flex flex-col sm:border-l sm:border-white/10 sm:pl-4"
+            >
               <div class="flex items-center gap-2">
-                <span class="text-xs font-medium text-emerald-300/90 tracking-wide"
+                <span
+                  class="text-xs font-medium text-emerald-300/90 tracking-wide"
                   >Today's Net Profit</span
                 >
                 <span
-                  v-if="todayRevenueKobo > 0"
+                  v-if="hasCompleteCostPricesForToday && todayRevenueKobo > 0"
                   class="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                  :class="todayProfitKobo >= 0 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'"
+                  :class="
+                    todayProfitKobo >= 0
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                  "
                 >
                   {{ profitMarginPercent }}% margin
+                </span>
+                <span
+                  v-else-if="
+                    !hasCompleteCostPricesForToday && todaySales.length > 0
+                  "
+                  class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                >
+                  Costs Needed
                 </span>
               </div>
               <div
                 class="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight mt-1 flex items-center gap-2"
               >
-                <span v-if="isAmountVisible">{{ format(todayProfitKobo) }}</span>
-                <span v-else class="tracking-widest">••••••••</span>
+                <template v-if="!isAmountVisible">
+                  <span class="tracking-widest">••••••••</span>
+                </template>
+                <template v-else-if="hasCompleteCostPricesForToday">
+                  <span>{{ format(todayProfitKobo) }}</span>
+                </template>
+                <template v-else>
+                  <span class="text-zinc-400 font-normal tracking-wide">—</span>
+                </template>
               </div>
               <span class="text-[11px] text-zinc-400 mt-1">
-                Net after product costs & discounts
+                {{
+                  hasCompleteCostPricesForToday
+                    ? "Net after product costs & discounts"
+                    : "Add cost prices to your products to track net profit"
+                }}
               </span>
             </div>
           </div>
@@ -253,9 +288,16 @@ const staffName = computed(() => {
                 class="text-[10px] uppercase tracking-wider font-semibold text-zinc-400"
                 >Quota Status</span
               >
-              <span class="text-sm font-bold text-emerald-400 mt-0.5 flex items-center gap-1 font-mono">
-                <UIcon name="i-lucide-receipt" class="size-3.5 text-emerald-400" />
-                {{ usage.monthlySalesCount }}/{{ usage.monthlySalesLimit > 0 ? usage.monthlySalesLimit : '∞' }}
+              <span
+                class="text-sm font-bold text-emerald-400 mt-0.5 flex items-center gap-1 font-mono"
+              >
+                <UIcon
+                  name="i-lucide-receipt"
+                  class="size-3.5 text-emerald-400"
+                />
+                {{ usage.monthlySalesCount }}/{{
+                  usage.monthlySalesLimit > 0 ? usage.monthlySalesLimit : "∞"
+                }}
               </span>
             </div>
           </div>
@@ -319,8 +361,6 @@ const staffName = computed(() => {
       </NuxtLink>
     </div>
 
-    <!-- Store Owner Subscription & Quota Usage Telemetry -->
-    <DashboardSubscriptionCard />
 
     <div class="">
       <DashboardPaymentMethodChart />
@@ -334,7 +374,7 @@ const staffName = computed(() => {
         <DashboardTopProductsChart />
       </div>
     </div>
-      <DashboardLowStockAlert />
-      <DashboardRevenueChart />
+    <DashboardLowStockAlert />
+    <DashboardRevenueChart />
   </div>
 </template>

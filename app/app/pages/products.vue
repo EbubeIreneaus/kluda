@@ -55,44 +55,18 @@ const totalRetailWorth = computed(() => {
   }, 0)
 })
 
-const totalCostWorth = computed(() => {
-  return activeProducts.value.reduce((sum, p) => {
-    const qty = Math.max(0, Number(p.quantity) || 0)
-    const cost = p.cost_price && p.cost_price > 0 ? p.cost_price : 0
-    return sum + (qty * cost)
-  }, 0)
-})
-
 const totalStockUnits = computed(() => {
   return activeProducts.value.reduce((sum, p) => {
     return sum + Math.max(0, Number(p.quantity) || 0)
   }, 0)
 })
 
-const potentialProfit = computed(() => {
-  if (totalCostWorth.value <= 0) return 0
-  return Math.max(0, totalRetailWorth.value - totalCostWorth.value)
-})
-
-const potentialMarginPct = computed(() => {
-  if (totalRetailWorth.value <= 0 || totalCostWorth.value <= 0) return 0
-  return Math.round((potentialProfit.value / totalRetailWorth.value) * 100)
-})
-
-const activeTooltip = ref<'worth' | 'cost' | 'profit' | 'stock' | null>(null)
+const activeTooltip = ref<'worth' | 'stock' | null>(null)
 
 const metricExplanations: Record<string, { title: string; desc: string }> = {
   worth: {
     title: 'Store Worth (Selling Value)',
     desc: 'The total money you will make if you sell every single item currently in your shop at your set selling prices.'
-  },
-  cost: {
-    title: 'Cost Capital (Money Invested)',
-    desc: 'The actual money you spent buying the goods currently in your shop from suppliers (Cost Price × Quantity).'
-  },
-  profit: {
-    title: 'Expected Profit',
-    desc: 'The take-home profit you will make after selling all items in stock, once you recover what you spent buying them.'
   },
   stock: {
     title: 'Total Stock',
@@ -100,7 +74,7 @@ const metricExplanations: Record<string, { title: string; desc: string }> = {
   }
 }
 
-function toggleMetricTooltip(metric: 'worth' | 'cost' | 'profit' | 'stock') {
+function toggleMetricTooltip(metric: 'worth' | 'stock') {
   activeTooltip.value = activeTooltip.value === metric ? null : metric
 }
 
@@ -239,64 +213,22 @@ async function confirmDelete(product: ProductItem) {
           </div>
         </div>
 
-        <!-- Secondary Metrics with High Contrast & Info Buttons -->
-        <div class="flex items-center gap-4 sm:gap-6 text-xs text-zinc-700 dark:text-zinc-300 flex-wrap">
-          <!-- Cost Capital -->
-          <div v-if="totalCostWorth > 0" class="flex items-center gap-1.5">
-            <span class="text-zinc-600 dark:text-zinc-400 font-semibold">Cost Capital:</span>
-            <span class="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
-              <template v-if="isWorthVisible">{{ format(totalCostWorth) }}</template>
-              <template v-else>••••••</template>
-            </span>
-            <button
-              type="button"
-              class="text-zinc-400 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors p-0.5 rounded hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
-              :class="{ 'text-emerald-600 dark:text-emerald-400': activeTooltip === 'cost' }"
-              title="Click to explain Cost Capital"
-              @click="toggleMetricTooltip('cost')"
-            >
-              <UIcon name="i-lucide-info" class="size-3.5" />
-            </button>
-          </div>
-
-          <!-- Expected Profit -->
-          <div v-if="potentialProfit > 0" class="flex items-center gap-1.5">
-            <span class="text-zinc-600 dark:text-zinc-400 font-semibold">Expected Profit:</span>
-            <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-              <template v-if="isWorthVisible">{{ format(potentialProfit) }}</template>
-              <template v-else>••••••</template>
-            </span>
-            <span v-if="isWorthVisible && potentialMarginPct > 0" class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300/80 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/25 px-1.5 py-0.5 rounded font-bold">
-              +{{ potentialMarginPct }}%
-            </span>
-            <button
-              type="button"
-              class="text-zinc-400 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors p-0.5 rounded hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
-              :class="{ 'text-emerald-600 dark:text-emerald-400': activeTooltip === 'profit' }"
-              title="Click to explain Expected Profit"
-              @click="toggleMetricTooltip('profit')"
-            >
-              <UIcon name="i-lucide-info" class="size-3.5" />
-            </button>
-          </div>
-
-          <!-- Total Stock Units -->
-          <div class="flex items-center gap-1.5">
-            <span class="text-zinc-600 dark:text-zinc-400 font-semibold">Total Stock:</span>
-            <span class="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
-              {{ totalStockUnits.toLocaleString() }}
-            </span>
-            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">units</span>
-            <button
-              type="button"
-              class="text-zinc-400 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors p-0.5 rounded hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
-              :class="{ 'text-emerald-600 dark:text-emerald-400': activeTooltip === 'stock' }"
-              title="Click to explain Total Stock"
-              @click="toggleMetricTooltip('stock')"
-            >
-              <UIcon name="i-lucide-info" class="size-3.5" />
-            </button>
-          </div>
+        <!-- Total Stock Units -->
+        <div class="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
+          <span class="text-zinc-600 dark:text-zinc-400 font-semibold">Total Stock:</span>
+          <span class="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
+            {{ totalStockUnits.toLocaleString() }}
+          </span>
+          <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">units</span>
+          <button
+            type="button"
+            class="text-zinc-400 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors p-0.5 rounded hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+            :class="{ 'text-emerald-600 dark:text-emerald-400': activeTooltip === 'stock' }"
+            title="Click to explain Total Stock"
+            @click="toggleMetricTooltip('stock')"
+          >
+            <UIcon name="i-lucide-info" class="size-3.5" />
+          </button>
         </div>
       </div>
 
